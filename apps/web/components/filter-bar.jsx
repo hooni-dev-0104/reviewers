@@ -26,6 +26,13 @@ const TRUST_OPTIONS = [
   ['review', '검토 필요']
 ];
 
+const SORT_OPTIONS = [
+  ['deadline', '마감 임박순'],
+  ['newest', '최신 갱신순'],
+  ['slots', '모집 인원순'],
+  ['trusted', '신뢰도 우선']
+];
+
 export function FilterBar({ sources, searchParams }) {
   return (
     <form className="filter-shell">
@@ -56,6 +63,7 @@ export function FilterBar({ sources, searchParams }) {
         />
         <Select name="deadline" label="마감" options={DEADLINE_OPTIONS} value={searchParams.deadline || 'all'} />
         <Select name="trust" label="신뢰도" options={TRUST_OPTIONS} value={searchParams.trust || 'all'} />
+        <Select name="sort" label="정렬" options={SORT_OPTIONS} value={searchParams.sort || 'deadline'} />
         <div className="search-stack">
           <label htmlFor="region">지역</label>
           <input id="region" name="region" defaultValue={searchParams.region || ''} placeholder="예: 서울, 경기, 강남" />

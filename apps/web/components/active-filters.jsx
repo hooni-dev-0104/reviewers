@@ -23,6 +23,12 @@ const LABELS = {
     '3days': '3일 이내',
     '7days': '7일 이내'
   },
+  sort: {
+    deadline: '마감 임박순',
+    newest: '최신 갱신순',
+    slots: '모집 인원순',
+    trusted: '신뢰도 우선'
+  },
   trust: {
     stable: '정보 안정적',
     review: '검토 필요'
@@ -37,6 +43,7 @@ export function ActiveFilters({ searchParams = {}, resultCount }) {
     searchParams.source && searchParams.source !== 'all' ? ['출처', LABELS.source[searchParams.source] || searchParams.source] : null,
     searchParams.deadline && searchParams.deadline !== 'all' ? ['마감', LABELS.deadline[searchParams.deadline] || searchParams.deadline] : null,
     searchParams.trust && searchParams.trust !== 'all' ? ['신뢰도', LABELS.trust[searchParams.trust] || searchParams.trust] : null,
+    searchParams.sort && searchParams.sort !== 'deadline' ? ['정렬', LABELS.sort[searchParams.sort] || searchParams.sort] : null,
     searchParams.region ? ['지역', searchParams.region] : null
   ].filter(Boolean);
 

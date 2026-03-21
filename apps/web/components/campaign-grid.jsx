@@ -1,4 +1,5 @@
 import { CampaignCard } from '@/components/campaign-card';
+import { SponsorSlot } from '@/components/sponsor-slot';
 
 export function CampaignGrid({ campaigns }) {
   if (!campaigns.length) {
@@ -12,9 +13,22 @@ export function CampaignGrid({ campaigns }) {
 
   return (
     <section className="campaign-grid">
-      {campaigns.map((campaign) => (
-        <CampaignCard key={campaign.id} campaign={campaign} />
+      {campaigns.map((campaign, index) => (
+        <FragmentWithSponsor
+          key={campaign.id}
+          campaign={campaign}
+          showSponsor={index === 5}
+        />
       ))}
     </section>
+  );
+}
+
+function FragmentWithSponsor({ campaign, showSponsor }) {
+  return (
+    <>
+      <CampaignCard campaign={campaign} />
+      {showSponsor ? <SponsorSlot /> : null}
+    </>
   );
 }

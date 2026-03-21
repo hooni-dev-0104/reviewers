@@ -66,12 +66,11 @@ async function supabaseFetch(path, init = {}, { service = false } = {}) {
 }
 
 function applyCampaignFilters(params, searchParams) {
-  const { search, platform, type, source, region, deadline, trust, limit = 48 } = searchParams;
+  const { search, platform, type, source, region, deadline, trust, sort = 'deadline', limit = 48 } = searchParams;
   const andConditions = [];
 
   params.set('select', CAMPAIGN_SELECT);
   params.set('status', 'eq.active');
-  params.set('order', 'apply_deadline.asc.nullslast,last_seen_at.desc');
   params.set('limit', String(limit));
 
   if (search) {
@@ -119,6 +118,15 @@ function applyCampaignFilters(params, searchParams) {
   if (andConditions.length > 1) {
     params.set('and', `(${andConditions.join(',')})`);
   }
+
+  const orderValue = {
+    newest: 'last_seen_at.desc,apply_deadline.asc.nullslast',
+    slots: 'recruit_count.desc.nullslast,apply_deadline.asc.nullslast',
+    trusted: 'requires_review.asc,apply_deadline.asc.nullslast,last_seen_at.desc',
+    deadline: 'apply_deadline.asc.nullslast,last_seen_at.desc'
+  }[sort] || 'apply_deadline.asc.nullslast,last_seen_at.desc';
+
+  params.set('order', orderValue);
 }
 
 export const getCampaigns = cache(async function getCampaigns(searchParams = {}) {
