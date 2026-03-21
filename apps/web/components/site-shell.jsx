@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { AccountStatus } from '@/components/account-status';
 
 export function SiteShell({ children, visitorWidget, campaignCount }) {
+  const showOps = Boolean(process.env.OPS_DASHBOARD_KEY);
+
   return (
     <div className="page-shell">
       <header className="topbar">
@@ -17,7 +19,7 @@ export function SiteShell({ children, visitorWidget, campaignCount }) {
           <Link href="/saved">저장</Link>
           <Link href="/reminders">리마인드</Link>
           <Link href="/trust">신뢰 기준</Link>
-          <Link href="/ops">운영</Link>
+          {showOps ? <Link href="/ops">운영</Link> : null}
         </nav>
         <AccountStatus />
       </header>
