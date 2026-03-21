@@ -1,5 +1,6 @@
 import Link from 'next/link';
 
+import { ActiveFilters } from '@/components/active-filters';
 import { CampaignGrid } from '@/components/campaign-grid';
 import { FilterBar } from '@/components/filter-bar';
 import { SiteShell } from '@/components/site-shell';
@@ -72,6 +73,7 @@ export default async function HomePage({ searchParams }) {
         </div>
 
         <FilterBar sources={sources} searchParams={resolvedSearchParams} />
+        <ActiveFilters searchParams={resolvedSearchParams} resultCount={campaigns.length} />
         <CampaignGrid campaigns={campaigns} />
       </section>
     </SiteShell>

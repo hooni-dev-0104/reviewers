@@ -139,6 +139,44 @@ export const getCampaignById = cache(async function getCampaignById(id) {
   return rows[0] || null;
 });
 
+export async function getCampaignsByIds(ids = []) {
+  const filteredIds = ids.filter(Boolean);
+  if (!filteredIds.length) {
+    return [];
+  }
+
+  const params = new URLSearchParams({
+    select: CAMPAIGN_SELECT,
+    status: 'eq.active',
+    id: `in.(${filteredIds.join(',')})`,
+    order: 'apply_deadline.asc.nullslast,last_seen_at.desc',
+    limit: String(Math.min(filteredIds.length, 50))
+  });
+  const response = await supabaseFetch(`/campaigns?${params.toString()}`);
+  return response.json();
+}
+
+export async function getRelatedCampaigns(campaign, limit = 4) {
+  const params = new URLSearchParams({
+    select: CAMPAIGN_SELECT,
+    status: 'eq.active',
+    limit: String(limit),
+    order: 'apply_deadline.asc.nullslast,last_seen_at.desc'
+  });
+
+  if (campaign.sources?.slug) {
+    params.set('sources.slug', `eq.${campaign.sources.slug}`);
+  }
+
+  if (campaign.region_primary_name) {
+    params.set('region_primary_name', `eq.${campaign.region_primary_name}`);
+  }
+
+  const response = await supabaseFetch(`/campaigns?${params.toString()}`);
+  const rows = await response.json();
+  return rows.filter((row) => row.id !== campaign.id).slice(0, limit);
+}
+
 export const getSources = cache(async function getSources() {
   const params = new URLSearchParams({
     select: 'slug,name,platform_type',

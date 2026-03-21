@@ -10,6 +10,7 @@ import {
   getConfidence,
   getDeadlineState
 } from '@/lib/format';
+import { SavedCampaignButton } from '@/components/saved-campaign-button';
 
 export function CampaignCard({ campaign }) {
   const confidence = getConfidence(campaign);
@@ -51,6 +52,7 @@ export function CampaignCard({ campaign }) {
 
       <div className="card-actions">
         <Link href={`/campaign/${campaign.id}`}>상세 보기</Link>
+        <SavedCampaignButton campaignId={campaign.id} />
         <a href={campaign.original_url} target="_blank" rel="noreferrer">
           원문 이동
         </a>

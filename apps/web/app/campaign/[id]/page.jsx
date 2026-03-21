@@ -9,7 +9,8 @@ import {
   formatSourceName,
   getConfidence
 } from '@/lib/format';
-import { getCampaignById, getCampaignCount, getVisitorCounts } from '@/lib/supabase';
+import { getCampaignById, getCampaignCount, getRelatedCampaigns, getVisitorCounts } from '@/lib/supabase';
+import { SavedCampaignButton } from '@/components/saved-campaign-button';
 import { SiteShell } from '@/components/site-shell';
 import { VisitorWidget } from '@/components/visitor-widget';
 
@@ -28,6 +29,7 @@ export default async function CampaignDetailPage({ params }) {
   }
 
   const confidence = getConfidence(campaign);
+  const relatedCampaigns = await getRelatedCampaigns(campaign);
 
   return (
     <SiteShell campaignCount={campaignCount} visitorWidget={<VisitorWidget initialCounts={counts} />}>
@@ -68,6 +70,7 @@ export default async function CampaignDetailPage({ params }) {
             <a href={campaign.original_url} target="_blank" rel="noreferrer" className="primary-action">
               원문 열고 지원하기
             </a>
+            <SavedCampaignButton campaignId={campaign.id} />
           </aside>
         </div>
 
@@ -102,6 +105,33 @@ export default async function CampaignDetailPage({ params }) {
               <li>지원 액션은 원문 페이지에서 진행됩니다.</li>
             </ul>
           </article>
+        </section>
+
+        <section className="related-panel">
+          <div className="section-headline compact-headline">
+            <div>
+              <span className="eyebrow">Related</span>
+              <h2>같이 보면 좋은 비슷한 캠페인</h2>
+            </div>
+          </div>
+          {relatedCampaigns.length ? (
+            <div className="related-list">
+              {relatedCampaigns.map((item) => (
+                <article key={item.id} className="related-card">
+                  <div>
+                    <span className="source-chip">{formatSourceName(item.sources)}</span>
+                    <h3>{item.title}</h3>
+                    <p>{formatRegion(item)} · {formatDeadline(item.apply_deadline)}</p>
+                  </div>
+                  <Link href={`/campaign/${item.id}`}>상세 보기</Link>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="empty-state compact-empty">
+              <p>비슷한 캠페인을 더 찾는 중이에요.</p>
+            </div>
+          )}
         </section>
       </section>
     </SiteShell>

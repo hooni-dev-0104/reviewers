@@ -12,6 +12,7 @@ export function SiteShell({ children, visitorWidget, campaignCount }) {
         </div>
         <nav>
           <Link href="/">탐색</Link>
+          <Link href="/saved">저장</Link>
           <Link href="/trust">신뢰 기준</Link>
           <a href="https://reviewers-ten.vercel.app" target="_blank" rel="noreferrer">
             배포 도메인
