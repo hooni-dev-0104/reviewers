@@ -95,6 +95,20 @@ npm run dev
 - Keep crawler + scheduled refresh on GitHub Actions
 - Apply the updated `supabase_crawler_schema.sql` so visitor counts, account saves, reminders, and sponsor slots all exist
 
+### GitHub Actions production deploy
+
+A dedicated workflow now deploys the frontend to Vercel on every push to `main` when frontend files change.
+
+Required GitHub secrets:
+
+```bash
+VERCEL_TOKEN=YOUR_VERCEL_TOKEN
+VERCEL_ORG_ID=team_ZtzXXpuCkVLHkJ4c7RUR2FZr
+VERCEL_PROJECT_ID=prj_YAHDuzPjm2Zx7qiQ0FlUVlSrf2be
+```
+
+The workflow file is `.github/workflows/vercel-production.yml`.
+
 `sample.json` should be a JSON array of raw campaign objects. Example:
 
 ```json
