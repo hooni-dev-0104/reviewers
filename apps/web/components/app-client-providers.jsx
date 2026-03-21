@@ -4,17 +4,19 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
 const AppContext = createContext(null);
 
-export function AppClientProviders({ children }) {
-  const [session, setSession] = useState(null);
+export function AppClientProviders({ children, initialSession = null }) {
+  const [session, setSession] = useState(initialSession);
   const [savedIds, setSavedIds] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    refreshAll();
+    refreshAll({ background: true });
   }, []);
 
-  async function refreshAll() {
-    setLoading(true);
+  async function refreshAll({ background = false } = {}) {
+    if (!background) {
+      setLoading(true);
+    }
     try {
       const sessionResponse = await fetch('/api/auth/session');
       const sessionPayload = await sessionResponse.json();
@@ -29,7 +31,9 @@ export function AppClientProviders({ children }) {
         setSavedIds([]);
       }
     } finally {
-      setLoading(false);
+      if (!background) {
+        setLoading(false);
+      }
     }
   }
 

@@ -1,6 +1,7 @@
 import './globals.css';
 
 import { AppClientProviders } from '@/components/app-client-providers';
+import { getCurrentUser } from '@/lib/auth';
 
 export const metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://reviewers-ten.vercel.app'),
@@ -16,11 +17,13 @@ export const metadata = {
   }
 };
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  const initialSession = await getCurrentUser();
+
   return (
     <html lang="ko">
       <body>
-        <AppClientProviders>{children}</AppClientProviders>
+        <AppClientProviders initialSession={initialSession}>{children}</AppClientProviders>
       </body>
     </html>
   );
