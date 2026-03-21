@@ -11,6 +11,7 @@ Stdlib-first Python scaffold for a Korean experience-campaign crawler built arou
 - dry-run friendly pipeline
 - local file-backed source adapter for offline development
 - placeholder seeded adapters for real sites
+- Next.js applicant-facing frontend in `apps/web`
 - unit tests using `unittest`
 
 ## Seeded MVP sources
@@ -65,6 +66,33 @@ python3 -m crawler.cli run-report --all-public --output docs/public-source-quali
 ```
 
 This runs a dry-run over the current public parser set and emits a markdown report.
+
+## Frontend app (`apps/web`)
+
+The repository now includes a Vercel-ready Next.js app for applicant-facing discovery.
+
+### Required Vercel / frontend env
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_PUBLIC_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY
+NEXT_PUBLIC_SITE_URL=https://reviewers-ten.vercel.app
+```
+
+### Local run
+
+```bash
+cd apps/web
+npm install
+npm run dev
+```
+
+### Vercel notes
+
+- Set the Vercel project root directory to `apps/web`
+- Keep crawler + scheduled refresh on GitHub Actions
+- Apply the updated `supabase_crawler_schema.sql` so `site_daily_visitors` exists for daily/total visit counts
 
 `sample.json` should be a JSON array of raw campaign objects. Example:
 

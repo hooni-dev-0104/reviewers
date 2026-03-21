@@ -145,6 +145,15 @@ create table if not exists public.crawl_errors (
   created_at timestamptz not null default timezone('utc', now())
 );
 
+create table if not exists public.site_daily_visitors (
+  id uuid primary key default gen_random_uuid(),
+  visit_date date not null,
+  visitor_id text not null,
+  path text not null default '/',
+  created_at timestamptz not null default timezone('utc', now()),
+  constraint site_daily_visitors_visit_date_visitor_id_key unique (visit_date, visitor_id)
+);
+
 create index if not exists idx_sources_is_active on public.sources (is_active, priority);
 create index if not exists idx_campaigns_source_id on public.campaigns (source_id);
 create index if not exists idx_campaigns_status on public.campaigns (status);
@@ -159,6 +168,7 @@ create index if not exists idx_campaign_snapshots_campaign_id_crawled_at on publ
 create index if not exists idx_crawl_jobs_source_id_created_at on public.crawl_jobs (source_id, created_at desc);
 create index if not exists idx_crawl_errors_source_id_created_at on public.crawl_errors (source_id, created_at desc);
 create index if not exists idx_campaigns_title_fts on public.campaigns using gin (to_tsvector('simple', coalesce(title,'')));
+create index if not exists idx_site_daily_visitors_visit_date on public.site_daily_visitors (visit_date desc);
 
 create or replace trigger trg_sources_updated_at
 before update on public.sources
@@ -188,6 +198,7 @@ alter table public.campaigns enable row level security;
 alter table public.campaign_snapshots enable row level security;
 alter table public.crawl_jobs enable row level security;
 alter table public.crawl_errors enable row level security;
+alter table public.site_daily_visitors enable row level security;
 
 do $$
 begin
@@ -210,6 +221,11 @@ begin
     select 1 from pg_policies where schemaname='public' and tablename='campaigns' and policyname='Public read visible campaigns'
   ) then
     create policy "Public read visible campaigns" on public.campaigns for select using (status in ('active','expired'));
+  end if;
+  if not exists (
+    select 1 from pg_policies where schemaname='public' and tablename='site_daily_visitors' and policyname='Service role write visitor counts only'
+  ) then
+    create policy "Service role write visitor counts only" on public.site_daily_visitors for all using (false) with check (false);
   end if;
 end $$;
 
