@@ -38,6 +38,7 @@ class AppConfig:
     crawl_jobs_table: str = "crawl_jobs"
     crawl_errors_table: str = "crawl_errors"
     campaign_snapshots_table: str = "campaign_snapshots"
+    upsert_batch_size: int = 100
     dry_run: bool = True
 
     @classmethod
@@ -57,6 +58,7 @@ class AppConfig:
             campaign_snapshots_table=os.getenv(
                 "SUPABASE_CAMPAIGN_SNAPSHOTS_TABLE", "campaign_snapshots"
             ),
+            upsert_batch_size=int(os.getenv("SUPABASE_UPSERT_BATCH_SIZE", "100")),
             dry_run=_as_bool(os.getenv("CRAWLER_DRY_RUN"), default=True),
         )
 

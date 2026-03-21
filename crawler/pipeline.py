@@ -18,6 +18,12 @@ class PipelineStats:
     failed: int = 0
 
 
+def _iter_batches(items: list[dict[str, Any]], batch_size: int):
+    batch_size = max(1, batch_size)
+    for start in range(0, len(items), batch_size):
+        yield items[start : start + batch_size]
+
+
 def build_campaign_payload(campaign: CampaignRecord) -> dict[str, Any]:
     campaign.ensure_crawled_at()
     return {
@@ -102,7 +108,8 @@ def run_source_pipeline(
             deleted_rows = client.delete_campaigns_for_source(definition.source_id) or []
             deleted_count = len(deleted_rows)
         if payload:
-            client.upsert_campaigns(payload)
+            for batch in _iter_batches(payload, config.upsert_batch_size):
+                client.upsert_campaigns(batch)
         if job_row and job_row.get("id"):
             client.update_crawl_job(
                 job_row["id"],
