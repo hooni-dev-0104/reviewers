@@ -49,6 +49,7 @@ def run_source_pipeline(
     source_file: str | None = None,
     dry_run: bool | None = None,
     delete_before_refresh: bool = False,
+    report_mode: bool = False,
 ) -> dict[str, Any]:
     if source_slug not in SEEDED_SOURCES:
         raise KeyError(f"unknown source slug: {source_slug}")
@@ -69,7 +70,7 @@ def run_source_pipeline(
             source_id=source_row.get("id"),
         )
 
-    adapter = get_adapter(source_slug, source_file)
+    adapter = get_adapter(source_slug, source_file, report_mode=report_mode)
     rows = adapter.fetch()
     stats = PipelineStats(fetched=len(rows))
     normalized: list[CampaignRecord] = []
@@ -121,6 +122,7 @@ def run_source_pipeline(
         "source": definition.slug,
         "dry_run": effective_dry_run,
         "delete_before_refresh": delete_before_refresh,
+        "report_mode": report_mode,
         "deleted_count": deleted_count,
         "stats": stats,
         "payload": payload,
@@ -134,6 +136,7 @@ def run_daily_refresh(
     source_file_dir: str | None = None,
     dry_run: bool | None = None,
     delete_before_refresh: bool = True,
+    report_mode: bool = False,
 ) -> dict[str, Any]:
     results: list[dict[str, Any]] = []
     totals = {"fetched": 0, "normalized": 0, "failed": 0, "deleted": 0}
@@ -148,6 +151,7 @@ def run_daily_refresh(
             source_file=source_file,
             dry_run=dry_run,
             delete_before_refresh=delete_before_refresh,
+            report_mode=report_mode,
         )
         results.append(result)
         totals["fetched"] += result["stats"].fetched
@@ -159,6 +163,7 @@ def run_daily_refresh(
         "mode": "daily-refresh",
         "sources": source_slugs,
         "delete_before_refresh": delete_before_refresh,
+        "report_mode": report_mode,
         "dry_run": config.dry_run if dry_run is None else dry_run,
         "totals": totals,
         "results": results,

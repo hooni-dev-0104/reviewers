@@ -118,6 +118,7 @@ def main() -> int:
             source_file_dir=args.source_file_dir,
             dry_run=True,
             delete_before_refresh=args.delete_before_refresh,
+            report_mode=True,
         )
         report = build_source_quality_report(result)
         if args.output:

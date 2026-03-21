@@ -499,7 +499,10 @@ def transform_4blog_item(item: dict, source_id: str | None = None) -> dict:
 
 class FourBlogSourceAdapter(PlaceholderSourceAdapter):
     endpoint = "https://4blog.net/loadMoreDataCategory"
-    page_limit = 50
+
+    def __init__(self, definition: SourceDefinition, page_limit: int = 50):
+        super().__init__(definition)
+        self.page_limit = page_limit
 
     def fetch(self) -> list[dict]:
         limit = 30
@@ -538,8 +541,11 @@ class FourBlogSourceAdapter(PlaceholderSourceAdapter):
 class ReviewNoteSourceAdapter(PlaceholderSourceAdapter):
     listing_url = "https://www.reviewnote.co.kr/campaigns?s=new"
     listing_api = "https://www.reviewnote.co.kr/api/v2/campaigns?limit={limit}&page={page}"
-    page_limit = 20
-    page_size = 50
+
+    def __init__(self, definition: SourceDefinition, page_limit: int = 20, page_size: int = 50):
+        super().__init__(definition)
+        self.page_limit = page_limit
+        self.page_size = page_size
 
     def fetch(self) -> list[dict]:
         items: list[dict] = []
@@ -571,8 +577,10 @@ class MrBlogSourceAdapter(PlaceholderSourceAdapter):
 
 
 class RevuSourceAdapter(PlaceholderSourceAdapter):
-    page_limit = 100
-    page_size = 35
+    def __init__(self, definition: SourceDefinition, page_limit: int = 100, page_size: int = 35):
+        super().__init__(definition)
+        self.page_limit = page_limit
+        self.page_size = page_size
 
     def fetch(self) -> list[dict]:
         import os
@@ -713,7 +721,10 @@ def transform_dinnerqueen_detail(detail_html: str, campaign_id: str, source_id: 
 class DinnerQueenSourceAdapter(PlaceholderSourceAdapter):
     listing_url = "https://dinnerqueen.net/taste?order=hot"
     listing_api = "https://dinnerqueen.net/taste/taste_list?ct=&page={page}&order=hot"
-    page_limit = 20
+    def __init__(self, definition: SourceDefinition, page_limit: int = 20, detail_limit: int | None = None):
+        super().__init__(definition)
+        self.page_limit = page_limit
+        self.detail_limit = detail_limit
 
     def fetch(self) -> list[dict]:
         cards: list[dict[str, str]] = []
@@ -747,7 +758,8 @@ class DinnerQueenSourceAdapter(PlaceholderSourceAdapter):
             if not (isinstance(response, dict) and response.get("has_next")):
                 break
         items: list[dict] = []
-        for card in cards:
+        selected_cards = cards if self.detail_limit is None else cards[: self.detail_limit]
+        for card in selected_cards:
             campaign_id = card["campaign_id"]
             detail_html = fetch_text_url(f"https://dinnerqueen.net/taste/{campaign_id}")
             item = transform_dinnerqueen_detail(detail_html, campaign_id, source_id=self.definition.source_id)
@@ -763,18 +775,18 @@ class DinnerQueenSourceAdapter(PlaceholderSourceAdapter):
         return items
 
 
-def get_adapter(source_slug: str, source_file: str | None = None):
+def get_adapter(source_slug: str, source_file: str | None = None, report_mode: bool = False):
     definition = SEEDED_SOURCES[source_slug]
     if source_file:
         return FileSourceAdapter(definition, Path(source_file))
     if source_slug == "revu":
-        return RevuSourceAdapter(definition)
+        return RevuSourceAdapter(definition, page_limit=2 if report_mode else 100, page_size=35)
     if source_slug == "mrblog":
         return MrBlogSourceAdapter(definition)
     if source_slug == "reviewnote":
-        return ReviewNoteSourceAdapter(definition)
+        return ReviewNoteSourceAdapter(definition, page_limit=2 if report_mode else 20, page_size=50)
     if source_slug == "4blog":
-        return FourBlogSourceAdapter(definition)
+        return FourBlogSourceAdapter(definition, page_limit=2 if report_mode else 50)
     if source_slug == "dinnerqueen":
-        return DinnerQueenSourceAdapter(definition)
+        return DinnerQueenSourceAdapter(definition, page_limit=1 if report_mode else 20, detail_limit=12 if report_mode else None)
     return PlaceholderSourceAdapter(definition)
