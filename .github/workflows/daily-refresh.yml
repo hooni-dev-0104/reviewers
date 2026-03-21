@@ -20,17 +20,6 @@ jobs:
       - name: Run tests
         run: python -m unittest discover -s tests -v
 
-      - name: Public source dry-run report
-        run: |
-          mkdir -p docs
-          python -m crawler.cli run-report --all-public --output docs/public-source-quality-report.md
-
-      - name: Upload report artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: public-source-quality-report
-          path: docs/public-source-quality-report.md
-
       - name: Check scheduler toggle
         id: toggle
         env:
