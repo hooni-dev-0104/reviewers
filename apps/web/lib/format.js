@@ -77,6 +77,9 @@ export function getDeadlineState(value) {
   }
 
   const diffDays = Math.ceil((date.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  if (diffDays < 0) {
+    return { label: '마감 지남', tone: 'muted' };
+  }
   if (diffDays <= 1) {
     return { label: '오늘·내일 마감', tone: 'danger' };
   }

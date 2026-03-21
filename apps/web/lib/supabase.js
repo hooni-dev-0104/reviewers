@@ -23,6 +23,8 @@ const CAMPAIGN_SELECT = [
   'sources!inner(name,slug)'
 ].join(',');
 
+const ACTIVE_SOURCE_SLUGS = ['reviewnote', 'revu', 'dinnerqueen', '4blog'];
+
 function baseUrl() {
   return `${process.env.NEXT_PUBLIC_SUPABASE_URL || requireEnv('SUPABASE_URL')}/rest/v1`;
 }
@@ -68,7 +70,7 @@ function applyCampaignFilters(params, searchParams) {
   const andConditions = [];
 
   params.set('select', CAMPAIGN_SELECT);
-  params.set('status', 'in.(active,expired)');
+  params.set('status', 'eq.active');
   params.set('order', 'apply_deadline.asc.nullslast,last_seen_at.desc');
   params.set('limit', String(limit));
 
@@ -141,6 +143,7 @@ export const getSources = cache(async function getSources() {
   const params = new URLSearchParams({
     select: 'slug,name,platform_type',
     is_active: 'eq.true',
+    slug: `in.(${ACTIVE_SOURCE_SLUGS.join(',')})`,
     order: 'priority.asc'
   });
   const response = await supabaseFetch(`/sources?${params.toString()}`);
@@ -148,7 +151,7 @@ export const getSources = cache(async function getSources() {
 });
 
 export async function getCampaignCount() {
-  const response = await supabaseFetch('/campaigns?select=id&status=in.(active,expired)', {
+  const response = await supabaseFetch('/campaigns?select=id&status=eq.active', {
     method: 'HEAD',
     headers: { Prefer: 'count=exact' }
   });
