@@ -32,6 +32,8 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           REVU_ACCESS_TOKEN: ${{ secrets.REVU_ACCESS_TOKEN }}
+          REVU_USERNAME: ${{ secrets.REVU_USERNAME }}
+          REVU_PASSWORD: ${{ secrets.REVU_PASSWORD }}
           CRAWLER_DRY_RUN: "false"
         run: |
           python -m crawler.cli run-scheduled \
