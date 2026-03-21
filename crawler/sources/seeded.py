@@ -1,0 +1,780 @@
+from __future__ import annotations
+
+from datetime import date
+import html as html_lib
+from pathlib import Path
+import re
+from urllib.parse import quote, urlencode, unquote
+
+from crawler.models import SourceDefinition
+from crawler.sources.base import (
+    FileSourceAdapter,
+    PlaceholderSourceAdapter,
+    fetch_json_url,
+    fetch_json_with_headers,
+    fetch_session_json,
+    fetch_text_url,
+    post_json_with_headers,
+)
+
+
+SEEDED_SOURCES: dict[str, SourceDefinition] = {
+    "reviewnote": SourceDefinition("reviewnote", "리뷰노트", "https://www.reviewnote.co.kr", "mixed", "dynamic"),
+    "revu": SourceDefinition("revu", "레뷰", "https://www.revu.net", "mixed", "dynamic"),
+    "dinnerqueen": SourceDefinition("dinnerqueen", "디너의여왕", "https://dinnerqueen.net", "mixed", "static"),
+    "mrblog": SourceDefinition("mrblog", "미블", "https://www.mrblog.net", "mixed", "dynamic"),
+    "4blog": SourceDefinition("4blog", "포블로그", "https://4blog.net", "blog", "static"),
+}
+
+FOUR_BLOG_PLATFORM_MAP = {
+    "blog": "blog",
+    "instar21": "instagram",
+    "reels": "instagram",
+    "youtube21": "youtube",
+    "shorts": "youtube",
+    "tiktok": "tiktok",
+    "threads": "etc",
+    "etc": "etc",
+}
+
+FOUR_BLOG_CATEGORY1_TO_TYPE = {
+    "local": "visit",
+    "deliv": "delivery",
+    "reporter": "content",
+}
+
+FOUR_BLOG_LOCATION_PREFIXES = (
+    "서울",
+    "경기",
+    "인천",
+    "부산",
+    "대구",
+    "대전",
+    "광주",
+    "울산",
+    "세종",
+    "강원",
+    "충북",
+    "충남",
+    "전북",
+    "전남",
+    "경북",
+    "경남",
+    "제주",
+)
+
+DINNERQUEEN_CATEGORY_MAP = {
+    "배달": "delivery",
+    "방문": "visit",
+}
+
+DINNERQUEEN_PLATFORM_MAP = {
+    "클립": "instagram",
+    "릴스": "instagram",
+    "인스타": "instagram",
+    "유튜브": "youtube",
+}
+
+REVIEWNOTE_TYPE_MAP = {
+    "방문형": "visit",
+    "배송형": "delivery",
+    "구매형": "purchase",
+}
+
+REVIEWNOTE_PLATFORM_MAP = {
+    "blog": "blog",
+    "instagram": "instagram",
+    "youtube": "youtube",
+}
+
+MRBLOG_PLATFORM_MAP = {
+    "blog": "blog",
+    "insta": "instagram",
+    "instagram": "instagram",
+    "reels": "instagram",
+    "youtube": "youtube",
+}
+
+REVU_MEDIA_MAP = {
+    "blog": "blog",
+    "instagram": "instagram",
+    "youtube": "youtube",
+    "clip": "instagram",
+}
+
+
+def list_seeded_sources() -> list[SourceDefinition]:
+    return [SEEDED_SOURCES[key] for key in sorted(SEEDED_SOURCES.keys())]
+
+
+def _normalize_4blog_date(mmdd: str | None) -> str | None:
+    if not mmdd or "." not in mmdd:
+        return None
+    month_str, day_str = mmdd.split(".", 1)
+    month = int(month_str)
+    day = int(day_str)
+    today = date.today()
+    year = today.year
+    if month < today.month - 6:
+        year += 1
+    return date(year, month, day).isoformat()
+
+
+def _clean_4blog_location(raw: str | None) -> tuple[str | None, str | None]:
+    if not raw:
+        return None, None
+    value = raw.strip()
+    if value.startswith("[") and value.endswith("]"):
+        return None, None
+    if " " in value:
+        first, second = value.split(" ", 1)
+        return first.strip() or None, second.strip() or None
+    return value, None
+
+
+def _split_4blog_title_annotations(title: str) -> tuple[list[str], str]:
+    annotations: list[str] = []
+    remaining = title.strip()
+    while remaining.startswith("["):
+        end = remaining.find("]")
+        if end == -1:
+            break
+        annotations.append(remaining[1:end].strip())
+        remaining = remaining[end + 1 :].strip()
+    return annotations, remaining or title.strip()
+
+
+def _infer_4blog_regions(location_raw: str | None, title: str) -> tuple[str | None, str | None]:
+    region_primary, region_secondary = _clean_4blog_location(location_raw)
+    if region_primary or region_secondary:
+        return region_primary, region_secondary
+
+    annotations, _ = _split_4blog_title_annotations(title)
+    for token in annotations:
+        if "/" in token:
+            first, second = [part.strip() for part in token.split("/", 1)]
+            if first in FOUR_BLOG_LOCATION_PREFIXES:
+                return first, second or None
+        if token in FOUR_BLOG_LOCATION_PREFIXES:
+            return token, None
+    return None, None
+
+
+def _extract_image_url_from_next_image(block: str) -> str | None:
+    src = _extract_first(r'<noscript><img[^>]+src=\"([^\"]+)\"', block)
+    if not src:
+        return None
+    decoded = html_lib.unescape(src)
+    if "/_next/image?url=" in decoded:
+        match = re.search(r"url=([^&]+)", decoded)
+        if match:
+            return unquote(match.group(1))
+    return decoded
+
+
+def _clean_reviewnote_title(title: str) -> tuple[str, str | None, str | None]:
+    annotations, cleaned = _split_4blog_title_annotations(title)
+    region_primary = None
+    region_secondary = None
+    if annotations:
+        first = annotations[0]
+        if "/" in first:
+            left, right = [part.strip() for part in first.split("/", 1)]
+            if left in FOUR_BLOG_LOCATION_PREFIXES or left == "재택":
+                region_primary = None if left == "재택" else left
+                region_secondary = right or None
+        elif first in FOUR_BLOG_LOCATION_PREFIXES:
+            region_primary = first
+    return cleaned, region_primary, region_secondary
+
+
+def parse_reviewnote_listing(html: str, source_id: str | None = None, page_limit: int = 1) -> list[dict]:
+    items: list[dict] = []
+    href_matches = list(re.finditer(r'<a href="(/campaigns/\d+)">', html))
+    for idx, match in enumerate(href_matches):
+        start = max(0, match.start() - 800)
+        end = href_matches[idx + 1].start() if idx + 1 < len(href_matches) else min(len(html), match.end() + 5000)
+        block = html[start:end]
+        href = match.group(1)
+        title = _extract_first(r'<a class="truncate text-16m" href="/campaigns/\d+">([^<]+)</a>', block)
+        benefit = _extract_first(r'<div class="mt-1 truncate text-gray-600 text-14r">([^<]+)</div>', block)
+        type_label = _extract_first(r'<span class="flex items-center whitespace-nowrap font-semibold text-gray-600 text-14m">([^<]+)</span>', block)
+        remaining_days = _extract_first(r'<span class="text-secondary-600 text-14b">(\d+)</span>\s*<!-- -->일 남음', block)
+        apply_counts = re.search(
+            r'신청<!-- --> <span class="text-secondary-600 text-14b">([\d,]+)</span> <!-- -->/ <!-- -->([\d,]+)',
+            block,
+        )
+        platform_svg = _extract_first(r'/svgIcon/([a-zA-Z0-9_-]+)\.svg', block)
+        points_text = _extract_first(r'<div class="text-system-point">(.*?)</div>', block, re.S)
+        point_badge = _extract_first(r'<span>페이백 ([^<]+)</span>', block)
+        image_url = _extract_image_url_from_next_image(block)
+        cleaned_title, region_primary, region_secondary = _clean_reviewnote_title(html_lib.unescape(title or ""))
+
+        extra_bits = []
+        if points_text:
+            extra_bits.append(_strip_tags(points_text))
+        if point_badge:
+            extra_bits.append(f"페이백 {html_lib.unescape(point_badge)}")
+        snippet_parts = [benefit] + extra_bits
+        snippet = " ".join(part for part in snippet_parts if part)
+
+        status = "active"
+        if remaining_days is not None and int(remaining_days) < 0:
+            status = "expired"
+
+        if title and href:
+            items.append(
+                {
+                    "source_id": source_id,
+                    "title": cleaned_title or html_lib.unescape(title or ""),
+                    "original_url": f"https://www.reviewnote.co.kr{href}",
+                    "platform_type": REVIEWNOTE_PLATFORM_MAP.get((platform_svg or "").lower(), "etc"),
+                    "campaign_type": REVIEWNOTE_TYPE_MAP.get(type_label or "", "etc"),
+                    "category_name": None,
+                    "subcategory_name": type_label,
+                    "region_primary_name": region_primary,
+                    "region_secondary_name": region_secondary,
+                    "benefit_text": html_lib.unescape(benefit or ""),
+                    "recruit_count": int(apply_counts.group(2).replace(",", "")) if apply_counts else None,
+                    "apply_deadline": None,
+                    "published_at": None,
+                    "thumbnail_url": image_url,
+                    "snippet": snippet or None,
+                    "raw_status": status,
+                    "status": status,
+                    "requires_review": True,
+                }
+            )
+    return items
+
+
+def transform_reviewnote_api_item(item: dict, source_id: str | None = None) -> dict:
+    channel = str(item.get("channel") or "").upper()
+    if "YOUTUBE" in channel:
+        platform_type = "youtube"
+    elif "INSTA" in channel or "CLIP" in channel:
+        platform_type = "instagram"
+    else:
+        platform_type = "blog"
+
+    sort = str(item.get("sort") or "").upper()
+    campaign_type = {
+        "VISIT": "visit",
+        "DELIVERY": "delivery",
+        "TAKEOUT": "purchase",
+        "PAYBACK": "visit",
+        "ETC": "content",
+    }.get(sort, "etc")
+
+    image_key = item.get("imageKey")
+    thumbnail_url = (
+        f"https://firebasestorage.googleapis.com/v0/b/reviewnote-e92d9.appspot.com/o/"
+        f"{quote(str(image_key), safe='')}?alt=media"
+        if image_key
+        else None
+    )
+
+    reward_bits = []
+    if item.get("productPurchasePoint"):
+        reward_bits.append(f"구매가 {int(item['productPurchasePoint']):,}원")
+    if item.get("additionalRewardPoint"):
+        reward_bits.append(f"페이백 {int(item['additionalRewardPoint']):,}P")
+    snippet = " ".join(part for part in [item.get("offer")] + reward_bits if part)
+
+    city = item.get("city")
+    sido = None
+    if isinstance(item.get("sido"), dict):
+        sido = item["sido"].get("name")
+    region_primary = None if city == "재택" else (city or sido)
+    region_secondary = None if city == "재택" else (sido if city and sido and city != sido else None)
+
+    category_name = None
+    if isinstance(item.get("category"), dict):
+        category_name = item["category"].get("title")
+
+    return {
+        "source_id": source_id,
+        "title": str(item.get("title") or "").strip(),
+        "original_url": f"https://www.reviewnote.co.kr/campaigns/{item['id']}",
+        "platform_type": platform_type,
+        "campaign_type": campaign_type,
+        "category_name": category_name,
+        "subcategory_name": sort or None,
+        "region_primary_name": region_primary,
+        "region_secondary_name": region_secondary,
+        "benefit_text": item.get("offer"),
+        "recruit_count": item.get("infNum"),
+        "apply_deadline": item.get("applyEndAt"),
+        "published_at": None,
+        "thumbnail_url": thumbnail_url,
+        "snippet": snippet or None,
+        "raw_status": str(item.get("status") or "").lower() or "active",
+        "status": "active",
+        "requires_review": False,
+    }
+
+
+def parse_mrblog_listing(html: str, source_id: str | None = None) -> list[dict]:
+    pattern = re.compile(
+        r'<a href="(https://www\.mrblog\.net/campaigns/\d+)" class="campaign_item">.*?'
+        r'<img src="([^"]+)".*?'
+        r'(<span class="area">.*?</span>)\s*'
+        r'<strong class="subject">([^<]+)</strong>.*?'
+        r'<p class="desc">\s*(.*?)\s*</p>.*?'
+        r'<span class="d_day">\s*([0-9]+)일 남음\s*</span>.*?'
+        r'신청 <strong>([0-9]+)명</strong>\s*</span>\s*/ 모집\s*([0-9]+)명',
+        re.S,
+    )
+    items: list[dict] = []
+    for match in pattern.finditer(html):
+        href, image_url, area_block, subject, desc, d_day, applied, recruit = match.groups()
+        area_clean = _strip_tags(area_block)
+        region_primary = None
+        region_secondary = None
+        platform_type = "etc"
+
+        class_match = re.search(r'sns_icon\s+([a-zA-Z0-9_-]+)', area_block)
+        if class_match:
+            platform_type = MRBLOG_PLATFORM_MAP.get(class_match.group(1).lower(), "etc")
+        elif "릴스" in area_clean or "인스타" in area_clean:
+            platform_type = "instagram"
+        elif "블로그" in area_clean:
+            platform_type = "blog"
+        elif "유튜브" in area_clean:
+            platform_type = "youtube"
+
+        text_after_icon = _extract_first(r'sns_icon[^>]*></span>\s*([^<]+)', area_block, re.S)
+        if text_after_icon:
+            area_clean = _strip_tags(text_after_icon)
+        area_clean = (
+            area_clean.replace("릴스", "")
+            .replace("인스타그램", "")
+            .replace("블로그", "")
+            .replace("유튜브", "")
+            .strip()
+        )
+
+        parts = area_clean.split()
+        if parts:
+            region_primary = parts[0]
+            if len(parts) > 1:
+                region_secondary = " ".join(parts[1:])
+
+        campaign_type = "visit"
+        if "배송" in desc:
+            campaign_type = "delivery"
+        elif "숙박" in desc or "이용권" in desc:
+            campaign_type = "visit"
+
+        items.append(
+            {
+                "source_id": source_id,
+                "title": html_lib.unescape(subject).strip(),
+                "original_url": href,
+                "platform_type": platform_type,
+                "campaign_type": campaign_type,
+                "category_name": None,
+                "subcategory_name": None,
+                "region_primary_name": region_primary,
+                "region_secondary_name": region_secondary,
+                "benefit_text": _strip_tags(desc),
+                "recruit_count": int(recruit),
+                "apply_deadline": None,
+                "published_at": None,
+                "thumbnail_url": image_url,
+                "snippet": _strip_tags(desc),
+                "raw_status": "active" if int(d_day) >= 0 else "expired",
+                "status": "active" if int(d_day) >= 0 else "expired",
+                "requires_review": True,
+            }
+        )
+    return items
+
+
+def _infer_revu_campaign_type(categories: list[str]) -> str:
+    if "배송형" in categories:
+        return "delivery"
+    if "구매형" in categories:
+        return "purchase"
+    if "방문형" in categories:
+        return "visit"
+    return "etc"
+
+
+def transform_revu_item(item: dict, source_id: str | None = None) -> dict:
+    categories = item.get("category") or []
+    if not isinstance(categories, list):
+        categories = []
+
+    venue = item.get("venue") or {}
+    address_first = venue.get("addressFirst") if isinstance(venue, dict) else None
+    region_primary = None
+    region_secondary = None
+    if isinstance(address_first, str) and address_first.strip():
+        parts = address_first.split()
+        if parts:
+            region_primary = parts[0]
+            if len(parts) > 1:
+                region_secondary = parts[1]
+
+    local_tags = item.get("localTag") or []
+    if isinstance(local_tags, list) and local_tags:
+        if region_primary is None:
+            region_primary = local_tags[0]
+        elif region_secondary is None and local_tags[0] != region_primary:
+            region_secondary = local_tags[0]
+
+    campaign_data = item.get("campaignData") or {}
+    reward_bits = []
+    if campaign_data.get("reward"):
+        reward_bits.append(str(campaign_data["reward"]))
+    if campaign_data.get("point"):
+        reward_bits.append(f"리뷰포인트 {int(campaign_data['point']):,}P")
+    if item.get("label"):
+        reward_bits.append(str(item["label"]))
+    benefit_text = " / ".join(reward_bits) if reward_bits else None
+
+    raw_media = str(item.get("media") or "").lower()
+    title = (item.get("title") or item.get("item") or "").strip()
+
+    return {
+        "source_id": source_id,
+        "title": title,
+        "original_url": f"https://www.revu.net/campaign/{item['id']}",
+        "platform_type": REVU_MEDIA_MAP.get(raw_media, "etc"),
+        "campaign_type": _infer_revu_campaign_type(categories),
+        "category_name": categories[0] if categories else None,
+        "subcategory_name": categories[1] if len(categories) > 1 else None,
+        "region_primary_name": region_primary,
+        "region_secondary_name": region_secondary,
+        "benefit_text": benefit_text,
+        "recruit_count": item.get("reviewerLimit"),
+        "apply_deadline": item.get("requestEndedOn"),
+        "published_at": item.get("requestStartedOn"),
+        "thumbnail_url": item.get("thumbnail"),
+        "snippet": item.get("item") or benefit_text,
+        "raw_status": str(item.get("status") or "").lower(),
+        "status": "active" if item.get("active", True) else "expired",
+        "requires_review": True,
+    }
+
+
+def transform_4blog_item(item: dict, source_id: str | None = None) -> dict:
+    annotations, cleaned_title = _split_4blog_title_annotations((item.get("CAMPAIGN_NM") or "").strip())
+    region_primary, region_secondary = _infer_4blog_regions(item.get("LOCATION_NM"), item.get("CAMPAIGN_NM") or "")
+    campaign_type = FOUR_BLOG_CATEGORY1_TO_TYPE.get(item.get("CATEGORY1"), "visit")
+    platform_type = FOUR_BLOG_PLATFORM_MAP.get(item.get("CATEGORY"), "etc")
+    cid = item.get("CID")
+    pr_id = item.get("PRID")
+    img_key = item.get("IMGKEY")
+    raw_status = "active" if (item.get("REMAINDATE") or 0) >= 0 else "expired"
+    thumbnail_url = None
+    if pr_id and img_key:
+        thumbnail_url = f"https://d3oxv6xcx9d0j1.cloudfront.net/public/pr/{pr_id}/thumbnail/{img_key}"
+
+    snippet_parts = [item.get("REVIEWER_BENEFIT"), item.get("KEYWORD")]
+    snippet = " ".join(part.strip() for part in snippet_parts if isinstance(part, str) and part.strip()) or None
+
+    return {
+        "source_id": source_id,
+        "title": cleaned_title,
+        "original_url": f"https://4blog.net/campaign/{cid}/" if cid else "",
+        "platform_type": platform_type,
+        "campaign_type": campaign_type,
+        "category_name": None,
+        "subcategory_name": item.get("CATEGORY1") or (annotations[0] if annotations else None),
+        "region_primary_name": region_primary,
+        "region_secondary_name": region_secondary,
+        "benefit_text": item.get("REVIEWER_BENEFIT"),
+        "recruit_count": item.get("REVIEWER_CNT"),
+        "apply_deadline": _normalize_4blog_date(item.get("REQ_CLOSE_DT")),
+        "published_at": _normalize_4blog_date(item.get("REQ_OPEN_DT")),
+        "thumbnail_url": thumbnail_url,
+        "snippet": snippet,
+        "raw_status": raw_status,
+        "status": raw_status,
+        "requires_review": False,
+    }
+
+
+class FourBlogSourceAdapter(PlaceholderSourceAdapter):
+    endpoint = "https://4blog.net/loadMoreDataCategory"
+    page_limit = 50
+
+    def fetch(self) -> list[dict]:
+        limit = 30
+        offset = 0
+        items: list[dict] = []
+        page_count = 0
+        while page_count < self.page_limit:
+            query = urlencode(
+                {
+                    "offset": offset,
+                    "limit": limit,
+                    "category": "",
+                    "category1": "",
+                    "location": "",
+                    "location1": "",
+                    "search": "",
+                    "bid": "",
+                }
+            )
+            try:
+                batch = fetch_json_url(f"{self.endpoint}?{query}")
+            except Exception:
+                if offset == 0:
+                    raise
+                break
+            if not isinstance(batch, list) or not batch:
+                break
+            items.extend(transform_4blog_item(item, source_id=self.definition.source_id) for item in batch)
+            if len(batch) < limit:
+                break
+            offset += limit
+            page_count += 1
+        return items
+
+
+class ReviewNoteSourceAdapter(PlaceholderSourceAdapter):
+    listing_url = "https://www.reviewnote.co.kr/campaigns?s=new"
+    listing_api = "https://www.reviewnote.co.kr/api/v2/campaigns?limit={limit}&page={page}"
+    page_limit = 20
+    page_size = 50
+
+    def fetch(self) -> list[dict]:
+        items: list[dict] = []
+        try:
+            for page in range(self.page_limit):
+                batch = fetch_json_url(self.listing_api.format(limit=self.page_size, page=page))
+                objects = batch.get("objects", []) if isinstance(batch, dict) else []
+                if not objects:
+                    break
+                items.extend(transform_reviewnote_api_item(item, source_id=self.definition.source_id) for item in objects)
+                total_pages = batch.get("total_pages")
+                if total_pages is not None and page + 1 >= int(total_pages):
+                    break
+            if items:
+                return items
+        except Exception:
+            pass
+
+        listing_html = fetch_text_url(self.listing_url)
+        return parse_reviewnote_listing(listing_html, source_id=self.definition.source_id)
+
+
+class MrBlogSourceAdapter(PlaceholderSourceAdapter):
+    listing_url = "https://www.mrblog.net/"
+
+    def fetch(self) -> list[dict]:
+        listing_html = fetch_text_url(self.listing_url)
+        return parse_mrblog_listing(listing_html, source_id=self.definition.source_id)
+
+
+class RevuSourceAdapter(PlaceholderSourceAdapter):
+    page_limit = 100
+    page_size = 35
+
+    def fetch(self) -> list[dict]:
+        import os
+
+        token = os.getenv("REVU_ACCESS_TOKEN", "").strip()
+        if not token:
+            username = os.getenv("REVU_USERNAME", "").strip()
+            password = os.getenv("REVU_PASSWORD", "").strip()
+            if not username or not password:
+                raise ValueError("REVU_ACCESS_TOKEN or REVU_USERNAME/REVU_PASSWORD is required for REVU crawling")
+            auth = post_json_with_headers(
+                "https://api.weble.net/tokens",
+                headers={
+                    "User-Agent": "Mozilla/5.0 (compatible; ReviewersCrawler/0.1; +https://reviewers.local)",
+                    "Accept": "application/json, text/plain, */*",
+                },
+                payload={"username": username, "password": password},
+            )
+            token = str(auth.get("token") or "").strip()
+            if not token:
+                raise ValueError("REVU token acquisition failed")
+
+        headers = {
+            "User-Agent": "Mozilla/5.0 (compatible; ReviewersCrawler/0.1; +https://reviewers.local)",
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json, text/plain, */*",
+        }
+
+        items: list[dict] = []
+        for page in range(1, self.page_limit + 1):
+            query = urlencode(
+                [
+                    ("cat", "지역"),
+                    ("limit", str(self.page_size)),
+                    ("media[]", "blog"),
+                    ("media[]", "instagram"),
+                    ("media[]", "youtube"),
+                    ("media[]", "clip"),
+                    ("page", str(page)),
+                    ("sort", "latest"),
+                    ("type", "play"),
+                ]
+            )
+            data = fetch_json_with_headers(
+                f"https://api.weble.net/v1/campaigns?{query}",
+                headers=headers,
+            )
+            objects = data.get("items", []) if isinstance(data, dict) else []
+            if not objects:
+                break
+            items.extend(transform_revu_item(item, source_id=self.definition.source_id) for item in objects)
+            links = data.get("_links", {}) if isinstance(data, dict) else {}
+            if not links.get("next"):
+                break
+        return items
+
+
+def _strip_tags(value: str) -> str:
+    value = re.sub(r"<br\s*/?>", "\n", value, flags=re.I)
+    value = re.sub(r"<[^>]+>", " ", value)
+    value = html_lib.unescape(value)
+    return " ".join(value.split())
+
+
+def _extract_first(pattern: str, text: str, flags: int = 0) -> str | None:
+    match = re.search(pattern, text, flags)
+    return match.group(1).strip() if match else None
+
+
+def transform_dinnerqueen_detail(detail_html: str, campaign_id: str, source_id: str | None = None) -> dict:
+    title = _extract_first(r'<meta property="og:title" content="([^"]+)"', detail_html)
+    if not title:
+        title = _extract_first(r"<title>(.*?)</title>", detail_html, re.S)
+    title = html_lib.unescape((title or "").replace(" | 디너의여왕", "").replace("디너의여왕 - ", "").strip())
+
+    benefit_block = _extract_first(
+        r"제공내역.*?<p[^>]*class=\"[^\"]*color-title[^\"]*\"[^>]*>(.*?)</p>",
+        detail_html,
+        re.S,
+    )
+    benefit_text = _strip_tags(benefit_block) if benefit_block else None
+
+    category_token = unquote(html_lib.unescape(_extract_first(r"/taste\?ct=([^\"'&]+)", detail_html) or ""))
+    campaign_type = DINNERQUEEN_CATEGORY_MAP.get(category_token, "content" if category_token else "visit")
+    platform_type = DINNERQUEEN_PLATFORM_MAP.get(category_token, "blog")
+
+    area_match = re.search(r"/taste\?area1=([^\"'&]+)(?:&amp;area2=([^\"']+))?", detail_html)
+    region_primary = unquote(html_lib.unescape(area_match.group(1))) if area_match else None
+    region_secondary = (
+        unquote(html_lib.unescape(area_match.group(2))) if area_match and area_match.group(2) else None
+    )
+    if region_secondary == "전체":
+        region_secondary = None
+
+    deadline_range = _extract_first(
+        r"기간:\s*([0-9]{2}\.[0-9]{2}\.[0-9]{2}\s*[–~]\s*[0-9]{2}\.[0-9]{2}\.[0-9]{2})",
+        detail_html,
+    )
+    apply_deadline = None
+    published_at = None
+    if deadline_range:
+        left, right = [part.strip() for part in re.split(r"[–~]", deadline_range, maxsplit=1)]
+        try:
+            sy, sm, sd = [int(part) for part in left.split(".")]
+            ey, em, ed = [int(part) for part in right.split(".")]
+            published_at = date(2000 + sy, sm, sd).isoformat()
+            apply_deadline = date(2000 + ey, em, ed).isoformat()
+        except Exception:
+            published_at = None
+            apply_deadline = None
+
+    thumbnail_url = _extract_first(r'<meta property="og:image" content="([^"]+)"', detail_html)
+    if thumbnail_url and thumbnail_url.startswith("https://dinnerqueen.nethttps://"):
+        thumbnail_url = thumbnail_url.replace("https://dinnerqueen.net", "", 1)
+
+    return {
+        "source_id": source_id,
+        "title": title or f"DinnerQueen {campaign_id}",
+        "original_url": f"https://dinnerqueen.net/taste/{campaign_id}",
+        "platform_type": platform_type,
+        "campaign_type": campaign_type,
+        "category_name": "맛집" if campaign_type == "visit" else None,
+        "subcategory_name": category_token or None,
+        "region_primary_name": region_primary,
+        "region_secondary_name": region_secondary,
+        "benefit_text": benefit_text,
+        "recruit_count": None,
+        "apply_deadline": apply_deadline,
+        "published_at": published_at,
+        "thumbnail_url": thumbnail_url,
+        "snippet": benefit_text,
+        "raw_status": "active",
+        "status": "active",
+        "requires_review": True,
+    }
+
+
+class DinnerQueenSourceAdapter(PlaceholderSourceAdapter):
+    listing_url = "https://dinnerqueen.net/taste?order=hot"
+    listing_api = "https://dinnerqueen.net/taste/taste_list?ct=&page={page}&order=hot"
+    page_limit = 20
+
+    def fetch(self) -> list[dict]:
+        cards: list[dict[str, str]] = []
+        card_pattern = re.compile(
+            r'<a class="qz-dq-card__link" href="/taste/(\d+)" title="([^"]+)">.*?'
+            r'<strong style="letter-spacing: -0.2px">([^<]+)</strong>.*?'
+            r'<span class="color-subtitle">신청 ([0-9,]+)</span><span> / 모집 ([0-9,]+)</span>',
+            re.S,
+        )
+        seen_ids: set[str] = set()
+        for page in range(1, self.page_limit + 1):
+            response = fetch_session_json(
+                self.listing_url,
+                self.listing_api.format(page=page),
+                headers={"Referer": self.listing_url},
+            )
+            layout_html = response.get("layout", "") if isinstance(response, dict) else ""
+            for match in card_pattern.finditer(layout_html):
+                campaign_id = match.group(1)
+                if campaign_id in seen_ids:
+                    continue
+                seen_ids.add(campaign_id)
+                cards.append(
+                    {
+                        "campaign_id": campaign_id,
+                        "list_title": html_lib.unescape(match.group(2)).replace(" 신청하기", "").strip(),
+                        "badge_type": html_lib.unescape(match.group(3)).strip(),
+                        "recruit_count": match.group(5).replace(",", ""),
+                    }
+                )
+            if not (isinstance(response, dict) and response.get("has_next")):
+                break
+        items: list[dict] = []
+        for card in cards:
+            campaign_id = card["campaign_id"]
+            detail_html = fetch_text_url(f"https://dinnerqueen.net/taste/{campaign_id}")
+            item = transform_dinnerqueen_detail(detail_html, campaign_id, source_id=self.definition.source_id)
+            item["title"] = card["list_title"] or item["title"]
+            if card["badge_type"] == "배송":
+                item["campaign_type"] = "delivery"
+                item["category_name"] = None
+            elif card["badge_type"] == "방문":
+                item["campaign_type"] = "visit"
+                item["category_name"] = "맛집"
+            item["recruit_count"] = int(card["recruit_count"]) if card["recruit_count"].isdigit() else None
+            items.append(item)
+        return items
+
+
+def get_adapter(source_slug: str, source_file: str | None = None):
+    definition = SEEDED_SOURCES[source_slug]
+    if source_file:
+        return FileSourceAdapter(definition, Path(source_file))
+    if source_slug == "revu":
+        return RevuSourceAdapter(definition)
+    if source_slug == "mrblog":
+        return MrBlogSourceAdapter(definition)
+    if source_slug == "reviewnote":
+        return ReviewNoteSourceAdapter(definition)
+    if source_slug == "4blog":
+        return FourBlogSourceAdapter(definition)
+    if source_slug == "dinnerqueen":
+        return DinnerQueenSourceAdapter(definition)
+    return PlaceholderSourceAdapter(definition)

@@ -1,0 +1,58 @@
+name: scheduled-refresh
+
+on:
+  schedule:
+    - cron: "5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Public source dry-run report
+        run: |
+          mkdir -p docs
+          python -m crawler.cli run-report --all-public --output docs/public-source-quality-report.md
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-source-quality-report
+          path: docs/public-source-quality-report.md
+
+      - name: Check scheduler toggle
+        id: toggle
+        env:
+          ENABLE_SCHEDULED_REFRESH: ${{ secrets.ENABLE_SCHEDULED_REFRESH }}
+        run: echo "enabled=${ENABLE_SCHEDULED_REFRESH}" >> "$GITHUB_OUTPUT"
+
+      - name: Scheduled refresh
+        if: steps.toggle.outputs.enabled == 'true'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          REVU_ACCESS_TOKEN: ${{ secrets.REVU_ACCESS_TOKEN }}
+          CRAWLER_DRY_RUN: "false"
+        run: |
+          python -m crawler.cli run-scheduled \
+            --source 4blog \
+            --source dinnerqueen \
+            --source reviewnote \
+            --source revu \
+            --write \
+            --delete-before-refresh
+
+      - name: Refresh skipped
+        if: steps.toggle.outputs.enabled != 'true'
+        run: echo "ENABLE_SCHEDULED_REFRESH is not true; skipping live refresh run."
