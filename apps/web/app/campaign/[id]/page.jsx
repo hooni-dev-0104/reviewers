@@ -11,6 +11,7 @@ import {
 } from '@/lib/format';
 import { getCampaignById, getCampaignCount, getRelatedCampaigns, getVisitorCounts } from '@/lib/supabase';
 import { SavedCampaignButton } from '@/components/saved-campaign-button';
+import { ReminderManager } from '@/components/reminder-manager';
 import { SiteShell } from '@/components/site-shell';
 import { VisitorWidget } from '@/components/visitor-widget';
 
@@ -71,6 +72,7 @@ export default async function CampaignDetailPage({ params }) {
               원문 열고 지원하기
             </a>
             <SavedCampaignButton campaignId={campaign.id} />
+            <ReminderManager campaignId={campaign.id} />
           </aside>
         </div>
 

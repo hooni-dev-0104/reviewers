@@ -1,5 +1,7 @@
 import './globals.css';
 
+import { AppClientProviders } from '@/components/app-client-providers';
+
 export const metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://reviewers-ten.vercel.app'),
   title: '리뷰어스 | 믿고 고르는 체험단 탐색',
@@ -17,7 +19,9 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="ko">
-      <body>{children}</body>
+      <body>
+        <AppClientProviders>{children}</AppClientProviders>
+      </body>
     </html>
   );
 }

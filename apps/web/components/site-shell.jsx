@@ -1,5 +1,7 @@
 import Link from 'next/link';
 
+import { AccountStatus } from '@/components/account-status';
+
 export function SiteShell({ children, visitorWidget, campaignCount }) {
   return (
     <div className="page-shell">
@@ -13,11 +15,11 @@ export function SiteShell({ children, visitorWidget, campaignCount }) {
         <nav>
           <Link href="/">탐색</Link>
           <Link href="/saved">저장</Link>
+          <Link href="/reminders">리마인드</Link>
           <Link href="/trust">신뢰 기준</Link>
-          <a href="https://reviewers-ten.vercel.app" target="_blank" rel="noreferrer">
-            배포 도메인
-          </a>
+          <Link href="/ops">운영</Link>
         </nav>
+        <AccountStatus />
       </header>
 
       <main>{children}</main>

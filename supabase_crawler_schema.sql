@@ -154,6 +154,56 @@ create table if not exists public.site_daily_visitors (
   constraint site_daily_visitors_visit_date_visitor_id_key unique (visit_date, visitor_id)
 );
 
+create table if not exists public.app_users (
+  id uuid primary key default gen_random_uuid(),
+  email text not null unique,
+  display_name text,
+  password_hash text not null,
+  created_at timestamptz not null default timezone('utc', now())
+);
+
+create table if not exists public.user_sessions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.app_users(id) on delete cascade,
+  token_hash text not null unique,
+  expires_at timestamptz not null,
+  created_at timestamptz not null default timezone('utc', now())
+);
+
+create table if not exists public.user_saved_campaigns (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.app_users(id) on delete cascade,
+  campaign_id uuid not null references public.campaigns(id) on delete cascade,
+  created_at timestamptz not null default timezone('utc', now()),
+  constraint user_saved_campaigns_user_campaign_key unique (user_id, campaign_id)
+);
+
+create table if not exists public.reminder_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.app_users(id) on delete cascade,
+  campaign_id uuid not null references public.campaigns(id) on delete cascade,
+  remind_before_hours integer not null default 24 check (remind_before_hours in (3, 24, 72)),
+  is_enabled boolean not null default true,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+  constraint reminder_subscriptions_user_campaign_key unique (user_id, campaign_id)
+);
+
+create table if not exists public.sponsor_slots (
+  id uuid primary key default gen_random_uuid(),
+  slot_key text not null,
+  title text not null,
+  body text,
+  cta_label text,
+  cta_url text,
+  is_active boolean not null default false,
+  priority integer not null default 100,
+  starts_at timestamptz,
+  ends_at timestamptz,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
 create index if not exists idx_sources_is_active on public.sources (is_active, priority);
 create index if not exists idx_campaigns_source_id on public.campaigns (source_id);
 create index if not exists idx_campaigns_status on public.campaigns (status);
@@ -169,6 +219,11 @@ create index if not exists idx_crawl_jobs_source_id_created_at on public.crawl_j
 create index if not exists idx_crawl_errors_source_id_created_at on public.crawl_errors (source_id, created_at desc);
 create index if not exists idx_campaigns_title_fts on public.campaigns using gin (to_tsvector('simple', coalesce(title,'')));
 create index if not exists idx_site_daily_visitors_visit_date on public.site_daily_visitors (visit_date desc);
+create index if not exists idx_user_sessions_user_id on public.user_sessions (user_id);
+create index if not exists idx_user_sessions_expires_at on public.user_sessions (expires_at);
+create index if not exists idx_user_saved_campaigns_user_id on public.user_saved_campaigns (user_id, created_at desc);
+create index if not exists idx_reminder_subscriptions_user_id on public.reminder_subscriptions (user_id, created_at desc);
+create index if not exists idx_sponsor_slots_slot_key on public.sponsor_slots (slot_key, is_active, priority);
 
 create or replace trigger trg_sources_updated_at
 before update on public.sources
@@ -190,6 +245,14 @@ create or replace trigger trg_campaigns_updated_at
 before update on public.campaigns
 for each row execute function public.set_updated_at();
 
+create or replace trigger trg_reminder_subscriptions_updated_at
+before update on public.reminder_subscriptions
+for each row execute function public.set_updated_at();
+
+create or replace trigger trg_sponsor_slots_updated_at
+before update on public.sponsor_slots
+for each row execute function public.set_updated_at();
+
 alter table public.sources enable row level security;
 alter table public.source_policies enable row level security;
 alter table public.categories enable row level security;
@@ -199,6 +262,11 @@ alter table public.campaign_snapshots enable row level security;
 alter table public.crawl_jobs enable row level security;
 alter table public.crawl_errors enable row level security;
 alter table public.site_daily_visitors enable row level security;
+alter table public.app_users enable row level security;
+alter table public.user_sessions enable row level security;
+alter table public.user_saved_campaigns enable row level security;
+alter table public.reminder_subscriptions enable row level security;
+alter table public.sponsor_slots enable row level security;
 
 do $$
 begin
@@ -226,6 +294,31 @@ begin
     select 1 from pg_policies where schemaname='public' and tablename='site_daily_visitors' and policyname='Service role write visitor counts only'
   ) then
     create policy "Service role write visitor counts only" on public.site_daily_visitors for all using (false) with check (false);
+  end if;
+  if not exists (
+    select 1 from pg_policies where schemaname='public' and tablename='app_users' and policyname='Service role only app users'
+  ) then
+    create policy "Service role only app users" on public.app_users for all using (false) with check (false);
+  end if;
+  if not exists (
+    select 1 from pg_policies where schemaname='public' and tablename='user_sessions' and policyname='Service role only user sessions'
+  ) then
+    create policy "Service role only user sessions" on public.user_sessions for all using (false) with check (false);
+  end if;
+  if not exists (
+    select 1 from pg_policies where schemaname='public' and tablename='user_saved_campaigns' and policyname='Service role only user saves'
+  ) then
+    create policy "Service role only user saves" on public.user_saved_campaigns for all using (false) with check (false);
+  end if;
+  if not exists (
+    select 1 from pg_policies where schemaname='public' and tablename='reminder_subscriptions' and policyname='Service role only reminders'
+  ) then
+    create policy "Service role only reminders" on public.reminder_subscriptions for all using (false) with check (false);
+  end if;
+  if not exists (
+    select 1 from pg_policies where schemaname='public' and tablename='sponsor_slots' and policyname='Public read active sponsor slots'
+  ) then
+    create policy "Public read active sponsor slots" on public.sponsor_slots for select using (is_active = true);
   end if;
 end $$;
 

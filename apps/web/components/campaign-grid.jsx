@@ -1,7 +1,7 @@
 import { CampaignCard } from '@/components/campaign-card';
 import { SponsorSlot } from '@/components/sponsor-slot';
 
-export function CampaignGrid({ campaigns }) {
+export function CampaignGrid({ campaigns, sponsor }) {
   if (!campaigns.length) {
     return (
       <section className="empty-state">
@@ -17,6 +17,7 @@ export function CampaignGrid({ campaigns }) {
         <FragmentWithSponsor
           key={campaign.id}
           campaign={campaign}
+          sponsor={sponsor}
           showSponsor={index === 5}
         />
       ))}
@@ -24,11 +25,11 @@ export function CampaignGrid({ campaigns }) {
   );
 }
 
-function FragmentWithSponsor({ campaign, showSponsor }) {
+function FragmentWithSponsor({ campaign, showSponsor, sponsor }) {
   return (
     <>
       <CampaignCard campaign={campaign} />
-      {showSponsor ? <SponsorSlot /> : null}
+      {showSponsor ? <SponsorSlot sponsor={sponsor} /> : null}
     </>
   );
 }

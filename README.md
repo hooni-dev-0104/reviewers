@@ -78,6 +78,7 @@ NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_PUBLIC_ANON_KEY
 SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY
 NEXT_PUBLIC_SITE_URL=https://reviewers-ten.vercel.app
+OPS_DASHBOARD_KEY=YOUR_OPS_DASHBOARD_PASSWORD
 ```
 
 ### Local run
@@ -92,7 +93,7 @@ npm run dev
 
 - Set the Vercel project root directory to `apps/web`
 - Keep crawler + scheduled refresh on GitHub Actions
-- Apply the updated `supabase_crawler_schema.sql` so `site_daily_visitors` exists for daily/total visit counts
+- Apply the updated `supabase_crawler_schema.sql` so visitor counts, account saves, reminders, and sponsor slots all exist
 
 `sample.json` should be a JSON array of raw campaign objects. Example:
 

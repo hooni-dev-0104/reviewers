@@ -11,40 +11,40 @@ import {
   formatSourceName,
   getConfidence
 } from '@/lib/format';
-
-const STORAGE_KEY = 'reviewers.savedCampaignIds';
+import { useAppClient } from '@/components/app-client-providers';
 
 export function SavedCampaignsView() {
-  const [ids, setIds] = useState([]);
+  const { session, savedIds } = useAppClient();
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const sync = () => {
-      const nextIds = readSavedIds();
-      setIds(nextIds);
-      if (!nextIds.length) {
-        setCampaigns([]);
-        setLoading(false);
-        return;
-      }
+    if (!session) {
+      setCampaigns([]);
+      setLoading(false);
+      return;
+    }
 
-      setLoading(true);
-      fetch(`/api/campaigns?ids=${nextIds.join(',')}`)
-        .then((response) => response.json())
-        .then((payload) => setCampaigns(Array.isArray(payload.items) ? payload.items : []))
-        .finally(() => setLoading(false));
-    };
-
-    sync();
-    window.addEventListener('reviewers:saved-updated', sync);
-    return () => window.removeEventListener('reviewers:saved-updated', sync);
-  }, []);
+    setLoading(true);
+    fetch('/api/saved')
+      .then((response) => response.json())
+      .then((payload) => setCampaigns(Array.isArray(payload.items) ? payload.items : []))
+      .finally(() => setLoading(false));
+  }, [session, savedIds.join(',')]);
 
   const ordered = useMemo(() => {
     const byId = new Map(campaigns.map((campaign) => [campaign.id, campaign]));
-    return ids.map((id) => byId.get(id)).filter(Boolean);
-  }, [campaigns, ids]);
+    return savedIds.map((id) => byId.get(id)).filter(Boolean);
+  }, [campaigns, savedIds]);
+
+  if (!session) {
+    return (
+      <section className="empty-state">
+        <p>저장 목록은 로그인 후 사용할 수 있어요.</p>
+        <span>계정을 만들면 저장한 캠페인을 브라우저가 바뀌어도 이어서 볼 수 있어요.</span>
+      </section>
+    );
+  }
 
   if (loading) {
     return <section className="empty-state"><p>저장한 캠페인을 불러오는 중이에요.</p></section>;
@@ -87,14 +87,4 @@ export function SavedCampaignsView() {
       })}
     </section>
   );
-}
-
-function readSavedIds() {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
-  } catch (_error) {
-    return [];
-  }
 }

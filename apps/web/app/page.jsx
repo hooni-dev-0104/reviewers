@@ -6,16 +6,18 @@ import { FilterBar } from '@/components/filter-bar';
 import { SiteShell } from '@/components/site-shell';
 import { VisitorWidget } from '@/components/visitor-widget';
 import { getCampaignCount, getCampaigns, getSources, getVisitorCounts } from '@/lib/supabase';
+import { getActiveSponsor } from '@/lib/sponsor';
 
 export const dynamic = 'force-dynamic';
 
 export default async function HomePage({ searchParams }) {
   const resolvedSearchParams = await searchParams;
-  const [campaigns, sources, visitorCounts, campaignCount] = await Promise.all([
+  const [campaigns, sources, visitorCounts, campaignCount, sponsor] = await Promise.all([
     getCampaigns({ ...resolvedSearchParams, limit: 48 }),
     getSources(),
     getVisitorCounts(),
-    getCampaignCount()
+    getCampaignCount(),
+    getActiveSponsor()
   ]);
 
   return (
@@ -98,7 +100,7 @@ export default async function HomePage({ searchParams }) {
             <span>요약 정보가 약할 수 있으니 상세나 원문에서 한 번 더 확인해보세요.</span>
           </div>
         </div>
-        <CampaignGrid campaigns={campaigns} />
+        <CampaignGrid campaigns={campaigns} sponsor={sponsor} />
       </section>
     </SiteShell>
   );
