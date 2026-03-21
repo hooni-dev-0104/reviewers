@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { getCurrentUser } from '@/lib/auth';
 import { deleteRows, selectRows, upsertRows } from '@/lib/server-data';
-import { getCampaignsByIds } from '@/lib/supabase';
+import { getCampaignById, getCampaignsByIds } from '@/lib/supabase';
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -31,6 +31,11 @@ export async function POST(request) {
   const campaignId = String(body.campaignId || '');
   if (!campaignId) {
     return NextResponse.json({ error: 'campaignId가 필요해요.' }, { status: 400 });
+  }
+
+  const campaign = await getCampaignById(campaignId);
+  if (!campaign) {
+    return NextResponse.json({ error: '존재하지 않거나 비활성화된 캠페인이에요.' }, { status: 404 });
   }
 
   const existing = await selectRows('user_saved_campaigns', {

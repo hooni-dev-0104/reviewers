@@ -16,6 +16,7 @@ export function SiteShell({ children, visitorWidget, campaignCount }) {
         </div>
         <nav>
           <Link href="/">탐색</Link>
+          <Link href="/account">계정</Link>
           <Link href="/saved">저장</Link>
           <Link href="/reminders">리마인드</Link>
           <Link href="/trust">신뢰 기준</Link>

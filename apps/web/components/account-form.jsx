@@ -54,16 +54,16 @@ export function AccountForm() {
         {mode === 'signup' ? (
           <div className="search-stack">
             <label htmlFor="displayName">닉네임</label>
-            <input id="displayName" name="displayName" placeholder="리뷰어스에서 표시할 이름" />
+            <input id="displayName" name="displayName" placeholder="리뷰어스에서 표시할 이름" autoComplete="nickname" />
           </div>
         ) : null}
         <div className="search-stack">
           <label htmlFor="email">이메일</label>
-          <input id="email" name="email" type="email" placeholder="you@example.com" required />
+          <input id="email" name="email" type="email" placeholder="you@example.com" autoComplete="email" required />
         </div>
         <div className="search-stack">
           <label htmlFor="password">비밀번호</label>
-          <input id="password" name="password" type="password" placeholder="8자 이상" required />
+          <input id="password" name="password" type="password" placeholder="8자 이상" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} required />
         </div>
         {error ? <p className="form-error">{error}</p> : null}
         <button type="submit" disabled={pending}>{pending ? '처리 중…' : mode === 'login' ? '로그인' : '회원가입'}</button>
