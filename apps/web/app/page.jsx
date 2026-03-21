@@ -34,6 +34,20 @@ export default async function HomePage({ searchParams }) {
               신뢰 기준 보기
             </Link>
           </div>
+          <div className="hero-reading-guide">
+            <div>
+              <strong>1</strong>
+              <span>카드에서 혜택·마감·인원 확인</span>
+            </div>
+            <div>
+              <strong>2</strong>
+              <span>배지로 정보 안정성 먼저 판단</span>
+            </div>
+            <div>
+              <strong>3</strong>
+              <span>원문으로 넘어가기 전에 저장해두기</span>
+            </div>
+          </div>
         </div>
         <div className="hero-sidecard">
           <div>
@@ -74,6 +88,16 @@ export default async function HomePage({ searchParams }) {
 
         <FilterBar sources={sources} searchParams={resolvedSearchParams} />
         <ActiveFilters searchParams={resolvedSearchParams} resultCount={campaigns.length} />
+        <div className="feed-guidance">
+          <div className="guidance-card">
+            <strong>빠르게 보는 법</strong>
+            <span>혜택이 선명하고 마감이 가까운 카드부터 보면 지원 효율이 높아요.</span>
+          </div>
+          <div className="guidance-card">
+            <strong>검토 필요 배지</strong>
+            <span>요약 정보가 약할 수 있으니 상세나 원문에서 한 번 더 확인해보세요.</span>
+          </div>
+        </div>
         <CampaignGrid campaigns={campaigns} />
       </section>
     </SiteShell>

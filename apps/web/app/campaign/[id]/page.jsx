@@ -94,6 +94,10 @@ export default async function CampaignDetailPage({ params }) {
                 <dt>마지막 갱신</dt>
                 <dd>{new Date(campaign.last_seen_at).toLocaleString('ko-KR')}</dd>
               </div>
+              <div>
+                <dt>지원 링크</dt>
+                <dd className="break-anywhere">{campaign.original_url}</dd>
+              </div>
             </dl>
           </article>
 
@@ -105,6 +109,21 @@ export default async function CampaignDetailPage({ params }) {
               <li>지원 액션은 원문 페이지에서 진행됩니다.</li>
             </ul>
           </article>
+        </section>
+
+        <section className="decision-checklist">
+          <div className="guidance-card">
+            <strong>혜택이 충분한가?</strong>
+            <span>제공 내역이 불명확하면 원문에서 제공 범위와 추가 비용을 꼭 확인하세요.</span>
+          </div>
+          <div className="guidance-card">
+            <strong>마감이 임박했는가?</strong>
+            <span>오늘·내일 마감이라면 저장보다 바로 원문 이동이 더 좋아요.</span>
+          </div>
+          <div className="guidance-card">
+            <strong>방문 가능 지역인가?</strong>
+            <span>지역 미상일 때는 매장 위치와 예약 조건을 원문에서 다시 확인하세요.</span>
+          </div>
         </section>
 
         <section className="related-panel">

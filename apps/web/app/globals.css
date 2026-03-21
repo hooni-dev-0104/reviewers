@@ -87,6 +87,33 @@ a { color: inherit; text-decoration: none; }
 .eyebrow { color: var(--accent-2); text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.8rem; }
 .hero-actions a:first-child, .primary-action, button { background: linear-gradient(135deg, var(--accent), #9f7cff); color: white; border: none; }
 .ghost-link { background: transparent !important; }
+.hero-reading-guide, .decision-checklist, .feed-guidance {
+  display: grid;
+  gap: 12px;
+}
+.hero-reading-guide {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 24px;
+}
+.hero-reading-guide div, .guidance-card {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: rgba(255,255,255,0.04);
+  padding: 16px;
+}
+.hero-reading-guide strong {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(124, 156, 255, 0.18);
+  color: #dbe4ff;
+}
+.hero-reading-guide span, .guidance-card span { color: var(--muted); line-height: 1.5; }
 .hero-sidecard { border-radius: 28px; padding: 24px; display: grid; gap: 16px; }
 .hero-sidecard ul, .info-panel ul { margin: 0; padding-left: 18px; color: var(--muted); display: grid; gap: 10px; }
 
@@ -105,6 +132,11 @@ a { color: inherit; text-decoration: none; }
 .section-headline h2, .info-panel h2 { margin: 8px 0 0; }
 .compact-headline { margin-bottom: 14px; }
 .filter-shell { border-radius: 24px; padding: 18px; margin-bottom: 20px; display: grid; gap: 16px; }
+.filter-shell {
+  position: sticky;
+  top: 100px;
+  z-index: 5;
+}
 .search-row { justify-content: space-between; }
 .search-stack { display: grid; gap: 8px; width: 100%; }
 .filter-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; }
@@ -119,6 +151,10 @@ input, select {
 }
 
 .campaign-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.feed-guidance {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 18px;
+}
 .results-toolbar {
   display: flex;
   justify-content: space-between;
@@ -195,12 +231,13 @@ input, select {
 .detail-hero { grid-template-columns: minmax(0, 1.2fr) 360px; margin-top: 18px; }
 .detail-main-card, .decision-panel, .info-panel { border-radius: 28px; padding: 24px; }
 .detail-grid, .trust-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 18px; }
-.decision-panel { align-self: start; }
+.decision-panel { align-self: start; position: sticky; top: 110px; }
 .decision-panel .save-toggle { width: 100%; justify-content: center; }
 .back-link { color: var(--muted); }
 .info-panel dl { margin: 0; display: grid; gap: 14px; }
 .info-panel dt { color: var(--muted); font-size: 0.88rem; }
 .info-panel dd { margin: 4px 0 0; }
+.break-anywhere { overflow-wrap: anywhere; }
 
 .footer-bar { margin-top: 24px; }
 .visitor-widget { font-size: 0.88rem; color: var(--muted); }
@@ -236,9 +273,13 @@ input, select {
   .hero-panel, .detail-hero, .section-headline, .campaign-grid, .filter-grid, .detail-grid, .trust-grid, .stats-strip, .results-toolbar {
     grid-template-columns: 1fr;
   }
+  .hero-reading-guide, .feed-guidance, .decision-checklist {
+    grid-template-columns: 1fr;
+  }
   .section-headline { align-items: start; }
   .results-toolbar { display: grid; }
   .active-chip-row { justify-content: start; }
+  .filter-shell, .decision-panel { position: static; }
 }
 
 @media (max-width: 760px) {
