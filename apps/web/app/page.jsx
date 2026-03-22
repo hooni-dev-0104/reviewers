@@ -29,13 +29,6 @@ export default async function HomePage({ searchParams }) {
   return (
     <SiteShell campaignCount={campaignCount} visitorWidget={<VisitorWidget initialCounts={visitorCounts} />}>
       <section id="explore" className="explore-panel">
-        <div className="section-headline compact-single">
-          <div>
-            <span className="eyebrow">리뷰콕</span>
-            <h2>조건 맞는 체험단만 빠르게 골라보기</h2>
-          </div>
-        </div>
-
         <FilterBar sources={sources} searchParams={resolvedSearchParams} />
         <CampaignFeed
           initialCampaigns={campaigns}
