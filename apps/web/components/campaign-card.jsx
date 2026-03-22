@@ -24,9 +24,19 @@ export function CampaignCard({ campaign }) {
 
   return (
     <article className={`campaign-card tone-${formatSourceTone(sourceSlug)}`}>
-      <div className="card-topline">
-        <span className="source-chip">{formatSourceName(campaign.sources)}</span>
-        <span className={`badge badge-${confidence.tone}`}>{confidenceLabel}</span>
+      <div className={`card-visual ${campaign.thumbnail_url ? 'has-image' : 'no-image'}`}>
+        {campaign.thumbnail_url ? (
+          <img src={campaign.thumbnail_url} alt="" className="card-image" loading="lazy" />
+        ) : (
+          <div className="card-image-fallback" aria-hidden="true">
+            <span>{formatPlatform(campaign.platform_type)}</span>
+          </div>
+        )}
+
+        <div className="card-topline">
+          <span className="source-chip">{formatSourceName(campaign.sources)}</span>
+          <span className={`badge badge-${confidence.tone}`}>{confidenceLabel}</span>
+        </div>
       </div>
 
       <Link href={`/campaign/${campaign.id}`} className="card-link-block">
