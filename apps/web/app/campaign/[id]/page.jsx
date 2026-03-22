@@ -85,7 +85,6 @@ export default async function CampaignDetailPage({ params }) {
 
           <aside className="decision-panel">
             <div className="decision-panel-head">
-              <span className="eyebrow">빠른 보기</span>
               <h2>핵심 정보만 먼저 보세요</h2>
               <p>혜택, 마감, 인원만 다시 보고 원문으로 이동하세요.</p>
             </div>
