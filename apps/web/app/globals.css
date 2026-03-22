@@ -49,7 +49,15 @@ a { color: inherit; text-decoration: none; }
   align-items: center;
 }
 
-.topbar { position: sticky; top: 16px; z-index: 10; }
+.topbar-shell {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding-top: 12px;
+  padding-bottom: 4px;
+  background: linear-gradient(180deg, rgba(8, 17, 31, 0.96), rgba(8, 17, 31, 0.78) 72%, transparent);
+}
+.topbar { position: relative; }
 .topbar p, .footer-bar span, .campaign-card p, .hero-copy p, .section-headline p, .hero-sidecard span, .trust-page p { color: var(--muted); }
 
 .brand-mark {
@@ -417,6 +425,7 @@ input, select {
 @media (max-width: 760px) {
   .page-shell { padding: 14px; }
   .topbar, .footer-bar, .hero-panel, .explore-panel, .trust-page, .detail-shell { padding: 18px; border-radius: 22px; }
+  .topbar-shell { padding-top: 8px; }
   .topbar, .footer-bar { flex-direction: column; align-items: start; gap: 12px; }
   .topbar nav, .card-actions, .hero-actions, .stats-strip, .account-group, .reminder-options { flex-wrap: wrap; }
   .search-row { flex-direction: column; align-items: stretch; }
