@@ -78,8 +78,6 @@ export function CampaignCard({ campaign }) {
   );
 }
 
-function getConfidenceLabel(label) {
-}
 
 function pickSummary(campaign) {
   const title = formatText(campaign.title);
