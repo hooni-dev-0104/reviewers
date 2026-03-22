@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 import {
   formatCampaignType,
   formatDeadline,
@@ -5,6 +7,7 @@ import {
   formatRegion,
   formatSourceName,
   formatSourceTone,
+  formatText,
   getConfidence,
   getDeadlineState
 } from '@/lib/format';
@@ -14,6 +17,7 @@ export function CampaignCard({ campaign }) {
   const deadlineState = getDeadlineState(campaign.apply_deadline);
   const sourceSlug = campaign.sources?.slug || 'unknown';
   const confidenceLabel = getConfidenceLabel(confidence.label);
+  const title = formatText(campaign.title);
   const summary = pickSummary(campaign);
   const reward = campaign.benefit_text || '혜택 확인 필요';
   const deadline = formatDeadline(campaign.apply_deadline);
@@ -22,12 +26,10 @@ export function CampaignCard({ campaign }) {
 
   return (
     <article className={`campaign-card tone-${formatSourceTone(sourceSlug)}`}>
-      <a
-        href={campaign.original_url}
-        target="_blank"
-        rel="noreferrer"
+      <Link
+        href={`/campaign/${campaign.id}`}
         className={`card-visual ${campaign.thumbnail_url ? 'has-image' : 'no-image'}`}
-        aria-label={`${campaign.title} 원문 보기`}
+        aria-label={`${title} 상세 보기`}
       >
         {thumbnailSrc ? (
           <img src={thumbnailSrc} alt="" className="card-image" loading="lazy" />
@@ -41,12 +43,12 @@ export function CampaignCard({ campaign }) {
           <span className="source-chip">{formatSourceName(campaign.sources)}</span>
           <span className={`badge badge-${confidence.tone}`}>{confidenceLabel}</span>
         </div>
-      </a>
+      </Link>
 
-      <a href={campaign.original_url} target="_blank" rel="noreferrer" className="card-link-block">
-        <h3>{campaign.title}</h3>
+      <Link href={`/campaign/${campaign.id}`} className="card-link-block">
+        <h3>{title}</h3>
         <p>{summary}</p>
-      </a>
+      </Link>
 
       <div className="chip-row card-chip-row">
         <span>{formatPlatform(campaign.platform_type)}</span>
@@ -71,9 +73,7 @@ export function CampaignCard({ campaign }) {
       </div>
 
       <div className="card-actions">
-        <a href={campaign.original_url} target="_blank" rel="noreferrer">
-          원문 보기
-        </a>
+        <Link href={`/campaign/${campaign.id}`}>상세 보기</Link>
       </div>
     </article>
   );
@@ -88,8 +88,8 @@ function getConfidenceLabel(label) {
 }
 
 function pickSummary(campaign) {
-  const title = String(campaign.title || '').trim();
-  const snippet = String(campaign.snippet || '').trim();
+  const title = formatText(campaign.title);
+  const snippet = formatText(campaign.snippet);
   const prioritySummary = '혜택·마감·지역을 먼저 확인해 보세요.';
 
   if (!snippet) {

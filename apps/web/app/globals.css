@@ -66,6 +66,9 @@ a { color: inherit; text-decoration: none; }
 .topbar nav, .hero-actions, .chip-row, .card-actions, .card-meta-row, .stats-strip, .search-row, .visitor-widget { display: flex; gap: 12px; align-items: center; }
 .topbar nav { flex-wrap: wrap; }
 .topbar nav a, .card-actions a, .hero-actions a, button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid var(--line);
   background: #ffffff;
   padding: 10px 14px;

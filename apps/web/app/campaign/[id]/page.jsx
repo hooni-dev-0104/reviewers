@@ -7,6 +7,7 @@ import {
   formatPlatform,
   formatRegion,
   formatSourceName,
+  formatText,
   getConfidence,
   getDeadlineState
 } from '@/lib/format';
@@ -28,6 +29,7 @@ export default async function CampaignDetailPage({ params }) {
     notFound();
   }
 
+  const displayTitle = formatText(campaign.title);
   const confidence = getConfidence(campaign);
   const deadlineState = getDeadlineState(campaign.apply_deadline);
   const relatedCampaigns = await getRelatedCampaigns(campaign);
@@ -55,7 +57,7 @@ export default async function CampaignDetailPage({ params }) {
               <span className={`badge badge-${deadlineState.tone}`}>{deadlineState.label}</span>
             </div>
             <span className="detail-kicker">지원 전에 핵심 조건만 빠르게 확인하세요</span>
-            <h1>{campaign.title}</h1>
+            <h1>{displayTitle}</h1>
             <p>{campaign.snippet || '혜택, 마감, 방문 조건만 먼저 보고 괜찮으면 원문에서 마지막 조건을 확인하세요.'}</p>
 
             <div className="chip-row detail-subfacts">
@@ -176,7 +178,7 @@ export default async function CampaignDetailPage({ params }) {
                 <article key={item.id} className="related-card">
                   <div>
                     <span className="source-chip">{formatSourceName(item.sources)}</span>
-                    <h3>{item.title}</h3>
+                    <h3>{formatText(item.title)}</h3>
                     <p>{formatRegion(item)} · {formatDeadline(item.apply_deadline)}</p>
                   </div>
                   <Link href={`/campaign/${item.id}`}>상세 보기</Link>
