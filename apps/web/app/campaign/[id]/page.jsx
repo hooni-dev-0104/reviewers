@@ -10,8 +10,6 @@ import {
   getConfidence
 } from '@/lib/format';
 import { getCampaignById, getCampaignCount, getRelatedCampaigns, getVisitorCounts } from '@/lib/supabase';
-import { SavedCampaignButton } from '@/components/saved-campaign-button';
-import { ReminderManager } from '@/components/reminder-manager';
 import { SiteShell } from '@/components/site-shell';
 import { VisitorWidget } from '@/components/visitor-widget';
 
@@ -94,8 +92,6 @@ export default async function CampaignDetailPage({ params }) {
             <a href={campaign.original_url} target="_blank" rel="noreferrer" className="primary-action">
               원문에서 조건 확인하기
             </a>
-            <SavedCampaignButton campaignId={campaign.id} />
-            <ReminderManager campaignId={campaign.id} />
           </aside>
         </div>
 
