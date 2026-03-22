@@ -26,21 +26,6 @@ export default async function HomePage({ searchParams }) {
 
   return (
     <SiteShell campaignCount={campaignCount} visitorWidget={<VisitorWidget initialCounts={visitorCounts} />}>
-      <section className="stats-strip">
-        <div>
-          <strong>{campaigns.length.toLocaleString('ko-KR')}</strong>
-          <span>지금 나온 캠페인</span>
-        </div>
-        <div>
-          <strong>{sources.length.toLocaleString('ko-KR')}</strong>
-          <span>현재 수집 중인 출처</span>
-        </div>
-        <div>
-          <strong>4개</strong>
-          <span>수집 플랫폼</span>
-        </div>
-      </section>
-
       <section id="explore" className="explore-panel">
         <div className="section-headline">
           <div>
