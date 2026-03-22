@@ -3,3 +3,4 @@
 .omx/
 __pycache__/
 *.pyc
+.vercel

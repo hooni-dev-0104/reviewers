@@ -25,7 +25,11 @@ export default async function HomePage({ searchParams }) {
       <section className="hero-panel">
         <div className="hero-copy">
           <span className="eyebrow">Applicant-first campaign finder</span>
-          <h1>오늘 지원할 체험단을 더 빠르게, 더 자신 있게 고르자.</h1>
+          <h1>
+            오늘 지원할 체험단,
+            <br />
+            더 빠르고 선명하게 고르자.
+          </h1>
           <p>
             레뷰·리뷰노트·포블로그·디너의여왕 데이터를 한 번에 모아, 마감일·혜택·출처 신뢰도를 중심으로
             빠르게 판단할 수 있게 만들었어요.
@@ -39,22 +43,22 @@ export default async function HomePage({ searchParams }) {
           <div className="hero-reading-guide">
             <div>
               <strong>1</strong>
-              <span>카드에서 혜택·마감·인원 확인</span>
+              <span>혜택 · 마감 · 인원 먼저</span>
             </div>
             <div>
               <strong>2</strong>
-              <span>배지로 정보 안정성 먼저 판단</span>
+              <span>배지로 정보 신뢰도 체크</span>
             </div>
             <div>
               <strong>3</strong>
-              <span>원문으로 넘어가기 전에 저장해두기</span>
+              <span>괜찮으면 저장 후 원문 이동</span>
             </div>
           </div>
         </div>
         <div className="hero-sidecard">
-          <div>
+          <div className="hero-sidecard-head">
+            <span className="eyebrow">Scan 기준</span>
             <strong>요즘 잘 보는 기준</strong>
-            <span>마감 임박 · 혜택 선명 · 출처 안정성</span>
           </div>
           <ul>
             <li>급한 마감은 카드에서 바로 표시</li>
