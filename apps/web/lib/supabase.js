@@ -65,13 +65,16 @@ async function supabaseFetch(path, init = {}, { service = false } = {}) {
   return response;
 }
 
-function applyCampaignFilters(params, searchParams) {
-  const { search, platform, type, source, region, deadline, trust, sort = 'deadline', limit = 48 } = searchParams;
+function applyCampaignFilters(params, searchParams, { forCount = false } = {}) {
+  const { search, platform, type, source, region, deadline, trust, sort = 'deadline', limit = 24, offset = 0 } = searchParams;
   const andConditions = [];
 
   params.set('select', CAMPAIGN_SELECT);
   params.set('status', 'eq.active');
-  params.set('limit', String(limit));
+  if (!forCount) {
+    params.set('limit', String(limit));
+    params.set('offset', String(offset));
+  }
 
   if (search) {
     const escaped = search.replaceAll(',', ' ');
@@ -135,6 +138,16 @@ export const getCampaigns = cache(async function getCampaigns(searchParams = {})
   const response = await supabaseFetch(`/campaigns?${params.toString()}`);
   return response.json();
 });
+
+export async function getCampaignSearchCount(searchParams = {}) {
+  const params = new URLSearchParams();
+  applyCampaignFilters(params, searchParams, { forCount: true });
+  const response = await supabaseFetch(`/campaigns?${params.toString()}`, {
+    method: 'HEAD',
+    headers: { Prefer: 'count=exact' }
+  });
+  return parseCountHeader(response.headers.get('content-range'));
+}
 
 export const getCampaignById = cache(async function getCampaignById(id) {
   const params = new URLSearchParams({

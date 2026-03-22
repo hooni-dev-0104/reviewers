@@ -182,6 +182,19 @@ input, select {
   align-items: start;
   margin: 18px 0 20px;
 }
+.load-more-row {
+  display: flex;
+  justify-content: center;
+  margin-top: 26px;
+}
+.load-more-button {
+  min-width: 180px;
+  min-height: 48px;
+  padding-inline: 22px;
+  border-radius: 16px;
+  font-weight: 700;
+  box-shadow: 0 10px 24px rgba(111, 127, 248, 0.18);
+}
 .active-chip-row {
   display: flex;
   flex-wrap: wrap;
