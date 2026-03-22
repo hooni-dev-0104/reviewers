@@ -1,21 +1,7 @@
 import './globals.css';
 
-import { IBM_Plex_Sans_KR, Noto_Serif_KR } from 'next/font/google';
-
 import { AppClientProviders } from '@/components/app-client-providers';
 import { getCurrentUser } from '@/lib/auth';
-
-const bodyFont = IBM_Plex_Sans_KR({
-  weight: ['400', '500', '600', '700'],
-  subsets: ['latin', 'korean'],
-  variable: '--font-body'
-});
-
-const displayFont = Noto_Serif_KR({
-  weight: ['400', '500', '600', '700'],
-  subsets: ['latin', 'korean'],
-  variable: '--font-display'
-});
 
 export const metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://reviewers-ten.vercel.app'),
@@ -36,7 +22,7 @@ export default async function RootLayout({ children }) {
 
   return (
     <html lang="ko">
-      <body className={`${bodyFont.variable} ${displayFont.variable}`}>
+      <body>
         <AppClientProviders initialSession={initialSession}>{children}</AppClientProviders>
       </body>
     </html>
