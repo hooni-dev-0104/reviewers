@@ -305,7 +305,7 @@ input, select {
   overflow: hidden;
 }
 .card-chip-row { flex-wrap: wrap; }
-.card-actions { margin-top: auto; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; align-items: stretch; }
+.card-actions { margin-top: auto; display: grid; grid-template-columns: 1fr; gap: 10px; align-items: stretch; }
 .card-actions a, .card-actions button {
   width: 100%;
   justify-content: center;
@@ -315,6 +315,9 @@ input, select {
 .card-actions a:first-child {
   background: #eef2ff;
   border-color: #d7ddfb;
+}
+.card-visual {
+  cursor: pointer;
 }
 .sponsor-slot {
   border-radius: 28px;

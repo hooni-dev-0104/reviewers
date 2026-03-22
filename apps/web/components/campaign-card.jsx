@@ -1,5 +1,3 @@
-import Link from 'next/link';
-
 import {
   formatCampaignType,
   formatDeadline,
@@ -24,7 +22,13 @@ export function CampaignCard({ campaign }) {
 
   return (
     <article className={`campaign-card tone-${formatSourceTone(sourceSlug)}`}>
-      <div className={`card-visual ${campaign.thumbnail_url ? 'has-image' : 'no-image'}`}>
+      <a
+        href={campaign.original_url}
+        target="_blank"
+        rel="noreferrer"
+        className={`card-visual ${campaign.thumbnail_url ? 'has-image' : 'no-image'}`}
+        aria-label={`${campaign.title} 원문 보기`}
+      >
         {thumbnailSrc ? (
           <img src={thumbnailSrc} alt="" className="card-image" loading="lazy" />
         ) : (
@@ -37,12 +41,12 @@ export function CampaignCard({ campaign }) {
           <span className="source-chip">{formatSourceName(campaign.sources)}</span>
           <span className={`badge badge-${confidence.tone}`}>{confidenceLabel}</span>
         </div>
-      </div>
+      </a>
 
-      <Link href={`/campaign/${campaign.id}`} className="card-link-block">
+      <a href={campaign.original_url} target="_blank" rel="noreferrer" className="card-link-block">
         <h3>{campaign.title}</h3>
         <p>{summary}</p>
-      </Link>
+      </a>
 
       <div className="chip-row card-chip-row">
         <span>{formatPlatform(campaign.platform_type)}</span>
@@ -67,7 +71,6 @@ export function CampaignCard({ campaign }) {
       </div>
 
       <div className="card-actions">
-        <Link href={`/campaign/${campaign.id}`}>세부 보기</Link>
         <a href={campaign.original_url} target="_blank" rel="noreferrer">
           원문 보기
         </a>
