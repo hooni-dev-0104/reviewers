@@ -71,25 +71,25 @@ export default async function HomePage({ searchParams }) {
       <section className="stats-strip">
         <div>
           <strong>{campaigns.length.toLocaleString('ko-KR')}</strong>
-          <span>지금 보이는 결과</span>
+          <span>지금 나온 캠페인</span>
         </div>
         <div>
           <strong>{sources.length.toLocaleString('ko-KR')}</strong>
-          <span>연결된 출처</span>
+          <span>현재 수집 중인 출처</span>
         </div>
         <div>
           <strong>4개</strong>
-          <span>수집 소스</span>
+          <span>수집 플랫폼</span>
         </div>
       </section>
 
       <section id="explore" className="explore-panel">
         <div className="section-headline">
           <div>
-            <span className="eyebrow">결과 탐색</span>
+            <span className="eyebrow">캠페인 찾기</span>
             <h2>필터로 먼저 좁히고, 카드에서 바로 고르기</h2>
           </div>
-          <p>불완전한 정보도 숨기지 않고 그대로 보여줘서, 클릭 전에 먼저 확인할 수 있게 했어요.</p>
+          <p>조건이 덜 적힌 카드도 숨기지 않고 보여줘서, 원문으로 가기 전에 먼저 비교할 수 있어요.</p>
         </div>
 
         <FilterBar sources={sources} searchParams={resolvedSearchParams} />
