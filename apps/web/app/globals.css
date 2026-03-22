@@ -634,10 +634,20 @@ input, select {
   .search-stack { gap: 5px; }
   .search-stack label { font-size: 0.82rem; }
   input, select { min-height: 38px; padding: 9px 11px; font-size: 0.88rem; border-radius: 14px; }
-  .campaign-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .campaign-grid { grid-template-columns: 1fr; gap: 10px; }
   .hero-panel { padding: 24px; }
   .hero-copy h1 { font-size: 2.5rem; }
-  .campaign-card { padding: 10px; gap: 7px; border-radius: 16px; }
+  .campaign-card {
+    padding: 10px;
+    gap: 6px;
+    border-radius: 16px;
+    grid-template-columns: 104px minmax(0, 1fr);
+    grid-template-areas:
+      "visual content"
+      "visual facts";
+    align-items: start;
+    column-gap: 10px;
+  }
   .campaign-card h3 {
     font-size: 0.92rem;
     line-height: 1.24;
@@ -647,20 +657,22 @@ input, select {
     overflow: hidden;
   }
   .card-visual {
-    min-height: 86px;
+    grid-area: visual;
+    min-height: 104px;
     border-radius: 12px;
-    aspect-ratio: 4 / 3;
+    aspect-ratio: 1 / 1;
   }
   .card-image,
   .card-image-fallback {
     width: 100%;
     height: 100%;
-    min-height: 86px;
+    min-height: 104px;
   }
   .card-image-fallback { font-size: 0.8rem; }
   .card-topline { top: 7px; left: 7px; right: 7px; gap: 5px; }
+  .card-topline .badge { display: none; }
   .source-chip, .chip-row span, .badge { padding: 4px 7px; font-size: 0.66rem; }
-  .card-link-block { gap: 3px; }
+  .card-link-block { grid-area: content; gap: 3px; align-self: start; }
   .card-link-block p {
     display: -webkit-box;
     -webkit-box-orient: vertical;
@@ -670,7 +682,7 @@ input, select {
     line-height: 1.3;
   }
   .card-chip-row { display: none; }
-  .card-fact-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+  .card-fact-grid { grid-area: facts; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
   .fact-card-wide { display: none; }
   .fact-card, .decision-panel div { padding: 7px 8px; border-radius: 10px; }
   .fact-card strong { font-size: 0.78rem; }
