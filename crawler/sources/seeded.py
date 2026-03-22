@@ -948,11 +948,11 @@ def enrich_gangnammatzip_detail(item: dict, detail_html: str) -> dict:
     if benefit:
         enriched['benefit_text'] = _strip_tags(benefit)
         enriched['snippet'] = _strip_tags(benefit)
-    period = _extract_first(r'<dt>신청기간</dt>\s*<dd>\s*([0-9.]+\s*[~–-]\s*[0-9.]+)', detail_html, re.S)
+    period = _extract_first(r'신청기간</dt>.*?<dd>\s*([^<]+)', detail_html, re.S)
     if period:
         current_year = date.today().year
         try:
-            left, right = [part.strip() for part in re.split(r'[~–-]', period, maxsplit=1)]
+            left, right = [part.strip() for part in re.split(r'[~–]', period, maxsplit=1)]
             lm, ld = [int(part) for part in left.split('.') if part]
             rm, rd = [int(part) for part in right.split('.') if part]
             enriched['published_at'] = date(current_year, lm, ld).isoformat()
