@@ -21,12 +21,13 @@ export function CampaignCard({ campaign }) {
   const reward = campaign.benefit_text || '혜택 확인 필요';
   const deadline = formatDeadline(campaign.apply_deadline);
   const slots = campaign.recruit_count ? `${campaign.recruit_count}명` : '인원 미상';
+  const thumbnailSrc = getThumbnailSrc(campaign.thumbnail_url);
 
   return (
     <article className={`campaign-card tone-${formatSourceTone(sourceSlug)}`}>
       <div className={`card-visual ${campaign.thumbnail_url ? 'has-image' : 'no-image'}`}>
-        {campaign.thumbnail_url ? (
-          <img src={campaign.thumbnail_url} alt="" className="card-image" loading="lazy" />
+        {thumbnailSrc ? (
+          <img src={thumbnailSrc} alt="" className="card-image" loading="lazy" />
         ) : (
           <div className="card-image-fallback" aria-hidden="true">
             <span>{formatPlatform(campaign.platform_type)}</span>
@@ -99,4 +100,16 @@ function pickSummary(campaign) {
   }
 
   return snippet;
+}
+
+function getThumbnailSrc(value) {
+  if (!value) {
+    return null;
+  }
+
+  if (value.includes('dq-files.gcdn.ntruss.com')) {
+    return `/api/image?src=${encodeURIComponent(value)}`;
+  }
+
+  return value;
 }
