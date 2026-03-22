@@ -29,7 +29,7 @@ function FragmentWithSponsor({ campaign, showSponsor, sponsor }) {
   return (
     <>
       <CampaignCard campaign={campaign} />
-      {showSponsor ? <SponsorSlot sponsor={sponsor} /> : null}
+      {showSponsor && sponsor ? <SponsorSlot sponsor={sponsor} /> : null}
     </>
   );
 }

@@ -11,9 +11,9 @@ export default async function SavedPage() {
   return (
     <SiteShell campaignCount={campaignCount} visitorWidget={<VisitorWidget initialCounts={counts} />}>
       <section className="trust-page saved-page">
-        <span className="eyebrow">Saved list</span>
+        <span className="eyebrow">저장한 캠페인</span>
         <h1>나중에 다시 볼 체험단을 모아두자.</h1>
-        <p>카드나 상세 페이지에서 저장한 캠페인을 여기서 다시 확인할 수 있어요. 마감 전에 빠르게 재검토하기 좋아요.</p>
+        <p>마음에 들었던 캠페인을 여기 모아두고, 마감 전에 다시 비교해볼 수 있어요.</p>
         <div className="decision-checklist">
           <div className="guidance-card">
             <strong>오늘 다시 볼 항목</strong>

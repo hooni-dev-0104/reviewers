@@ -16,9 +16,9 @@ export default async function RemindersPage() {
   return (
     <SiteShell campaignCount={campaignCount} visitorWidget={<VisitorWidget initialCounts={counts} />}>
       <section className="trust-page saved-page">
-        <span className="eyebrow">Reminders</span>
+        <span className="eyebrow">리마인드</span>
         <h1>다가오는 마감을 놓치지 않게 정리해두자.</h1>
-        <p>마감 전에 다시 볼 캠페인을 시간 단위로 정리할 수 있어요. 현재는 웹 안에서 확인하는 리마인드 중심이에요.</p>
+        <p>마감 전에 다시 볼 캠페인을 시간 단위로 정리해두고, 놓치지 않게 다시 확인할 수 있어요.</p>
         {!user ? (
           <section className="empty-state">
             <p>리마인드를 보려면 로그인해 주세요.</p>
