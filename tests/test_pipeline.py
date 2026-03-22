@@ -8,6 +8,7 @@ from crawler.pipeline import build_campaign_payload, run_daily_refresh, run_sour
 from crawler.reporting import build_source_quality_report
 from crawler.normalization import normalize_campaign
 from crawler.sources.seeded import (
+    enrich_4blog_item_from_detail,
     parse_mrblog_listing,
     parse_reviewnote_listing,
     transform_revu_item,
@@ -103,6 +104,23 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(transformed["region_primary_name"], "대구")
         self.assertEqual(transformed["region_secondary_name"], "수성구")
         self.assertIn("#테스트", transformed["snippet"])
+
+    def test_enrich_4blog_item_from_detail(self):
+        item = {
+            "title": "테스트 캠페인",
+            "original_url": "https://4blog.net/campaign/123/",
+            "region_primary_name": None,
+            "region_secondary_name": None,
+            "snippet": None,
+        }
+        detail_html = """
+        <div>체험 장소</div>
+        서교동 양화로6길 67
+        """
+        enriched = enrich_4blog_item_from_detail(item, detail_html)
+        self.assertEqual(enriched["region_primary_name"], "서교동")
+        self.assertIsNone(enriched["region_secondary_name"])
+        self.assertEqual(enriched["snippet"], "서교동 양화로6길 67")
 
     def test_transform_dinnerqueen_detail(self):
         html = """

@@ -160,6 +160,58 @@ def _infer_4blog_regions(location_raw: str | None, title: str) -> tuple[str | No
     return None, None
 
 
+def _infer_4blog_regions_from_detail_text(text: str | None) -> tuple[str | None, str | None]:
+    if not text:
+        return None, None
+
+    compact = " ".join(str(text).split())
+    if not compact:
+        return None, None
+
+    parts = compact.split()
+    first = parts[0] if parts else None
+    second = parts[1] if len(parts) > 1 else None
+
+    if first in FOUR_BLOG_LOCATION_PREFIXES:
+        return first, second or None
+
+    if first and first.endswith(("시", "군", "구")):
+        return first, second or None
+
+    if first and first.endswith(("동", "읍", "면", "리")):
+        return first, None
+
+    return None, None
+
+
+def _extract_4blog_detail_location_text(detail_html: str) -> str | None:
+    block = _extract_first(r"체험\s*장소.*?(?:</div>|</strong>|</dt>)\s*([^<]+)", detail_html, re.S)
+    if block:
+        return html_lib.unescape(block)
+
+    block = _extract_first(r"체험\s*장소.*?<p[^>]*>(.*?)</p>", detail_html, re.S)
+    if block:
+        return _strip_tags(block)
+
+    return None
+
+
+def enrich_4blog_item_from_detail(item: dict, detail_html: str) -> dict:
+    enriched = dict(item)
+    location_text = _extract_4blog_detail_location_text(detail_html)
+    detail_primary, detail_secondary = _infer_4blog_regions_from_detail_text(location_text)
+
+    if detail_primary and not enriched.get("region_primary_name"):
+        enriched["region_primary_name"] = detail_primary
+    if detail_secondary and not enriched.get("region_secondary_name"):
+        enriched["region_secondary_name"] = detail_secondary
+
+    if location_text and not enriched.get("snippet"):
+        enriched["snippet"] = location_text
+
+    return enriched
+
+
 def _extract_image_url_from_next_image(block: str) -> str | None:
     src = _extract_first(r'<noscript><img[^>]+src=\"([^\"]+)\"', block)
     if not src:
@@ -530,7 +582,16 @@ class FourBlogSourceAdapter(PlaceholderSourceAdapter):
                 break
             if not isinstance(batch, list) or not batch:
                 break
-            items.extend(transform_4blog_item(item, source_id=self.definition.source_id) for item in batch)
+            for item in batch:
+                transformed = transform_4blog_item(item, source_id=self.definition.source_id)
+                if transformed.get("original_url") and not transformed.get("region_primary_name"):
+                    try:
+                        detail_html = fetch_text_url(transformed["original_url"])
+                    except Exception:
+                        detail_html = None
+                    if detail_html:
+                        transformed = enrich_4blog_item_from_detail(transformed, detail_html)
+                items.append(transformed)
             if len(batch) < limit:
                 break
             offset += limit
