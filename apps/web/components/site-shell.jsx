@@ -9,6 +9,7 @@ export function SiteShell({ children, visitorWidget, campaignCount }) {
             리뷰콕
           </Link>
         </header>
+        {visitorWidget ? <div className="topbar-meta">{visitorWidget}</div> : null}
       </div>
 
       <main>{children}</main>

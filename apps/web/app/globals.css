@@ -51,6 +51,15 @@ a { color: inherit; text-decoration: none; }
   position: static;
   padding-top: 12px;
   padding-bottom: 4px;
+  display: grid;
+  gap: 10px;
+}
+.topbar-meta {
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  justify-content: flex-start;
 }
 .topbar { position: relative; }
 .topbar p, .footer-bar span, .campaign-card p, .hero-copy p, .section-headline p, .hero-sidecard span, .trust-page p { color: var(--muted); }
@@ -479,7 +488,17 @@ input, select {
 .break-anywhere { overflow-wrap: anywhere; }
 
 .footer-bar { margin-top: 24px; }
-.visitor-widget { font-size: 0.88rem; color: var(--muted); }
+.visitor-widget {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.9);
+  font-size: 0.82rem;
+  color: var(--muted);
+}
 .divider { width: 1px; height: 12px; background: var(--line); }
 .saved-page { display: grid; gap: 22px; }
 .account-page { max-width: 760px; }
@@ -630,7 +649,8 @@ input, select {
 @media (max-width: 760px) {
   .page-shell { padding: 14px; }
   .topbar, .footer-bar, .hero-panel, .explore-panel, .trust-page, .detail-shell { padding: 18px; border-radius: 22px; }
-  .topbar-shell { padding-top: 8px; }
+  .topbar-shell { padding-top: 8px; gap: 8px; }
+  .topbar-meta { justify-content: flex-start; }
   .topbar, .footer-bar { flex-direction: column; align-items: start; gap: 8px; }
   .topbar nav, .hero-actions, .stats-strip, .account-group, .reminder-options { flex-wrap: wrap; }
   .brand-mark { font-size: 1.28rem; }
