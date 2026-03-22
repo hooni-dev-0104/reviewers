@@ -827,6 +827,21 @@ def _clean_seouloppa_title(title: str) -> tuple[str, str | None, str | None]:
     return cleaned, region_primary, region_secondary
 
 
+def _infer_region_from_address_text(address_text: str | None) -> tuple[str | None, str | None]:
+    if not address_text:
+        return None, None
+
+    compact = " ".join(str(address_text).split())
+    if not compact:
+        return None, None
+
+    parts = compact.split()
+    primary = parts[0] if parts else None
+    secondary = parts[1] if len(parts) > 1 else None
+
+    return primary, secondary
+
+
 def parse_seouloppa_listing(html: str, source_id: str | None = None) -> list[dict]:
     items = []
     pattern = re.compile(
@@ -896,9 +911,17 @@ def enrich_seouloppa_detail(item: dict, detail_html: str) -> dict:
         enriched['published_at'] = published_at
     if apply_deadline:
         enriched['apply_deadline'] = apply_deadline
+    address_text = _extract_first(r"addressSearch\('([^']+)'", detail_html, re.S)
+    region_primary, region_secondary = _infer_region_from_address_text(address_text)
+    if region_primary and not enriched.get('region_primary_name'):
+        enriched['region_primary_name'] = region_primary
+    if region_secondary and not enriched.get('region_secondary_name'):
+        enriched['region_secondary_name'] = region_secondary
     site_url = _extract_first(r'<dt class="cam_info_con_dt lititle">사이트 URL</dt>\s*<dd class="cam_info_con_dd">\s*<a href="([^"]+)"', detail_html, re.S)
     if site_url:
-        enriched['raw_payload'] = {'site_url': site_url}
+        payload = dict(enriched.get('raw_payload') or {})
+        payload['site_url'] = site_url
+        enriched['raw_payload'] = payload
     return enriched
 
 

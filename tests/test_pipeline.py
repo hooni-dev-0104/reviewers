@@ -235,6 +235,9 @@ class PipelineTests(unittest.TestCase):
           <strong class="p_title on">크리에이터 모집</strong>
           <span class="period on">26-03-19 ~ 26-03-23</span>
         </li>
+        <script>
+        geocoder.addressSearch('서울 강남구 강남대로102길 28 (역삼동)', function(result, status) {});
+        </script>
         <dt class="cam_info_con_dt lititle">사이트 URL</dt>
         <dd class="cam_info_con_dd"><a href="https://m.site.naver.com/23cJ9"></a></dd>
         """
@@ -242,6 +245,8 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(enriched["benefit_text"], "팩앤롤 디럭스 1EA (색상 선택)")
         self.assertEqual(enriched["published_at"], "2026-03-19")
         self.assertEqual(enriched["apply_deadline"], "2026-03-23")
+        self.assertEqual(enriched["region_primary_name"], "서울")
+        self.assertEqual(enriched["region_secondary_name"], "강남구")
 
     def test_parse_gangnammatzip_listing(self):
         html = """
