@@ -36,7 +36,7 @@ export default async function CampaignDetailPage({ params }) {
     <SiteShell campaignCount={campaignCount} visitorWidget={<VisitorWidget initialCounts={counts} />}>
       <section className="detail-shell">
         <Link href="/" className="back-link">
-          ← 탐색으로 돌아가기
+          ← 캠페인 목록으로 돌아가기
         </Link>
 
         <div className="detail-hero">
@@ -46,7 +46,7 @@ export default async function CampaignDetailPage({ params }) {
               <span className={`badge badge-${confidence.tone}`}>{confidence.label}</span>
             </div>
             <h1>{campaign.title}</h1>
-            <p>{campaign.snippet || '원문 상세 페이지에서 미션과 신청 조건을 한 번 더 확인해보세요.'}</p>
+            <p>{campaign.snippet || '원문에서 미션, 혜택, 신청 조건을 마지막으로 확인하세요.'}</p>
 
             <div className="chip-row">
               <span>{formatPlatform(campaign.platform_type)}</span>
@@ -57,11 +57,11 @@ export default async function CampaignDetailPage({ params }) {
 
           <aside className="decision-panel">
             <div>
-              <span>혜택</span>
+              <span>제공 혜택</span>
               <strong>{campaign.benefit_text || '원문에서 확인 필요'}</strong>
             </div>
             <div>
-              <span>모집 마감</span>
+              <span>마감일</span>
               <strong>{formatDeadline(campaign.apply_deadline)}</strong>
             </div>
             <div>
@@ -69,7 +69,7 @@ export default async function CampaignDetailPage({ params }) {
               <strong>{campaign.recruit_count ? `${campaign.recruit_count}명` : '미공개'}</strong>
             </div>
             <a href={campaign.original_url} target="_blank" rel="noreferrer" className="primary-action">
-              원문 열고 지원하기
+              원문에서 조건 확인하기
             </a>
             <SavedCampaignButton campaignId={campaign.id} />
             <ReminderManager campaignId={campaign.id} />
@@ -78,7 +78,7 @@ export default async function CampaignDetailPage({ params }) {
 
         <section className="detail-grid">
           <article className="info-panel">
-            <h2>지원 전에 체크할 정보</h2>
+            <h2>지원 전에 확인할 핵심 정보</h2>
             <dl>
               <div>
                 <dt>출처</dt>
@@ -97,33 +97,33 @@ export default async function CampaignDetailPage({ params }) {
                 <dd>{new Date(campaign.last_seen_at).toLocaleString('ko-KR')}</dd>
               </div>
               <div>
-                <dt>지원 링크</dt>
+                <dt>원문 링크</dt>
                 <dd className="break-anywhere">{campaign.original_url}</dd>
               </div>
             </dl>
           </article>
 
           <article className="info-panel">
-            <h2>신뢰 안내</h2>
+            <h2>이 캠페인을 읽는 기준</h2>
             <ul>
-              <li>검토 필요 배지가 있으면 마감일·혜택을 원문에서 다시 확인하세요.</li>
-              <li>지역이 비어 있으면 실제 방문 가능 여부를 상세 원문에서 꼭 확인하세요.</li>
-              <li>지원 액션은 원문 페이지에서 진행됩니다.</li>
+              <li>검토 필요 배지가 있으면 마감일과 혜택을 원문에서 다시 확인하세요.</li>
+              <li>지역 정보가 비어 있으면 방문 가능 여부를 상세 원문에서 꼭 확인하세요.</li>
+              <li>지원은 언제나 외부 원문 페이지에서 진행돼요.</li>
             </ul>
           </article>
         </section>
 
         <section className="decision-checklist">
           <div className="guidance-card">
-            <strong>혜택이 충분한가?</strong>
+            <strong>혜택이 충분히 보이나요?</strong>
             <span>제공 내역이 불명확하면 원문에서 제공 범위와 추가 비용을 꼭 확인하세요.</span>
           </div>
           <div className="guidance-card">
-            <strong>마감이 임박했는가?</strong>
-            <span>오늘·내일 마감이라면 저장보다 바로 원문 이동이 더 좋아요.</span>
+            <strong>마감이 임박했나요?</strong>
+            <span>오늘·내일 마감이라면 저장보다 바로 원문으로 이동하는 편이 좋아요.</span>
           </div>
           <div className="guidance-card">
-            <strong>방문 가능 지역인가?</strong>
+            <strong>방문 조건이 맞나요?</strong>
             <span>지역 미상일 때는 매장 위치와 예약 조건을 원문에서 다시 확인하세요.</span>
           </div>
         </section>
@@ -132,7 +132,7 @@ export default async function CampaignDetailPage({ params }) {
           <div className="section-headline compact-headline">
             <div>
               <span className="eyebrow">Related</span>
-              <h2>같이 보면 좋은 비슷한 캠페인</h2>
+              <h2>비슷한 캠페인 더 보기</h2>
             </div>
           </div>
           {relatedCampaigns.length ? (
@@ -150,7 +150,7 @@ export default async function CampaignDetailPage({ params }) {
             </div>
           ) : (
             <div className="empty-state compact-empty">
-              <p>비슷한 캠페인을 더 찾는 중이에요.</p>
+              <p>비슷한 캠페인이 아직 없어요. 새로 들어오면 바로 보여드릴게요.</p>
             </div>
           )}
         </section>
