@@ -15,92 +15,93 @@ export default function OpenGraphImage() {
           width: '100%',
           height: '100%',
           display: 'flex',
-          background: '#0f1115',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: '#0d0f14',
           color: '#f8fafc',
           fontFamily: 'Arial, sans-serif',
-          padding: '48px',
-          boxSizing: 'border-box'
+          position: 'relative'
         }}
       >
         <div
           style={{
-            width: '100%',
-            height: '100%',
+            position: 'absolute',
+            inset: '0',
+            background:
+              'radial-gradient(circle at 20% 18%, rgba(111, 127, 248, 0.22), transparent 22%), radial-gradient(circle at 82% 78%, rgba(168, 85, 247, 0.16), transparent 18%)'
+          }}
+        />
+
+        <div
+          style={{
             display: 'flex',
             flexDirection: 'column',
-            justifyContent: 'space-between',
-            borderRadius: '36px',
-            background: 'radial-gradient(circle at top left, rgba(123, 97, 255, 0.28), transparent 28%), linear-gradient(135deg, #151821 0%, #11141c 55%, #171320 100%)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            boxShadow: '0 24px 60px rgba(0,0,0,0.35)',
-            padding: '44px'
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '28px',
+            zIndex: 1
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', maxWidth: '70%' }}>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '132px',
-                  height: '132px',
-                  borderRadius: '28px',
-                  background: 'linear-gradient(135deg, #6f7ff8, #8b5cf6)',
-                  boxShadow: '0 16px 40px rgba(111, 127, 248, 0.35)',
-                  fontSize: '54px',
-                  fontWeight: 800,
-                  letterSpacing: '-0.05em'
-                }}
-              >
-                RK
-              </div>
-              <div style={{ display: 'flex', color: '#a5b4fc', fontSize: '24px', fontWeight: 700 }}>
-                reviewkok
-              </div>
-            </div>
+          <div
+            style={{
+              width: '220px',
+              height: '220px',
+              borderRadius: '52px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'linear-gradient(145deg, #5b6cff 0%, #7c3aed 52%, #d946ef 100%)',
+              boxShadow: '0 28px 80px rgba(109, 79, 255, 0.45)',
+              border: '1px solid rgba(255,255,255,0.14)'
+            }}
+          >
             <div
               style={{
                 display: 'flex',
-                padding: '10px 16px',
-                borderRadius: '999px',
-                background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                color: '#cbd5e1',
-                fontSize: '22px',
-                fontWeight: 700
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '78px',
+                lineHeight: 0.9,
+                letterSpacing: '-0.08em',
+                fontWeight: 800,
+                color: '#ffffff'
               }}
             >
-              campaign finder
+              <span style={{ display: 'flex' }}>RE</span>
+              <span style={{ display: 'flex' }}>KO</span>
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '78%' }}>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '10px'
+            }}
+          >
             <div
               style={{
                 display: 'flex',
-                color: '#e2e8f0',
-                fontSize: '66px',
-                lineHeight: 1.08,
-                letterSpacing: '-0.06em',
+                fontSize: '64px',
                 fontWeight: 800,
-                flexDirection: 'column'
+                letterSpacing: '-0.05em',
+                color: '#f8fafc'
               }}
             >
-              <span style={{ display: 'flex' }}>find better campaigns</span>
-              <span style={{ display: 'flex' }}>for your next experience</span>
+              reviewkok
             </div>
             <div
               style={{
                 display: 'flex',
-                color: '#94a3b8',
                 fontSize: '28px',
-                lineHeight: 1.45
+                color: '#a5b4fc',
+                fontWeight: 600,
+                letterSpacing: '-0.02em'
               }}
             >
-              compare benefits, deadlines, and locations quickly
-              <br />
-              before you move to the original campaign page.
+              campaign finder
             </div>
           </div>
         </div>
