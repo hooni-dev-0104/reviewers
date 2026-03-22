@@ -28,7 +28,7 @@ export default function OpenGraphImage() {
             position: 'absolute',
             inset: '0',
             background:
-              'radial-gradient(circle at 20% 18%, rgba(111, 127, 248, 0.22), transparent 22%), radial-gradient(circle at 82% 78%, rgba(168, 85, 247, 0.16), transparent 18%)'
+              'radial-gradient(circle at 20% 18%, rgba(255, 132, 0, 0.18), transparent 20%), radial-gradient(circle at 82% 78%, rgba(255, 180, 92, 0.12), transparent 18%)'
           }}
         />
 
@@ -38,21 +38,21 @@ export default function OpenGraphImage() {
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '28px',
+            gap: '30px',
             zIndex: 1
           }}
         >
           <div
             style={{
-              width: '220px',
-              height: '220px',
-              borderRadius: '52px',
+              width: '260px',
+              height: '260px',
+              borderRadius: '58px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              background: 'linear-gradient(145deg, #5b6cff 0%, #7c3aed 52%, #d946ef 100%)',
-              boxShadow: '0 28px 80px rgba(109, 79, 255, 0.45)',
-              border: '1px solid rgba(255,255,255,0.14)'
+              background: 'linear-gradient(145deg, #ff9b2f 0%, #ff7a00 55%, #ff5a36 100%)',
+              boxShadow: '0 28px 80px rgba(255, 122, 0, 0.35)',
+              border: '1px solid rgba(255,255,255,0.12)'
             }}
           >
             <div
@@ -61,15 +61,14 @@ export default function OpenGraphImage() {
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '78px',
-                lineHeight: 0.9,
-                letterSpacing: '-0.08em',
                 fontWeight: 800,
-                color: '#ffffff'
+                color: '#ffffff',
+                lineHeight: 0.88,
+                letterSpacing: '-0.06em'
               }}
             >
-              <span style={{ display: 'flex' }}>RE</span>
-              <span style={{ display: 'flex' }}>KO</span>
+              <span style={{ display: 'flex', fontSize: '60px' }}>review</span>
+              <span style={{ display: 'flex', fontSize: '86px' }}>KOK</span>
             </div>
           </div>
 
@@ -78,7 +77,7 @@ export default function OpenGraphImage() {
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              gap: '10px'
+              gap: '12px'
             }}
           >
             <div
@@ -96,12 +95,12 @@ export default function OpenGraphImage() {
               style={{
                 display: 'flex',
                 fontSize: '28px',
-                color: '#a5b4fc',
+                color: '#fbbf24',
                 fontWeight: 600,
-                letterSpacing: '-0.02em'
+                letterSpacing: '-0.01em'
               }}
             >
-              campaign finder
+              choose the experience that fits you best
             </div>
           </div>
         </div>
