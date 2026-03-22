@@ -69,9 +69,9 @@ export function CampaignCard({ campaign }) {
 
 function getConfidenceLabel(label) {
   return {
-    '정보 안정적': '조건 확인됨',
-    '정보 보강 필요': '추가 확인 필요',
-    '검토 필요': '검토 필요'
+    '조건 확인됨': '조건 확인됨',
+    '일부 정보 확인 필요': '일부 정보 확인 필요',
+    '원문 확인 권장': '원문 확인 권장'
   }[label] || label;
 }
 

@@ -6,15 +6,15 @@ export const dynamic = 'force-dynamic';
 
 const TRUST_ITEMS = [
   {
-    title: '정보 안정적',
+    title: '조건 확인됨',
     body: '혜택·마감일·모집 인원 같은 핵심 판단 정보가 충분해 바로 비교할 수 있어요.'
   },
   {
-    title: '정보 보강 필요',
+    title: '일부 정보 확인 필요',
     body: '지원 판단은 가능하지만 일부 항목은 원문에서 한 번 더 확인하는 것이 안전해요.'
   },
   {
-    title: '검토 필요',
+    title: '원문 확인 권장',
     body: '요약만으로는 판단이 어려워 상세 원문 확인이 필요한 캠페인이에요.'
   }
 ];

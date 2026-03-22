@@ -94,12 +94,12 @@ export function getDeadlineState(value) {
 
 export function getConfidence(record) {
   if (record.requires_review) {
-    return { label: '검토 필요', tone: 'warn' };
+    return { label: '원문 확인 권장', tone: 'warn' };
   }
   if (!record.apply_deadline || !record.benefit_text) {
-    return { label: '정보 보강 필요', tone: 'muted' };
+    return { label: '일부 정보 확인 필요', tone: 'muted' };
   }
-  return { label: '정보 안정적', tone: 'ok' };
+  return { label: '조건 확인됨', tone: 'ok' };
 }
 
 export function formatCount(value) {

@@ -24,7 +24,7 @@ const DEADLINE_OPTIONS = [
 const TRUST_OPTIONS = [
   ['all', '모든 상태'],
   ['stable', '조건 확인됨'],
-  ['review', '추가 확인 필요']
+  ['review', '원문 확인 권장']
 ];
 
 const SORT_OPTIONS = [
