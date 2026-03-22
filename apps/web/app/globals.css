@@ -498,6 +498,7 @@ input, select {
 .break-anywhere { overflow-wrap: anywhere; }
 
 .footer-bar { margin-top: 24px; }
+.footer-bar-compact { justify-content: flex-start; }
 .visitor-widget {
   display: inline-flex;
   align-items: center;

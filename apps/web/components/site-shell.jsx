@@ -14,12 +14,11 @@ export function SiteShell({ children, visitorWidget, campaignCount }) {
 
       <main>{children}</main>
 
-      <footer className="footer-bar">
+      <footer className="footer-bar footer-bar-compact">
         <div>
           <strong>{campaignCount.toLocaleString('ko-KR')}</strong>
           <span>노출 중 캠페인</span>
         </div>
-        {visitorWidget}
       </footer>
     </div>
   );
