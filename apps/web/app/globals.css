@@ -143,7 +143,20 @@ a { color: inherit; text-decoration: none; }
 .section-headline h2, .info-panel h2 { margin: 8px 0 0; }
 .compact-headline { margin-bottom: 14px; }
 .filter-shell { border-radius: 24px; padding: 14px; margin-bottom: 16px; display: grid; gap: 10px; background: #ffffff; }
-.search-row { justify-content: space-between; }
+.search-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+.search-submit {
+  min-width: 104px;
+  min-height: 44px;
+  white-space: nowrap;
+  padding-inline: 18px;
+  font-weight: 700;
+  justify-self: end;
+}
 .search-stack { display: grid; gap: 8px; width: 100%; }
 .filter-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; }
 input, select {

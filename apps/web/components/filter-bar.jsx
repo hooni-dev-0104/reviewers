@@ -47,7 +47,7 @@ export function FilterBar({ sources, searchParams }) {
             placeholder="브랜드명, 지역, 혜택으로 검색"
           />
         </div>
-        <button type="submit">결과 보기</button>
+        <button type="submit" className="search-submit">적용</button>
       </div>
 
       <div className="filter-grid">
