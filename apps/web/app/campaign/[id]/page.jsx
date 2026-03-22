@@ -7,7 +7,8 @@ import {
   formatPlatform,
   formatRegion,
   formatSourceName,
-  getConfidence
+  getConfidence,
+  getDeadlineState
 } from '@/lib/format';
 import { getCampaignById, getCampaignCount, getRelatedCampaigns, getVisitorCounts } from '@/lib/supabase';
 import { SiteShell } from '@/components/site-shell';
@@ -28,6 +29,7 @@ export default async function CampaignDetailPage({ params }) {
   }
 
   const confidence = getConfidence(campaign);
+  const deadlineState = getDeadlineState(campaign.apply_deadline);
   const relatedCampaigns = await getRelatedCampaigns(campaign);
   const detailImage = getDetailImageSrc(campaign.thumbnail_url);
 
@@ -50,11 +52,13 @@ export default async function CampaignDetailPage({ params }) {
             <div className="card-meta-row">
               <span className="source-chip">{formatSourceName(campaign.sources)}</span>
               <span className={`badge badge-${confidence.tone}`}>{confidence.label}</span>
+              <span className={`badge badge-${deadlineState.tone}`}>{deadlineState.label}</span>
             </div>
+            <span className="detail-kicker">지원 전에 핵심 조건만 빠르게 확인하세요</span>
             <h1>{campaign.title}</h1>
-            <p>{campaign.snippet || '원문에서 미션, 혜택, 신청 조건을 마지막으로 확인하세요.'}</p>
+            <p>{campaign.snippet || '혜택, 마감, 방문 조건만 먼저 보고 괜찮으면 원문에서 마지막 조건을 확인하세요.'}</p>
 
-            <div className="chip-row">
+            <div className="chip-row detail-subfacts">
               <span>{formatPlatform(campaign.platform_type)}</span>
               <span>{formatCampaignType(campaign.campaign_type)}</span>
               <span>{formatRegion(campaign)}</span>
@@ -68,6 +72,7 @@ export default async function CampaignDetailPage({ params }) {
               <div className="detail-summary-card">
                 <span>마감일</span>
                 <strong>{formatDeadline(campaign.apply_deadline)}</strong>
+                <small>{deadlineState.label}</small>
               </div>
               <div className="detail-summary-card">
                 <span>모집 인원</span>
@@ -77,6 +82,11 @@ export default async function CampaignDetailPage({ params }) {
           </div>
 
           <aside className="decision-panel">
+            <div className="decision-panel-head">
+              <span className="eyebrow">빠른 판단</span>
+              <h2>지원 전에 이것만 보면 돼요</h2>
+              <p>카드에서 괜찮아 보였다면, 여기서 한 번 더 정리해서 보고 원문으로 이동하세요.</p>
+            </div>
             <div>
               <span>제공 혜택</span>
               <strong>{campaign.benefit_text || '원문에서 확인 필요'}</strong>
@@ -89,9 +99,15 @@ export default async function CampaignDetailPage({ params }) {
               <span>모집 인원</span>
               <strong>{campaign.recruit_count ? `${campaign.recruit_count}명` : '미공개'}</strong>
             </div>
-            <a href={campaign.original_url} target="_blank" rel="noreferrer" className="primary-action">
-              원문에서 조건 확인하기
-            </a>
+            <div className="detail-notice">
+              지역, 예약, 추가 비용처럼 빠지기 쉬운 조건은 원문에서 마지막으로 다시 확인하세요.
+            </div>
+            <div className="decision-actions">
+              <a href={campaign.original_url} target="_blank" rel="noreferrer" className="primary-action">
+                원문에서 조건 확인하기
+              </a>
+              <Link href="/#explore" className="secondary-link">다른 캠페인 더 보기</Link>
+            </div>
           </aside>
         </div>
 
@@ -125,7 +141,7 @@ export default async function CampaignDetailPage({ params }) {
           <article className="info-panel">
             <h2>이 캠페인을 읽는 기준</h2>
             <ul>
-              <li>검토 필요 배지가 있으면 마감일과 혜택을 원문에서 다시 확인하세요.</li>
+              <li>원문 확인 권장 배지가 있으면 마감일과 혜택을 원문에서 다시 확인하세요.</li>
               <li>지역 정보가 비어 있으면 방문 가능 여부를 상세 원문에서 꼭 확인하세요.</li>
               <li>지원은 언제나 외부 원문 페이지에서 진행돼요.</li>
             </ul>
@@ -148,10 +164,10 @@ export default async function CampaignDetailPage({ params }) {
         </section>
 
         <section className="related-panel">
-          <div className="section-headline compact-headline">
+          <div className="section-headline compact-headline compact-single">
             <div>
-              <span className="eyebrow">Related</span>
-              <h2>비슷한 캠페인 더 보기</h2>
+              <span className="eyebrow">비슷한 캠페인</span>
+              <h2>같이 볼 만한 캠페인</h2>
             </div>
           </div>
           {relatedCampaigns.length ? (

@@ -54,6 +54,7 @@ a { color: inherit; text-decoration: none; }
 }
 .topbar { position: relative; }
 .topbar p, .footer-bar span, .campaign-card p, .hero-copy p, .section-headline p, .hero-sidecard span, .trust-page p { color: var(--muted); }
+.compact-single { justify-content: flex-start; }
 
 .brand-mark {
   display: inline-flex;
@@ -202,7 +203,7 @@ input, select {
 .campaign-card, .sponsor-slot { min-height: 360px; }
 .campaign-card h3 { font-size: 1.75rem; line-height: 1.2; margin: 0; letter-spacing: -0.03em; }
 .card-link-block { display: grid; gap: 14px; }
-.card-link-block p { min-height: 0; font-size: 1rem; color: rgba(214, 221, 235, 0.76); }
+.card-link-block p { min-height: 0; font-size: 1rem; color: var(--muted); }
 .card-visual {
   position: relative;
   min-height: 168px;
@@ -281,7 +282,7 @@ input, select {
   font-size: 1.08rem;
 }
 .fact-card small {
-  color: rgba(214, 221, 235, 0.72);
+  color: var(--muted);
   font-size: 0.82rem;
 }
 .card-link-block p {
@@ -344,10 +345,11 @@ input, select {
 .detail-hero, .detail-grid, .trust-grid { display: grid; gap: 18px; }
 .detail-hero { grid-template-columns: minmax(0, 1.2fr) 360px; margin-top: 18px; }
 .detail-main-card, .decision-panel, .info-panel { border-radius: 28px; padding: 24px; background: #ffffff; }
+.decision-panel { display: grid; gap: 14px; align-self: start; position: static; }
+.info-panel h2 { margin: 0 0 12px; }
 .detail-grid, .trust-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 18px; }
-.decision-panel { align-self: start; position: sticky; top: 110px; }
 .decision-panel .save-toggle { width: 100%; justify-content: center; }
-.back-link { color: var(--muted); }
+.back-link { color: var(--muted); display: inline-flex; margin-bottom: 16px; }
 .detail-media {
   border-radius: 24px;
   overflow: hidden;
@@ -381,8 +383,19 @@ input, select {
 .detail-main-card > p {
   margin: 0 0 18px;
   font-size: 1.05rem;
-  line-height: 1.65;
-  color: rgba(214, 221, 235, 0.82);
+  line-height: 1.7;
+  color: var(--muted);
+  max-width: 52rem;
+}
+.detail-kicker {
+  display: inline-flex;
+  margin: 4px 0 10px;
+  color: #5e6edb;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+.detail-subfacts {
+  margin-bottom: 4px;
 }
 .detail-summary-grid {
   margin-top: 18px;
@@ -405,6 +418,10 @@ input, select {
 .detail-summary-card strong {
   font-size: 1.08rem;
   line-height: 1.35;
+}
+.detail-summary-card small {
+  color: var(--muted);
+  font-size: 0.82rem;
 }
 .info-panel dl { margin: 0; display: grid; gap: 14px; }
 .info-panel dt { color: var(--muted); font-size: 0.88rem; }
@@ -458,6 +475,43 @@ input, select {
   border-color: rgba(124, 156, 255, 0.45) !important;
 }
 .saved-list, .related-list { display: grid; gap: 14px; }
+.decision-panel-head {
+  display: grid;
+  gap: 8px;
+}
+.decision-panel-head h2 {
+  margin: 0;
+  font-size: 1.45rem;
+  letter-spacing: -0.03em;
+}
+.decision-panel-head p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.decision-actions {
+  display: grid;
+  gap: 10px;
+}
+.secondary-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: #f8fbff;
+  color: var(--text);
+  font-weight: 600;
+}
+.detail-notice {
+  border-radius: 18px;
+  border: 1px solid #e6edf5;
+  background: #f8fbff;
+  padding: 14px 16px;
+  color: var(--muted);
+  line-height: 1.6;
+}
 .saved-row, .related-card {
   display: flex;
   justify-content: space-between;

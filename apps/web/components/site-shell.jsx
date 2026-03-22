@@ -9,7 +9,7 @@ export function SiteShell({ children, visitorWidget, campaignCount }) {
             <Link href="/" className="brand-mark">
               리뷰콕
             </Link>
-            <p>혜택과 마감부터 먼저 보는 체험단 찾기</p>
+            <p>혜택과 마감부터 먼저 보는 체험단</p>
           </div>
           <nav>
             <Link href="/">탐색</Link>

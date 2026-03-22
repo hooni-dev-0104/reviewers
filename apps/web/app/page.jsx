@@ -27,12 +27,11 @@ export default async function HomePage({ searchParams }) {
   return (
     <SiteShell campaignCount={campaignCount} visitorWidget={<VisitorWidget initialCounts={visitorCounts} />}>
       <section id="explore" className="explore-panel">
-        <div className="section-headline">
+        <div className="section-headline compact-single">
           <div>
             <span className="eyebrow">캠페인 찾기</span>
             <h2>필터로 먼저 좁히고, 카드에서 바로 고르기</h2>
           </div>
-          <p>여러 출처의 캠페인을 한 번에 비교할 수 있게 보여줘요.</p>
         </div>
 
         <FilterBar sources={sources} searchParams={resolvedSearchParams} />
