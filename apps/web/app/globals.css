@@ -153,6 +153,23 @@ a { color: inherit; text-decoration: none; }
   gap: 12px;
   align-items: end;
 }
+.search-row-primary { margin-bottom: 2px; }
+.search-stack-grow { min-width: 0; }
+.filter-toggle-row {
+  display: flex;
+  justify-content: flex-start;
+}
+.filter-toggle {
+  min-height: 36px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #f8fbff !important;
+  color: var(--text) !important;
+  border: 1px solid var(--line) !important;
+  box-shadow: none !important;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
 .search-submit {
   min-width: 104px;
   min-height: 44px;
@@ -621,6 +638,8 @@ input, select {
   .decision-panel { padding: 20px; }
   .decision-panel-head h2 { font-size: 1.2rem; }
   .filter-shell { padding: 10px; gap: 8px; border-radius: 18px; }
+  .filter-toggle-row { justify-content: stretch; }
+  .filter-toggle { width: 100%; min-height: 34px; font-size: 0.82rem; }
   .search-row { grid-template-columns: 1fr; gap: 6px; align-items: stretch; }
   .search-submit {
     width: 100%;

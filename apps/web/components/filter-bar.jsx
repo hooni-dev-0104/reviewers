@@ -1,3 +1,7 @@
+'use client';
+
+import { useMemo, useState } from 'react';
+
 const PLATFORM_OPTIONS = [
   ['all', '전체 플랫폼'],
   ['blog', '블로그'],
@@ -27,11 +31,25 @@ const SORT_OPTIONS = [
   ['slots', '모집 많은 순']
 ];
 
-export function FilterBar({ sources, searchParams, regionOptions }) {
+export function FilterBar({ sources, searchParams }) {
+  const hasAdvancedFilters = useMemo(
+    () =>
+      Boolean(
+        (searchParams.platform && searchParams.platform !== 'all') ||
+          (searchParams.type && searchParams.type !== 'all') ||
+          (searchParams.source && searchParams.source !== 'all') ||
+          (searchParams.deadline && searchParams.deadline !== 'all') ||
+          (searchParams.sort && searchParams.sort !== 'deadline') ||
+          searchParams.region
+      ),
+    [searchParams]
+  );
+  const [showAdvanced, setShowAdvanced] = useState(hasAdvancedFilters);
+
   return (
     <form className="filter-shell">
-      <div className="search-row">
-        <div className="search-stack">
+      <div className="search-row search-row-primary">
+        <div className="search-stack search-stack-grow">
           <label htmlFor="search">검색</label>
           <input
             id="search"
@@ -43,30 +61,43 @@ export function FilterBar({ sources, searchParams, regionOptions }) {
         <button type="submit" className="search-submit">검색</button>
       </div>
 
-      <div className="filter-grid">
-        <Select name="platform" label="플랫폼" options={PLATFORM_OPTIONS} value={searchParams.platform || 'all'} />
-        <Select name="type" label="유형" options={TYPE_OPTIONS} value={searchParams.type || 'all'} />
-        <Select
-          name="source"
-          label="출처"
-          options={[
-            ['all', '전체 출처'],
-            ...sources.map((source) => [source.slug, source.name])
-          ]}
-          value={searchParams.source || 'all'}
-        />
-        <Select name="deadline" label="마감" options={DEADLINE_OPTIONS} value={searchParams.deadline || 'all'} />
-        <Select name="sort" label="정렬" options={SORT_OPTIONS} value={searchParams.sort || 'deadline'} />
-        <div className="search-stack">
-          <label htmlFor="region">지역</label>
-          <input
-            id="region"
-            name="region"
-            defaultValue={searchParams.region || ''}
-            placeholder="예: 서울, 강남, 수원"
-          />
-        </div>
+      <div className="filter-toggle-row">
+        <button
+          type="button"
+          className="filter-toggle"
+          aria-expanded={showAdvanced}
+          onClick={() => setShowAdvanced((value) => !value)}
+        >
+          {showAdvanced ? '상세 필터 닫기' : '상세 필터 열기'}
+        </button>
       </div>
+
+      {showAdvanced ? (
+        <div className="filter-grid">
+          <Select name="platform" label="플랫폼" options={PLATFORM_OPTIONS} value={searchParams.platform || 'all'} />
+          <Select name="type" label="유형" options={TYPE_OPTIONS} value={searchParams.type || 'all'} />
+          <Select
+            name="source"
+            label="출처"
+            options={[
+              ['all', '전체 출처'],
+              ...sources.map((source) => [source.slug, source.name])
+            ]}
+            value={searchParams.source || 'all'}
+          />
+          <Select name="deadline" label="마감" options={DEADLINE_OPTIONS} value={searchParams.deadline || 'all'} />
+          <Select name="sort" label="정렬" options={SORT_OPTIONS} value={searchParams.sort || 'deadline'} />
+          <div className="search-stack">
+            <label htmlFor="region">지역</label>
+            <input
+              id="region"
+              name="region"
+              defaultValue={searchParams.region || ''}
+              placeholder="예: 서울, 강남, 수원"
+            />
+          </div>
+        </div>
+      ) : null}
     </form>
   );
 }
