@@ -9,11 +9,10 @@ export function SiteShell({ children, visitorWidget, campaignCount }) {
             <Link href="/" className="brand-mark">
               리뷰콕
             </Link>
-            <p>혜택과 마감부터 먼저 보는 체험단</p>
+            <p>혜택과 마감부터 보는 체험단</p>
           </div>
           <nav>
             <Link href="/">탐색</Link>
-            <Link href="/trust">확인 기준</Link>
           </nav>
         </header>
       </div>
@@ -23,7 +22,7 @@ export function SiteShell({ children, visitorWidget, campaignCount }) {
       <footer className="footer-bar">
         <div>
           <strong>{campaignCount.toLocaleString('ko-KR')}</strong>
-          <span>현재 노출 중 캠페인</span>
+          <span>노출 중 캠페인</span>
         </div>
         {visitorWidget}
       </footer>

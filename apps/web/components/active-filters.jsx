@@ -28,11 +28,7 @@ const LABELS = {
     deadline: '마감순',
     newest: '최근 업데이트',
     slots: '모집 많은 순',
-    trusted: '확인 우선'
-  },
-  trust: {
-    stable: '조건 확인됨',
-    review: '원문 확인 권장'
+    trusted: '우선 검토'
   }
 };
 
@@ -43,7 +39,6 @@ export function ActiveFilters({ searchParams = {}, resultCount }) {
     searchParams.type && searchParams.type !== 'all' ? ['유형', LABELS.type[searchParams.type] || searchParams.type] : null,
     searchParams.source && searchParams.source !== 'all' ? ['출처', LABELS.source[searchParams.source] || searchParams.source] : null,
     searchParams.deadline && searchParams.deadline !== 'all' ? ['마감', LABELS.deadline[searchParams.deadline] || searchParams.deadline] : null,
-    searchParams.trust && searchParams.trust !== 'all' ? ['확인 상태', LABELS.trust[searchParams.trust] || searchParams.trust] : null,
     searchParams.sort && searchParams.sort !== 'deadline' ? ['정렬', LABELS.sort[searchParams.sort] || searchParams.sort] : null,
     searchParams.region ? ['지역', searchParams.region] : null
   ].filter(Boolean);
@@ -52,10 +47,10 @@ export function ActiveFilters({ searchParams = {}, resultCount }) {
     <div className="results-toolbar">
       <div>
         <strong>{resultCount.toLocaleString('ko-KR')}개</strong>
-        <span>지금 조건에 맞는 활성 캠페인</span>
+        <span>지금 조건에 맞는 캠페인</span>
       </div>
       <div className="active-chip-row">
-        {entries.length ? entries.map(([label, value]) => <span key={`${label}-${value}`} className="active-filter-chip">{label} · {value}</span>) : <span className="active-filter-empty">조건을 조금만 넓히면 더 많은 캠페인이 보여요.</span>}
+        {entries.length ? entries.map(([label, value]) => <span key={`${label}-${value}`} className="active-filter-chip">{label} · {value}</span>) : <span className="active-filter-empty">조건을 넓히면 더 많이 보여요.</span>}
         {entries.length ? <Link className="reset-link" href="/">초기화</Link> : null}
       </div>
     </div>

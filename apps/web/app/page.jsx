@@ -31,8 +31,8 @@ export default async function HomePage({ searchParams }) {
       <section id="explore" className="explore-panel">
         <div className="section-headline compact-single">
           <div>
-            <span className="eyebrow">캠페인 찾기</span>
-            <h2>필터로 먼저 좁히고, 카드에서 바로 고르기</h2>
+            <span className="eyebrow">캠페인 탐색</span>
+            <h2>필터로 좁히고, 카드에서 바로 보기</h2>
           </div>
         </div>
 
