@@ -8,8 +8,8 @@ export function SiteShell({ children, visitorWidget, campaignCount }) {
           <Link href="/" className="brand-mark">
             리뷰콕
           </Link>
+          {visitorWidget}
         </header>
-        {visitorWidget ? <div className="topbar-meta">{visitorWidget}</div> : null}
       </div>
 
       <main>{children}</main>
