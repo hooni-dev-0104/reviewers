@@ -52,20 +52,20 @@ export function ReminderManager({ campaignId }) {
   }
 
   if (loading) {
-    return <div className="reminder-box"><span>리마인드 확인 중…</span></div>;
+    return <div className="reminder-box"><span>마감 리마인드를 확인하는 중…</span></div>;
   }
 
   return (
     <div className="reminder-box">
       <strong>마감 리마인드</strong>
-      <span>{session ? '저장된 계정 기준으로 알림 시점을 관리해요.' : '로그인하면 마감 리마인드를 저장할 수 있어요.'}</span>
+      <span>{session ? '로그인한 계정에 맞춰 마감 알림 시점을 저장해요.' : '로그인하면 마감 리마인드를 저장할 수 있어요.'}</span>
       <div className="reminder-options">
         {OPTIONS.map((hours) => (
           <button key={hours} type="button" className={value === hours ? 'reminder-active' : ''} onClick={() => saveReminder(hours)} disabled={pending}>
             {hours}시간 전
           </button>
         ))}
-        {value ? <button type="button" onClick={clearReminder} disabled={pending}>해제</button> : null}
+        {value ? <button type="button" onClick={clearReminder} disabled={pending}>리마인드 해제</button> : null}
       </div>
     </div>
   );
