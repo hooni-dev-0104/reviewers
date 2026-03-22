@@ -30,10 +30,6 @@ export default async function HomePage({ searchParams }) {
             <br />
             혜택과 마감부터 바로 보자.
           </h1>
-          <p>
-            레뷰·리뷰노트·포블로그·디너의여왕 데이터를 모아 혜택, 마감, 지역, 출처 순으로 먼저 확인할 수
-            있게 정리했어요.
-          </p>
           <div className="hero-actions">
             <Link href="#explore">결과 보기</Link>
             <Link href="/trust" className="ghost-link">
