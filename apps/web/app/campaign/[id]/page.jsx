@@ -31,6 +31,7 @@ export default async function CampaignDetailPage({ params }) {
 
   const confidence = getConfidence(campaign);
   const relatedCampaigns = await getRelatedCampaigns(campaign);
+  const detailImage = getDetailImageSrc(campaign.thumbnail_url);
 
   return (
     <SiteShell campaignCount={campaignCount} visitorWidget={<VisitorWidget initialCounts={counts} />}>
@@ -41,6 +42,13 @@ export default async function CampaignDetailPage({ params }) {
 
         <div className="detail-hero">
           <div className="detail-main-card">
+            <div className="detail-media">
+              {detailImage ? (
+                <img src={detailImage} alt="" className="detail-image" />
+              ) : (
+                <div className="detail-image-fallback">{formatPlatform(campaign.platform_type)}</div>
+              )}
+            </div>
             <div className="card-meta-row">
               <span className="source-chip">{formatSourceName(campaign.sources)}</span>
               <span className={`badge badge-${confidence.tone}`}>{confidence.label}</span>
@@ -52,6 +60,21 @@ export default async function CampaignDetailPage({ params }) {
               <span>{formatPlatform(campaign.platform_type)}</span>
               <span>{formatCampaignType(campaign.campaign_type)}</span>
               <span>{formatRegion(campaign)}</span>
+            </div>
+
+            <div className="detail-summary-grid">
+              <div className="detail-summary-card">
+                <span>혜택</span>
+                <strong>{campaign.benefit_text || '원문에서 확인 필요'}</strong>
+              </div>
+              <div className="detail-summary-card">
+                <span>마감일</span>
+                <strong>{formatDeadline(campaign.apply_deadline)}</strong>
+              </div>
+              <div className="detail-summary-card">
+                <span>모집 인원</span>
+                <strong>{campaign.recruit_count ? `${campaign.recruit_count}명` : '미공개'}</strong>
+              </div>
             </div>
           </div>
 
@@ -157,4 +180,16 @@ export default async function CampaignDetailPage({ params }) {
       </section>
     </SiteShell>
   );
+}
+
+function getDetailImageSrc(value) {
+  if (!value) {
+    return null;
+  }
+
+  if (value.includes('dq-files.gcdn.ntruss.com')) {
+    return `/api/image?src=${encodeURIComponent(value)}`;
+  }
+
+  return value;
 }
