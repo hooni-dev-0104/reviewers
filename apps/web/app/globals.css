@@ -162,7 +162,7 @@ a { color: inherit; text-decoration: none; }
   justify-self: end;
 }
 .search-stack { display: grid; gap: 8px; width: 100%; }
-.filter-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; }
+.filter-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
 input, select {
   width: 100%;
   border-radius: 16px;
@@ -186,9 +186,9 @@ input, select {
 .results-toolbar {
   display: flex;
   justify-content: space-between;
-  gap: 18px;
+  gap: 14px;
   align-items: start;
-  margin: 18px 0 20px;
+  margin: 14px 0 18px;
 }
 .load-more-row {
   display: flex;
@@ -207,14 +207,14 @@ input, select {
   display: flex;
   flex-wrap: wrap;
   justify-content: end;
-  gap: 10px;
+  gap: 8px;
 }
 .active-filter-chip, .active-filter-empty, .reset-link {
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
-  padding: 8px 12px;
-  font-size: 0.84rem;
+  padding: 7px 10px;
+  font-size: 0.8rem;
   border: 1px solid var(--line);
   background: #ffffff;
 }
@@ -615,6 +615,8 @@ input, select {
   .topbar-shell { padding-top: 8px; }
   .topbar, .footer-bar { flex-direction: column; align-items: start; gap: 12px; }
   .topbar nav, .card-actions, .hero-actions, .stats-strip, .account-group, .reminder-options { flex-wrap: wrap; }
+  .brand-mark { font-size: 1.08rem; }
+  .topbar p { font-size: 0.9rem; }
   .decision-panel { padding: 20px; }
   .decision-panel-head h2 { font-size: 1.2rem; }
   .search-row { flex-direction: column; align-items: stretch; }
