@@ -112,7 +112,7 @@ function applyCampaignFilters(params, searchParams) {
   }
 
   if (andConditions.length === 1) {
-    params.set('or', andConditions[0].slice(3, -1));
+    params.set('or', andConditions[0].slice(2));
   }
 
   if (andConditions.length > 1) {
