@@ -24,6 +24,8 @@ export async function GET(request) {
     type: searchParams.get('type') || 'all',
     source: searchParams.get('source') || 'all',
     region: searchParams.get('region') || '',
+    regionPrimary: searchParams.get('regionPrimary') || 'all',
+    regionSecondary: searchParams.get('regionSecondary') || 'all',
     deadline: searchParams.get('deadline') || 'all',
     trust: searchParams.get('trust') || 'all',
     sort: searchParams.get('sort') || 'deadline',

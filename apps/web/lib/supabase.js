@@ -66,7 +66,7 @@ async function supabaseFetch(path, init = {}, { service = false } = {}) {
 }
 
 function applyCampaignFilters(params, searchParams, { forCount = false } = {}) {
-  const { search, platform, type, source, region, deadline, trust, sort = 'deadline', limit = 24, offset = 0 } = searchParams;
+  const { search, platform, type, source, region, regionPrimary, regionSecondary, deadline, trust, sort = 'deadline', limit = 24, offset = 0 } = searchParams;
   const andConditions = [];
 
   params.set('select', CAMPAIGN_SELECT);
@@ -91,7 +91,12 @@ function applyCampaignFilters(params, searchParams, { forCount = false } = {}) {
   if (source && source !== 'all') {
     params.set('sources.slug', `eq.${source}`);
   }
-  if (region && region !== 'all') {
+  if (regionPrimary && regionPrimary !== 'all') {
+    params.set('region_primary_name', `eq.${regionPrimary}`);
+  }
+  if (regionSecondary && regionSecondary !== 'all') {
+    params.set('region_secondary_name', `eq.${regionSecondary}`);
+  } else if (region && region !== 'all') {
     andConditions.push(`or(region_primary_name.ilike.*${region}*,region_secondary_name.ilike.*${region}*)`);
   }
   if (trust === 'stable') {
@@ -197,6 +202,37 @@ export async function getRelatedCampaigns(campaign, limit = 4) {
   const rows = await response.json();
   return rows.filter((row) => row.id !== campaign.id).slice(0, limit);
 }
+
+
+export const getRegionHierarchy = cache(async function getRegionHierarchy() {
+  const params = new URLSearchParams({
+    select: 'region_primary_name,region_secondary_name',
+    status: 'eq.active',
+    order: 'region_primary_name.asc,region_secondary_name.asc',
+    limit: '5000'
+  });
+  const response = await supabaseFetch(`/campaigns?${params.toString()}`);
+  const rows = await response.json();
+  const hierarchy = {};
+
+  for (const row of rows) {
+    const primary = row.region_primary_name;
+    const secondary = row.region_secondary_name;
+    if (!primary) {
+      continue;
+    }
+    hierarchy[primary] ||= new Set();
+    if (secondary) {
+      hierarchy[primary].add(secondary);
+    }
+  }
+
+  return Object.fromEntries(
+    Object.entries(hierarchy)
+      .sort(([a], [b]) => a.localeCompare(b, 'ko'))
+      .map(([primary, values]) => [primary, [...values].sort((a, b) => a.localeCompare(b, 'ko'))])
+  );
+});
 
 export const getSources = cache(async function getSources() {
   const params = new URLSearchParams({

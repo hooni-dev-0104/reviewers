@@ -1,3 +1,7 @@
+'use client';
+
+import { useMemo, useState } from 'react';
+
 const PLATFORM_OPTIONS = [
   ['all', '전체 플랫폼'],
   ['blog', '블로그'],
@@ -27,7 +31,19 @@ const SORT_OPTIONS = [
   ['slots', '모집 많은 순']
 ];
 
-export function FilterBar({ sources, searchParams }) {
+export function FilterBar({ sources, searchParams, regionOptions }) {
+  const initialPrimary = searchParams.regionPrimary || 'all';
+  const initialSecondary = searchParams.regionSecondary || 'all';
+  const [regionPrimary, setRegionPrimary] = useState(initialPrimary);
+  const [regionSecondary, setRegionSecondary] = useState(initialSecondary);
+
+  const secondaryOptions = useMemo(() => {
+    if (!regionPrimary || regionPrimary === 'all') {
+      return [];
+    }
+    return regionOptions[regionPrimary] || [];
+  }, [regionOptions, regionPrimary]);
+
   return (
     <form className="filter-shell">
       <div className="search-row">
@@ -57,20 +73,40 @@ export function FilterBar({ sources, searchParams }) {
         />
         <Select name="deadline" label="마감" options={DEADLINE_OPTIONS} value={searchParams.deadline || 'all'} />
         <Select name="sort" label="정렬" options={SORT_OPTIONS} value={searchParams.sort || 'deadline'} />
-        <div className="search-stack">
-          <label htmlFor="region">지역</label>
-          <input id="region" name="region" defaultValue={searchParams.region || ''} placeholder="예: 서울, 경기, 강남" />
-        </div>
+        <Select
+          name="regionPrimary"
+          label="광역시·도"
+          options={[
+            ['all', '전체 지역'],
+            ...Object.keys(regionOptions).map((value) => [value, value])
+          ]}
+          value={regionPrimary}
+          onChange={(event) => {
+            setRegionPrimary(event.target.value);
+            setRegionSecondary('all');
+          }}
+        />
+        <Select
+          name="regionSecondary"
+          label="시·구"
+          options={[
+            ['all', regionPrimary && regionPrimary !== 'all' ? '전체 시·구' : '지역 먼저 선택'] ,
+            ...secondaryOptions.map((value) => [value, value])
+          ]}
+          value={regionSecondary}
+          disabled={!regionPrimary || regionPrimary === 'all' || secondaryOptions.length === 0}
+          onChange={(event) => setRegionSecondary(event.target.value)}
+        />
       </div>
     </form>
   );
 }
 
-function Select({ name, label, options, value }) {
+function Select({ name, label, options, value, onChange, disabled = false }) {
   return (
     <div className="search-stack">
       <label htmlFor={name}>{label}</label>
-      <select id={name} name={name} defaultValue={value}>
+      <select id={name} name={name} value={value} onChange={onChange} disabled={disabled}>
         {options.map(([optionValue, optionLabel]) => (
           <option key={optionValue} value={optionValue}>
             {optionLabel}

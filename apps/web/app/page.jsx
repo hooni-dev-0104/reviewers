@@ -4,7 +4,7 @@ import { CampaignFeed } from '@/components/campaign-feed';
 import { FilterBar } from '@/components/filter-bar';
 import { SiteShell } from '@/components/site-shell';
 import { VisitorWidget } from '@/components/visitor-widget';
-import { getCampaignCount, getCampaignSearchCount, getCampaigns, getSources, getVisitorCounts } from '@/lib/supabase';
+import { getCampaignCount, getCampaignSearchCount, getCampaigns, getRegionHierarchy, getSources, getVisitorCounts } from '@/lib/supabase';
 import { getBalancedHomepageCampaigns, isDefaultBrowse } from '@/lib/campaign-feed';
 import { getActiveSponsor } from '@/lib/sponsor';
 
@@ -17,9 +17,10 @@ export default async function HomePage({ searchParams }) {
     ? getBalancedHomepageCampaigns({ limit: 24 })
     : getCampaigns({ ...resolvedSearchParams, limit: 24, offset: 0 });
 
-  const [campaigns, sources, visitorCounts, campaignCount, resultCount, sponsor] = await Promise.all([
+  const [campaigns, sources, regionOptions, visitorCounts, campaignCount, resultCount, sponsor] = await Promise.all([
     campaignsPromise,
     getSources(),
+    getRegionHierarchy(),
     getVisitorCounts(),
     getCampaignCount(),
     useBalancedFeed ? getCampaignCount() : getCampaignSearchCount(resolvedSearchParams),
@@ -36,7 +37,7 @@ export default async function HomePage({ searchParams }) {
           </div>
         </div>
 
-        <FilterBar sources={sources} searchParams={resolvedSearchParams} />
+        <FilterBar sources={sources} searchParams={resolvedSearchParams} regionOptions={regionOptions} />
         <CampaignFeed
           initialCampaigns={campaigns}
           sponsor={sponsor}

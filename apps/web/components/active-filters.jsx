@@ -40,7 +40,7 @@ export function ActiveFilters({ searchParams = {}, resultCount }) {
     searchParams.source && searchParams.source !== 'all' ? ['출처', LABELS.source[searchParams.source] || searchParams.source] : null,
     searchParams.deadline && searchParams.deadline !== 'all' ? ['마감', LABELS.deadline[searchParams.deadline] || searchParams.deadline] : null,
     searchParams.sort && searchParams.sort !== 'deadline' ? ['정렬', LABELS.sort[searchParams.sort] || searchParams.sort] : null,
-    searchParams.region ? ['지역', searchParams.region] : null
+    searchParams.regionPrimary && searchParams.regionPrimary !== 'all' ? ['지역', searchParams.regionSecondary && searchParams.regionSecondary !== 'all' ? `${searchParams.regionPrimary} · ${searchParams.regionSecondary}` : searchParams.regionPrimary] : (searchParams.region ? ['지역', searchParams.region] : null)
   ].filter(Boolean);
 
   return (
