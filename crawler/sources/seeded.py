@@ -24,6 +24,8 @@ SEEDED_SOURCES: dict[str, SourceDefinition] = {
     "dinnerqueen": SourceDefinition("dinnerqueen", "디너의여왕", "https://dinnerqueen.net", "mixed", "static"),
     "mrblog": SourceDefinition("mrblog", "미블", "https://www.mrblog.net", "mixed", "dynamic"),
     "4blog": SourceDefinition("4blog", "포블로그", "https://4blog.net", "blog", "static"),
+    "seouloppa": SourceDefinition("seouloppa", "서울오빠", "https://www.seoulouba.co.kr", "mixed", "static"),
+    "gangnammatzip": SourceDefinition("gangnammatzip", "강남맛집", "https://xn--939au0g4vj8sq.net", "mixed", "static"),
 }
 
 FOUR_BLOG_PLATFORM_MAP = {
@@ -102,6 +104,34 @@ REVU_MEDIA_MAP = {
     "clip": "instagram",
 }
 
+
+
+
+SEOULOUPPA_PLATFORM_MAP = {
+    "thum_ch_blog.png": "blog",
+    "thum_ch_shop.png": "purchase",
+    "thum_ch_store.png": "purchase",
+    "thum_ch_insta.png": "instagram",
+    "thum_ch_youtube.png": "youtube",
+}
+
+SEOULOUPPA_TYPE_MAP = {
+    "배송형": "delivery",
+    "구매평": "purchase",
+    "기자단": "content",
+    "서비스": "content",
+    "방문형": "visit",
+}
+
+GANGNAMMATZIP_TYPE_MAP = {
+    "배송형": "delivery",
+    "기자단": "content",
+    "방문형": "visit",
+    "구매평": "purchase",
+    "클립": "instagram",
+}
+
+SEOULOUPPA_TITLE_TAGS = {"배송형", "구매평", "기자단", "방문형", "클립"}
 
 def list_seeded_sources() -> list[SourceDefinition]:
     return [SEEDED_SOURCES[key] for key in sorted(SEEDED_SOURCES.keys())]
@@ -637,6 +667,52 @@ class MrBlogSourceAdapter(PlaceholderSourceAdapter):
         return parse_mrblog_listing(listing_html, source_id=self.definition.source_id)
 
 
+class SeoulOppaSourceAdapter(PlaceholderSourceAdapter):
+    listing_url = "https://www.seoulouba.co.kr/campaign/?qq=popular"
+
+    def __init__(self, definition: SourceDefinition, detail_limit: int | None = 80):
+        super().__init__(definition)
+        self.detail_limit = detail_limit
+
+    def fetch(self) -> list[dict]:
+        listing_html = fetch_text_url(self.listing_url)
+        listing_items = parse_seouloppa_listing(listing_html, source_id=self.definition.source_id)
+        selected_items = listing_items if self.detail_limit is None else listing_items[: self.detail_limit]
+        items = []
+        for item in selected_items:
+            try:
+                detail_html = fetch_text_url(item["original_url"])
+            except Exception:
+                detail_html = None
+            if detail_html:
+                item = enrich_seouloppa_detail(item, detail_html)
+            items.append(item)
+        return items
+
+
+class GangnamMatzipSourceAdapter(PlaceholderSourceAdapter):
+    listing_url = "https://xn--939au0g4vj8sq.net/"
+
+    def __init__(self, definition: SourceDefinition, detail_limit: int | None = None):
+        super().__init__(definition)
+        self.detail_limit = detail_limit
+
+    def fetch(self) -> list[dict]:
+        listing_html = fetch_text_url(self.listing_url)
+        listing_items = parse_gangnammatzip_listing(listing_html, source_id=self.definition.source_id)
+        selected_items = listing_items if self.detail_limit is None else listing_items[: self.detail_limit]
+        items = []
+        for item in selected_items:
+            try:
+                detail_html = fetch_text_url(item["original_url"])
+            except Exception:
+                detail_html = None
+            if detail_html:
+                item = enrich_gangnammatzip_detail(item, detail_html)
+            items.append(item)
+        return items
+
+
 class RevuSourceAdapter(PlaceholderSourceAdapter):
     def __init__(self, definition: SourceDefinition, page_limit: int = 100, page_size: int = 35):
         super().__init__(definition)
@@ -698,6 +774,192 @@ class RevuSourceAdapter(PlaceholderSourceAdapter):
                 break
         return items
 
+
+
+
+def _parse_yy_mm_dd_range(value: str | None) -> tuple[str | None, str | None]:
+    if not value:
+        return None, None
+    try:
+        match = re.search(
+            r"(\d{2})[-.](\d{2})[-.](\d{2})\s*[~–]\s*(\d{2})[-.](\d{2})[-.](\d{2})",
+            value,
+        )
+        if not match:
+            return None, None
+        sy, sm, sd, ey, em, ed = [int(part) for part in match.groups()]
+        return date(2000 + sy, sm, sd).isoformat(), date(2000 + ey, em, ed).isoformat()
+    except Exception:
+        return None, None
+
+
+def _clean_bracket_title(title: str) -> tuple[str, str | None, str | None]:
+    annotations, cleaned = _split_4blog_title_annotations(title)
+    region_primary = None
+    region_secondary = None
+    if annotations:
+        token = annotations[0]
+        if '/' in token:
+            left, right = [part.strip() for part in token.split('/', 1)]
+            region_primary = left or None
+            region_secondary = right or None
+        else:
+            region_primary = token or None
+    return cleaned, region_primary, region_secondary
+
+
+def _clean_seouloppa_title(title: str) -> tuple[str, str | None, str | None]:
+    annotations, cleaned = _split_4blog_title_annotations(title)
+    region_primary = None
+    region_secondary = None
+
+    for token in annotations:
+        if token in SEOULOUPPA_TITLE_TAGS:
+            continue
+        if "/" in token:
+            left, right = [part.strip() for part in token.split("/", 1)]
+            region_primary = left or None
+            region_secondary = right or None
+        else:
+            region_primary = token or None
+        break
+
+    return cleaned, region_primary, region_secondary
+
+
+def parse_seouloppa_listing(html: str, source_id: str | None = None) -> list[dict]:
+    items = []
+    pattern = re.compile(
+        r'<li class="campaign_content">.*?'
+        r'<a href="(https://www\.seoulouba\.co\.kr/campaign/\?c=(\d+))"[^>]*class="tum_img">.*?'
+        r'<img src="([^"]+)".*?'
+        r'<div class="icon_tag">(.*?)</div>.*?'
+        r'<strong class="s_campaign_title">(.*?)</strong>.*?'
+        r'<div class="t_basic">\s*<span class="basic_blue">(.*?)</span>.*?'
+        r'<div class="d_day"><span>\s*(D(?:-\d+|\-day|day))\s*</span></div>.*?'
+        r'신청\s*([\d,]+)\s*<span class="span_gray">/ 모집\s*([\d,]+)</span>',
+        re.S | re.I,
+    )
+    for match in pattern.finditer(html):
+        original_url, campaign_id, image_url, icon_block, raw_title, basic_text, d_day, applied, recruit = match.groups()
+        title, region_primary, region_secondary = _clean_seouloppa_title(html_lib.unescape(_strip_tags(raw_title)))
+        platform_type = 'blog'
+        for token, mapped in SEOULOUPPA_PLATFORM_MAP.items():
+            if token in icon_block:
+                platform_type = mapped
+                break
+        type_matches = re.findall(r'<span>([^<]+)</span>', icon_block)
+        campaign_type = 'visit'
+        benefit_text = html_lib.unescape(_strip_tags(basic_text))
+        for label in type_matches:
+            cleaned = html_lib.unescape(label).strip()
+            if cleaned in SEOULOUPPA_TYPE_MAP:
+                campaign_type = SEOULOUPPA_TYPE_MAP[cleaned]
+            elif cleaned.endswith('P') and not benefit_text:
+                benefit_text = cleaned
+        raw_status = 'active'
+        if d_day.lower() == 'd-day':
+            raw_status = 'active'
+        items.append({
+            'source_id': source_id,
+            'campaign_id': campaign_id,
+            'title': title,
+            'original_url': original_url,
+            'platform_type': 'blog' if platform_type == 'purchase' else platform_type,
+            'campaign_type': campaign_type,
+            'category_name': None,
+            'subcategory_name': type_matches[0].strip() if type_matches else None,
+            'region_primary_name': region_primary,
+            'region_secondary_name': region_secondary,
+            'benefit_text': benefit_text,
+            'recruit_count': int(recruit.replace(',', '')) if recruit else None,
+            'apply_deadline': None,
+            'published_at': None,
+            'thumbnail_url': image_url,
+            'snippet': benefit_text,
+            'raw_status': raw_status,
+            'status': 'active',
+            'requires_review': False,
+        })
+    return items
+
+
+def enrich_seouloppa_detail(item: dict, detail_html: str) -> dict:
+    enriched = dict(item)
+    benefit_block = _extract_first(r'<dt class="cam_info_con_dt lititle">제공내역</dt>\s*<dd class="cam_info_con_dd">(.*?)</dd>', detail_html, re.S)
+    if benefit_block:
+        enriched['benefit_text'] = _strip_tags(benefit_block)
+        enriched['snippet'] = _strip_tags(benefit_block)
+    period = _extract_first(r'<strong[^>]*>\s*크리에이터 모집\s*</strong>\s*<span class="period on">([^<]+)</span>', detail_html, re.S)
+    published_at, apply_deadline = _parse_yy_mm_dd_range(period)
+    if published_at:
+        enriched['published_at'] = published_at
+    if apply_deadline:
+        enriched['apply_deadline'] = apply_deadline
+    site_url = _extract_first(r'<dt class="cam_info_con_dt lititle">사이트 URL</dt>\s*<dd class="cam_info_con_dd">\s*<a href="([^"]+)"', detail_html, re.S)
+    if site_url:
+        enriched['raw_payload'] = {'site_url': site_url}
+    return enriched
+
+
+def parse_gangnammatzip_listing(html: str, source_id: str | None = None) -> list[dict]:
+    items = []
+    pattern = re.compile(
+        r"<li class='list_item[^']*'.*?"
+        r"<a href='(/cp/\?id=(\d+))'[^>]*><img src='([^']+)'[^>]*>.*?"
+        r"<span class='label'><em class='([^']+)'>([^<]+)</em><em class='type'>([^<]+)</em><span class='dday'><em class='day_c'>([^<]+)</em></span></span>.*?"
+        r"<dt class='tit'><a href='/cp/\?id=\d+'>([^<]+)</a></dt>.*?"
+        r"<dd class='sub_tit'>([^<]+)</dd>.*?"
+        r"신청\s*([\d,]+)</b> / 모집\s*([\d,]+)",
+        re.S,
+    )
+    for match in pattern.finditer(html):
+        relative_url, campaign_id, image_url, platform_class, platform_label, type_label, dday_label, raw_title, subtitle, applied, recruit = match.groups()
+        title, region_primary, region_secondary = _clean_bracket_title(html_lib.unescape(raw_title.strip()))
+        platform_type = {'blog': 'blog', 'insta': 'instagram', 'youtube': 'youtube', 'clip': 'instagram'}.get(platform_class, 'blog')
+        campaign_type = GANGNAMMATZIP_TYPE_MAP.get(type_label.strip(), 'visit')
+        items.append({
+            'source_id': source_id,
+            'campaign_id': campaign_id,
+            'title': title,
+            'original_url': f'https://xn--939au0g4vj8sq.net{relative_url}',
+            'platform_type': platform_type,
+            'campaign_type': campaign_type if campaign_type in {'visit','delivery','purchase','content'} else 'etc',
+            'category_name': None,
+            'subcategory_name': type_label.strip(),
+            'region_primary_name': region_primary,
+            'region_secondary_name': region_secondary,
+            'benefit_text': html_lib.unescape(subtitle.strip()),
+            'recruit_count': int(recruit.replace(',', '')) if recruit else None,
+            'apply_deadline': None,
+            'published_at': None,
+            'thumbnail_url': image_url if image_url.startswith('http') else f'https:{image_url}',
+            'snippet': html_lib.unescape(subtitle.strip()),
+            'raw_status': 'active',
+            'status': 'active',
+            'requires_review': False,
+        })
+    return items
+
+
+def enrich_gangnammatzip_detail(item: dict, detail_html: str) -> dict:
+    enriched = dict(item)
+    benefit = _extract_first(r'<dt>제공내역</dt>\s*<dd[^>]*>\s*(.*?)\s*(?:<p|</dd>)', detail_html, re.S)
+    if benefit:
+        enriched['benefit_text'] = _strip_tags(benefit)
+        enriched['snippet'] = _strip_tags(benefit)
+    period = _extract_first(r'<dt>신청기간</dt>\s*<dd>\s*([0-9.]+\s*[~–-]\s*[0-9.]+)', detail_html, re.S)
+    if period:
+        current_year = date.today().year
+        try:
+            left, right = [part.strip() for part in re.split(r'[~–-]', period, maxsplit=1)]
+            lm, ld = [int(part) for part in left.split('.') if part]
+            rm, rd = [int(part) for part in right.split('.') if part]
+            enriched['published_at'] = date(current_year, lm, ld).isoformat()
+            enriched['apply_deadline'] = date(current_year, rm, rd).isoformat()
+        except Exception:
+            pass
+    return enriched
 
 def _strip_tags(value: str) -> str:
     value = re.sub(r"<br\s*/?>", "\n", value, flags=re.I)
@@ -850,4 +1112,8 @@ def get_adapter(source_slug: str, source_file: str | None = None, report_mode: b
         return FourBlogSourceAdapter(definition, page_limit=2 if report_mode else 50)
     if source_slug == "dinnerqueen":
         return DinnerQueenSourceAdapter(definition, page_limit=1 if report_mode else 20, detail_limit=12 if report_mode else None)
+    if source_slug == "seouloppa":
+        return SeoulOppaSourceAdapter(definition, detail_limit=20 if report_mode else 80)
+    if source_slug == "gangnammatzip":
+        return GangnamMatzipSourceAdapter(definition, detail_limit=10 if report_mode else None)
     return PlaceholderSourceAdapter(definition)

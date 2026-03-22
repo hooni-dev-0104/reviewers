@@ -9,8 +9,12 @@ from crawler.reporting import build_source_quality_report
 from crawler.normalization import normalize_campaign
 from crawler.sources.seeded import (
     enrich_4blog_item_from_detail,
+    enrich_gangnammatzip_detail,
+    enrich_seouloppa_detail,
     parse_mrblog_listing,
+    parse_gangnammatzip_listing,
     parse_reviewnote_listing,
+    parse_seouloppa_listing,
     transform_revu_item,
     transform_reviewnote_api_item,
     transform_4blog_item,
@@ -178,6 +182,110 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(item["recruit_count"], 35)
         self.assertEqual(item["thumbnail_url"], "https://example.com/image.webp")
         self.assertIn("페이백 100,000 P", item["snippet"])
+
+    def test_parse_seouloppa_listing(self):
+        html = """
+        <li class="campaign_content">
+          <div class="load_campaign">
+            <a href="https://www.seoulouba.co.kr/campaign/?c=400861" class="tum_img">
+              <img src="https://www.seoulouba.co.kr/data/campaign_list/400861/thumb.jpg">
+            </a>
+          </div>
+          <div class="load_info">
+            <div class="com_icon">
+              <div class="icon_tag">
+                <span>배송형</span>
+              </div>
+            </div>
+            <div class="t_ttl">
+              <a href="https://www.seoulouba.co.kr/campaign/?c=400861"><strong class="s_campaign_title">[서울/강남] 팩앤롤 디럭스 1EA</strong></a>
+            </div>
+            <div class="t_basic"><span class="basic_blue">팩앤롤 디럭스 1EA (색상 선택)</span></div>
+            <div class="campaign_day_people">
+              <div class="d_day"><span>D-1</span></div>
+              <div class="recruit"><span>신청 262 <span class="span_gray">/ 모집 5</span></span></div>
+            </div>
+          </div>
+          <div class="icon_box">
+            <img src="https://www.seoulouba.co.kr/theme/souba3/img/thum_ch_blog.png" alt="네이버블로그">
+          </div>
+        </li>
+        """
+        items = parse_seouloppa_listing(html)
+        self.assertEqual(len(items), 1)
+        item = items[0]
+        self.assertEqual(item["title"], "팩앤롤 디럭스 1EA")
+        self.assertEqual(item["campaign_type"], "delivery")
+        self.assertEqual(item["platform_type"], "blog")
+        self.assertEqual(item["region_primary_name"], "서울")
+        self.assertEqual(item["region_secondary_name"], "강남")
+        self.assertEqual(item["recruit_count"], 5)
+
+    def test_enrich_seouloppa_detail(self):
+        item = {
+            "benefit_text": None,
+            "snippet": None,
+            "published_at": None,
+            "apply_deadline": None,
+        }
+        detail_html = """
+        <dt class="cam_info_con_dt lititle">제공내역</dt>
+        <dd class="cam_info_con_dd">팩앤롤 디럭스 1EA (색상 선택)</dd>
+        <li class="campaign_guide_li">
+          <strong class="p_title on">크리에이터 모집</strong>
+          <span class="period on">26-03-19 ~ 26-03-23</span>
+        </li>
+        <dt class="cam_info_con_dt lititle">사이트 URL</dt>
+        <dd class="cam_info_con_dd"><a href="https://m.site.naver.com/23cJ9"></a></dd>
+        """
+        enriched = enrich_seouloppa_detail(item, detail_html)
+        self.assertEqual(enriched["benefit_text"], "팩앤롤 디럭스 1EA (색상 선택)")
+        self.assertEqual(enriched["published_at"], "2026-03-19")
+        self.assertEqual(enriched["apply_deadline"], "2026-03-23")
+
+    def test_parse_gangnammatzip_listing(self):
+        html = """
+        <li class='list_item ' data-product='2079866'>
+          <div>
+            <div class='imgArea'><a href='/cp/?id=2079866'><img src='//gangnam-review.net/data/file/cmp/thumb.jpg'></a></div>
+            <div class='textArea'>
+              <dl>
+                <span class='label'><em class='blog'>Blog</em><em class='type'>배송형</em><span class='dday'><em class='day_c'>9일 남음</em></span></span>
+                <dt class='tit'><a href='/cp/?id=2079866'>[서울/강남] 롯데상품권</a></dt>
+                <dd class='sub_tit'>롯데상품권 (30만원)</dd>
+              </dl>
+              <div class='item_detail'><p class='item_info'><span class='numb'><b style='color:#000'>신청 4,144</b> / 모집 1</span></p></div>
+            </div>
+          </div>
+        </li>
+        """
+        items = parse_gangnammatzip_listing(html)
+        self.assertEqual(len(items), 1)
+        item = items[0]
+        self.assertEqual(item["title"], "롯데상품권")
+        self.assertEqual(item["platform_type"], "blog")
+        self.assertEqual(item["campaign_type"], "delivery")
+        self.assertEqual(item["region_primary_name"], "서울")
+        self.assertEqual(item["region_secondary_name"], "강남")
+        self.assertEqual(item["recruit_count"], 1)
+
+    def test_enrich_gangnammatzip_detail(self):
+        item = {
+            "benefit_text": None,
+            "snippet": None,
+            "published_at": None,
+            "apply_deadline": None,
+        }
+        detail_html = """
+        <dt>제공내역</dt>
+        <dd>롯데상품권 (30만원)<p class="info_s">설명</p></dd>
+        <dt>신청기간</dt>
+        <dd>03.03 ~ 03.31</dd>
+        """
+        enriched = enrich_gangnammatzip_detail(item, detail_html)
+        self.assertEqual(enriched["benefit_text"], "롯데상품권 (30만원)")
+        self.assertEqual(enriched["published_at"], "2026-03-03")
+        self.assertEqual(enriched["apply_deadline"], "2026-03-31")
 
     def test_transform_reviewnote_api_item(self):
         item = transform_reviewnote_api_item(
