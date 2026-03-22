@@ -614,18 +614,34 @@ input, select {
   .topbar, .footer-bar, .hero-panel, .explore-panel, .trust-page, .detail-shell { padding: 18px; border-radius: 22px; }
   .topbar-shell { padding-top: 8px; }
   .topbar, .footer-bar { flex-direction: column; align-items: start; gap: 12px; }
-  .topbar nav, .card-actions, .hero-actions, .stats-strip, .account-group, .reminder-options { flex-wrap: wrap; }
+  .topbar nav, .hero-actions, .stats-strip, .account-group, .reminder-options { flex-wrap: wrap; }
   .brand-mark { font-size: 1.08rem; }
   .topbar p { font-size: 0.9rem; }
   .decision-panel { padding: 20px; }
   .decision-panel-head h2 { font-size: 1.2rem; }
-  .search-row { flex-direction: column; align-items: stretch; }
-  .filter-grid, .campaign-grid { grid-template-columns: 1fr; }
+  .filter-shell { padding: 12px; gap: 8px; }
+  .search-row { grid-template-columns: 1fr; gap: 8px; align-items: stretch; }
+  .search-submit { width: 100%; min-width: 0; min-height: 40px; justify-self: stretch; border-radius: 14px; }
+  .filter-grid { grid-template-columns: 1fr; gap: 8px; }
+  .search-stack { gap: 6px; }
+  .campaign-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .hero-panel { padding: 24px; }
   .hero-copy h1 { font-size: 2.5rem; }
-  .campaign-card { padding: 14px; }
-  .campaign-card h3 { font-size: 1.08rem; }
-  .card-fact-grid, .card-actions { grid-template-columns: 1fr; }
+  .campaign-card { padding: 12px; gap: 8px; border-radius: 18px; }
+  .campaign-card h3 { font-size: 0.98rem; line-height: 1.28; }
+  .card-visual { min-height: 92px; border-radius: 14px; }
+  .card-image-fallback { min-height: 92px; font-size: 0.86rem; }
+  .card-topline { top: 8px; left: 8px; right: 8px; gap: 6px; }
+  .source-chip, .chip-row span, .badge { padding: 5px 8px; font-size: 0.7rem; }
+  .card-link-block { gap: 4px; }
+  .card-link-block p { display: none; }
+  .card-chip-row { display: none; }
+  .card-fact-grid { grid-template-columns: 1fr; gap: 6px; }
+  .fact-card, .decision-panel div { padding: 8px 9px; border-radius: 12px; }
+  .fact-card strong { font-size: 0.84rem; }
+  .fact-card small, .fact-card span { font-size: 0.68rem; }
+  .card-actions { grid-template-columns: 1fr; }
+  .card-actions a { min-height: 34px; font-size: 0.82rem; padding: 7px 8px; }
   .detail-media, .detail-image, .detail-image-fallback { min-height: 220px; }
   .saved-row, .related-card { flex-direction: column; align-items: start; }
 }
