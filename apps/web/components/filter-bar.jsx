@@ -21,17 +21,10 @@ const DEADLINE_OPTIONS = [
   ['7days', '7일 안']
 ];
 
-const TRUST_OPTIONS = [
-  ['all', '모든 상태'],
-  ['stable', '조건 확인됨'],
-  ['review', '원문 확인 권장']
-];
-
 const SORT_OPTIONS = [
   ['deadline', '마감순'],
   ['newest', '최근 업데이트'],
-  ['slots', '모집 많은 순'],
-  ['trusted', '확인 우선']
+  ['slots', '모집 많은 순']
 ];
 
 export function FilterBar({ sources, searchParams }) {
@@ -47,7 +40,7 @@ export function FilterBar({ sources, searchParams }) {
             placeholder="브랜드명, 지역, 혜택으로 검색"
           />
         </div>
-        <button type="submit" className="search-submit">적용</button>
+        <button type="submit" className="search-submit">검색</button>
       </div>
 
       <div className="filter-grid">
@@ -63,7 +56,6 @@ export function FilterBar({ sources, searchParams }) {
           value={searchParams.source || 'all'}
         />
         <Select name="deadline" label="마감" options={DEADLINE_OPTIONS} value={searchParams.deadline || 'all'} />
-        <Select name="trust" label="확인 상태" options={TRUST_OPTIONS} value={searchParams.trust || 'all'} />
         <Select name="sort" label="정렬" options={SORT_OPTIONS} value={searchParams.sort || 'deadline'} />
         <div className="search-stack">
           <label htmlFor="region">지역</label>

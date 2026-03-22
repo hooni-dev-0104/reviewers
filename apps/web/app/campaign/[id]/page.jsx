@@ -39,7 +39,7 @@ export default async function CampaignDetailPage({ params }) {
     <SiteShell campaignCount={campaignCount} visitorWidget={<VisitorWidget initialCounts={counts} />}>
       <section className="detail-shell">
         <Link href="/" className="back-link">
-          ← 캠페인 목록으로 돌아가기
+          ← 목록으로
         </Link>
 
         <div className="detail-hero">
@@ -56,9 +56,9 @@ export default async function CampaignDetailPage({ params }) {
               <span className={`badge badge-${confidence.tone}`}>{confidence.label}</span>
               <span className={`badge badge-${deadlineState.tone}`}>{deadlineState.label}</span>
             </div>
-            <span className="detail-kicker">지원 전에 핵심 조건만 빠르게 확인하세요</span>
+            <span className="detail-kicker">핵심 정보 먼저 보기</span>
             <h1>{displayTitle}</h1>
-            <p>{campaign.snippet || '혜택, 마감, 방문 조건만 먼저 보고 괜찮으면 원문에서 마지막 조건을 확인하세요.'}</p>
+            <p>{campaign.snippet || '혜택, 마감, 방문 조건을 먼저 보고 원문에서 세부를 확인하세요.'}</p>
 
             <div className="chip-row detail-subfacts">
               <span>{formatPlatform(campaign.platform_type)}</span>
@@ -69,7 +69,7 @@ export default async function CampaignDetailPage({ params }) {
             <div className="detail-summary-grid">
               <div className="detail-summary-card">
                 <span>혜택</span>
-                <strong>{campaign.benefit_text || '원문에서 확인 필요'}</strong>
+                <strong>{campaign.benefit_text || '미공개'}</strong>
               </div>
               <div className="detail-summary-card">
                 <span>마감일</span>
@@ -85,13 +85,13 @@ export default async function CampaignDetailPage({ params }) {
 
           <aside className="decision-panel">
             <div className="decision-panel-head">
-              <span className="eyebrow">빠른 판단</span>
-              <h2>지원 전 핵심 조건만 확인하세요</h2>
-              <p>혜택, 마감, 인원만 다시 보고 괜찮으면 원문으로 이동하세요.</p>
+              <span className="eyebrow">빠른 보기</span>
+              <h2>핵심 정보만 먼저 보세요</h2>
+              <p>혜택, 마감, 인원만 다시 보고 원문으로 이동하세요.</p>
             </div>
             <div>
               <span>제공 혜택</span>
-              <strong>{campaign.benefit_text || '원문에서 확인 필요'}</strong>
+              <strong>{campaign.benefit_text || '미공개'}</strong>
             </div>
             <div>
               <span>마감일</span>
@@ -102,11 +102,11 @@ export default async function CampaignDetailPage({ params }) {
               <strong>{campaign.recruit_count ? `${campaign.recruit_count}명` : '미공개'}</strong>
             </div>
             <div className="detail-notice">
-              지역·예약·추가 비용은 원문에서 마지막으로 확인하세요.
+              지역·예약·추가 비용은 원문에서 볼 수 있어요.
             </div>
             <div className="decision-actions">
               <a href={campaign.original_url} target="_blank" rel="noreferrer" className="primary-action">
-                원문에서 조건 확인하기
+                원문 보기
               </a>
               <Link href="/#explore" className="secondary-link">다른 캠페인 더 보기</Link>
             </div>
@@ -115,7 +115,7 @@ export default async function CampaignDetailPage({ params }) {
 
         <section className="detail-grid">
           <article className="info-panel">
-            <h2>지원 전에 확인할 핵심 정보</h2>
+            <h2>핵심 정보</h2>
             <dl>
               <div>
                 <dt>출처</dt>
@@ -141,10 +141,10 @@ export default async function CampaignDetailPage({ params }) {
           </article>
 
           <article className="info-panel">
-            <h2>이 캠페인을 읽는 기준</h2>
+            <h2>읽는 팁</h2>
             <ul>
-              <li>원문 확인 권장 배지가 있으면 마감일과 혜택을 원문에서 다시 확인하세요.</li>
-              <li>지역 정보가 비어 있으면 방문 가능 여부를 상세 원문에서 꼭 확인하세요.</li>
+              <li>정보가 비어 있으면 원문에서 한 번 더 살펴보세요.</li>
+              <li>지역 정보가 없으면 방문 가능 여부를 원문에서 확인하세요.</li>
               <li>지원은 언제나 외부 원문 페이지에서 진행돼요.</li>
             </ul>
           </article>
@@ -152,16 +152,16 @@ export default async function CampaignDetailPage({ params }) {
 
         <section className="decision-checklist">
           <div className="guidance-card">
-            <strong>혜택이 충분히 보이나요?</strong>
-            <span>제공 내역이 불명확하면 원문에서 제공 범위와 추가 비용을 꼭 확인하세요.</span>
+            <strong>혜택이 보여요?</strong>
+            <span>제공 범위가 흐리면 원문에서 한 번 더 보세요.</span>
           </div>
           <div className="guidance-card">
             <strong>마감이 임박했나요?</strong>
-            <span>오늘·내일 마감이라면 저장보다 바로 원문으로 이동하는 편이 좋아요.</span>
+            <span>오늘·내일 마감이면 바로 원문을 여는 편이 좋아요.</span>
           </div>
           <div className="guidance-card">
             <strong>방문 조건이 맞나요?</strong>
-            <span>지역 미상일 때는 매장 위치와 예약 조건을 원문에서 다시 확인하세요.</span>
+            <span>지역이 비어 있으면 매장 위치와 예약 조건을 원문에서 확인하세요.</span>
           </div>
         </section>
 

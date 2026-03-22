@@ -16,12 +16,11 @@ export function CampaignCard({ campaign }) {
   const confidence = getConfidence(campaign);
   const deadlineState = getDeadlineState(campaign.apply_deadline);
   const sourceSlug = campaign.sources?.slug || 'unknown';
-  const confidenceLabel = getConfidenceLabel(confidence.label);
   const title = formatText(campaign.title);
   const summary = pickSummary(campaign);
-  const reward = campaign.benefit_text || '혜택 확인 필요';
+  const reward = campaign.benefit_text || '혜택 미공개';
   const deadline = formatDeadline(campaign.apply_deadline);
-  const slots = campaign.recruit_count ? `${campaign.recruit_count}명` : '인원 미상';
+  const slots = campaign.recruit_count ? `${campaign.recruit_count}명` : '인원 미공개';
   const thumbnailSrc = getThumbnailSrc(campaign.thumbnail_url);
 
   return (
@@ -41,7 +40,7 @@ export function CampaignCard({ campaign }) {
 
         <div className="card-topline">
           <span className="source-chip">{formatSourceName(campaign.sources)}</span>
-          <span className={`badge badge-${confidence.tone}`}>{confidenceLabel}</span>
+          <span className={`badge badge-${confidence.tone}`}>{confidence.label}</span>
         </div>
       </Link>
 
@@ -80,17 +79,12 @@ export function CampaignCard({ campaign }) {
 }
 
 function getConfidenceLabel(label) {
-  return {
-    '조건 확인됨': '조건 확인됨',
-    '일부 정보 확인 필요': '일부 정보 확인 필요',
-    '원문 확인 권장': '원문 확인 권장'
-  }[label] || label;
 }
 
 function pickSummary(campaign) {
   const title = formatText(campaign.title);
   const snippet = formatText(campaign.snippet);
-  const prioritySummary = '혜택·마감·지역을 먼저 확인해 보세요.';
+  const prioritySummary = '혜택·마감·지역부터 보세요.';
 
   if (!snippet) {
     return prioritySummary;

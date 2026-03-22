@@ -5,8 +5,8 @@ export function CampaignGrid({ campaigns, sponsor }) {
   if (!campaigns.length) {
     return (
       <section className="empty-state">
-        <p>지금 조건에서는 맞는 캠페인이 적어요.</p>
-        <span>지역·출처·확인 상태를 조금만 넓혀보면 더 많은 결과를 볼 수 있어요.</span>
+        <p>현재 조건에 맞는 캠페인이 적어요.</p>
+        <span>지역·출처·마감을 조금만 넓혀보세요.</span>
       </section>
     );
   }
