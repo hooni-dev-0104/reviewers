@@ -1,13 +1,13 @@
 :root {
   color-scheme: dark;
-  --bg: #738eb3;
-  --panel: rgba(56, 77, 108, 0.88);
-  --panel-strong: rgba(46, 66, 96, 0.94);
-  --line: rgba(255, 255, 255, 0.14);
-  --text: #f8fbff;
-  --muted: #d3def0;
-  --accent: #9faeff;
-  --accent-2: #8df0dc;
+  --bg: #afc1dd;
+  --panel: rgba(94, 117, 152, 0.76);
+  --panel-strong: rgba(82, 105, 141, 0.84);
+  --line: rgba(255, 255, 255, 0.2);
+  --text: #fcfdff;
+  --muted: #edf3fb;
+  --accent: #aebaff;
+  --accent-2: #a1f3e4;
   --warn: #ffb86b;
   --danger: #ff7d9b;
   --ok: #79f0a9;
@@ -19,9 +19,9 @@ body {
   margin: 0;
   font-family: Pretendard, Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background:
-    radial-gradient(circle at top left, rgba(179, 198, 255, 0.42), transparent 28%),
-    radial-gradient(circle at top right, rgba(173, 244, 228, 0.26), transparent 24%),
-    linear-gradient(180deg, #7c98be 0%, #6784ab 42%, #5f7ca3 100%);
+    radial-gradient(circle at top left, rgba(240, 245, 255, 0.62), transparent 28%),
+    radial-gradient(circle at top right, rgba(216, 248, 240, 0.34), transparent 24%),
+    linear-gradient(180deg, #b8c8e2 0%, #a3b7d6 42%, #98acd0 100%);
   color: var(--text);
 }
 
@@ -34,9 +34,9 @@ a { color: inherit; text-decoration: none; }
 
 .topbar, .footer-bar, .hero-panel, .stats-strip, .explore-panel, .detail-main-card, .decision-panel, .info-panel, .hero-sidecard, .filter-shell, .campaign-card {
   backdrop-filter: blur(20px);
-  background: linear-gradient(180deg, rgba(44, 64, 95, 0.9), rgba(53, 73, 107, 0.92));
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow: 0 18px 48px rgba(20, 31, 48, 0.18);
+  background: linear-gradient(180deg, rgba(88, 110, 146, 0.72), rgba(78, 100, 136, 0.78));
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 16px 34px rgba(43, 61, 89, 0.12);
 }
 
 .topbar, .footer-bar {
@@ -50,12 +50,9 @@ a { color: inherit; text-decoration: none; }
 }
 
 .topbar-shell {
-  position: sticky;
-  top: 0;
-  z-index: 20;
+  position: static;
   padding-top: 12px;
   padding-bottom: 4px;
-  background: linear-gradient(180deg, rgba(103, 132, 171, 0.58), rgba(103, 132, 171, 0.2) 72%, transparent);
 }
 .topbar { position: relative; }
 .topbar p, .footer-bar span, .campaign-card p, .hero-copy p, .section-headline p, .hero-sidecard span, .trust-page p { color: var(--muted); }
@@ -72,7 +69,7 @@ a { color: inherit; text-decoration: none; }
 .topbar nav { flex-wrap: wrap; }
 .topbar nav a, .card-actions a, .hero-actions a, button {
   border: 1px solid var(--line);
-  background: rgba(255,255,255,0.03);
+  background: rgba(255,255,255,0.08);
   padding: 10px 14px;
   border-radius: 999px;
   transition: 160ms ease;
@@ -156,7 +153,7 @@ a { color: inherit; text-decoration: none; }
 .section-headline { display: flex; justify-content: space-between; gap: 18px; align-items: end; margin-bottom: 24px; }
 .section-headline h2, .info-panel h2 { margin: 8px 0 0; }
 .compact-headline { margin-bottom: 14px; }
-.filter-shell { border-radius: 24px; padding: 16px; margin-bottom: 18px; display: grid; gap: 12px; background: linear-gradient(180deg, rgba(62, 84, 120, 0.92), rgba(51, 72, 104, 0.92)); }
+.filter-shell { border-radius: 24px; padding: 14px; margin-bottom: 16px; display: grid; gap: 10px; background: linear-gradient(180deg, rgba(99, 123, 160, 0.78), rgba(88, 110, 146, 0.78)); }
 .search-row { justify-content: space-between; }
 .search-stack { display: grid; gap: 8px; width: 100%; }
 .filter-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; }
@@ -164,7 +161,7 @@ input, select {
   width: 100%;
   border-radius: 16px;
   border: 1px solid var(--line);
-  background: rgba(255,255,255,0.04);
+  background: rgba(255,255,255,0.11);
   color: var(--text);
   padding: 12px 14px;
   min-height: 44px;
@@ -267,7 +264,7 @@ input, select {
   gap: 8px;
   padding: 16px;
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.13);
   border: 1px solid rgba(255, 255, 255, 0.06);
 }
 .fact-card-wide { grid-column: 1 / -1; }
