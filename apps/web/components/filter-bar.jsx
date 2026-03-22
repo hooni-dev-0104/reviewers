@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 
 const PLATFORM_OPTIONS = [
   ['all', '전체 플랫폼'],
@@ -32,19 +32,7 @@ const SORT_OPTIONS = [
 ];
 
 export function FilterBar({ sources, searchParams }) {
-  const hasAdvancedFilters = useMemo(
-    () =>
-      Boolean(
-        (searchParams.platform && searchParams.platform !== 'all') ||
-          (searchParams.type && searchParams.type !== 'all') ||
-          (searchParams.source && searchParams.source !== 'all') ||
-          (searchParams.deadline && searchParams.deadline !== 'all') ||
-          (searchParams.sort && searchParams.sort !== 'deadline') ||
-          searchParams.region
-      ),
-    [searchParams]
-  );
-  const [showAdvanced, setShowAdvanced] = useState(hasAdvancedFilters);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   return (
     <form className="filter-shell">
