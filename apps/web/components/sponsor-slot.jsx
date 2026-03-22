@@ -1,6 +1,6 @@
 export function SponsorSlot({ sponsor }) {
   const title = sponsor?.title || '제휴 안내';
-  const body = sponsor?.body || '리뷰어스와 함께 노출되는 제휴 안내 영역이에요.';
+  const body = sponsor?.body || '리뷰콕 안에서 따로 구분되어 노출되는 제휴 안내 영역이에요.';
   const ctaLabel = sponsor?.cta_label || '자세히 보기';
   const ctaUrl = sponsor?.cta_url;
 

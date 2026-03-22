@@ -26,7 +26,7 @@ export default async function TrustPage() {
     <SiteShell campaignCount={campaignCount} visitorWidget={<VisitorWidget initialCounts={counts} />}>
       <section className="trust-page">
         <span className="eyebrow">신뢰 기준</span>
-        <h1>리뷰어스는 정보의 완성도를 먼저 보여줘요.</h1>
+        <h1>리뷰콕은 먼저 확인해야 할 정보를 먼저 보여줘요.</h1>
         <p>
           출처마다 정리된 정보의 밀도가 조금씩 달라서, 카드와 상세 페이지에 확인 안내를 함께 보여줘요.
           클릭 전에 이미 어떤 정보는 바로 비교해도 되고, 어떤 정보는 원문을 다시 봐야 하는지 알 수 있어요.

@@ -54,7 +54,7 @@ export function AccountForm() {
         {mode === 'signup' ? (
           <div className="search-stack">
             <label htmlFor="displayName">닉네임</label>
-            <input id="displayName" name="displayName" placeholder="리뷰어스에서 표시할 이름" autoComplete="nickname" />
+            <input id="displayName" name="displayName" placeholder="리뷰콕에서 표시할 이름" autoComplete="nickname" />
           </div>
         ) : null}
         <div className="search-stack">

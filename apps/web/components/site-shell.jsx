@@ -11,9 +11,9 @@ export function SiteShell({ children, visitorWidget, campaignCount }) {
         <header className="topbar">
           <div>
             <Link href="/" className="brand-mark">
-              reviewers
+              리뷰콕
             </Link>
-            <p>혜택·마감·지역부터 빠르게</p>
+            <p>혜택과 마감부터 먼저 보는 체험단 찾기</p>
           </div>
           <nav>
             <Link href="/">탐색</Link>
