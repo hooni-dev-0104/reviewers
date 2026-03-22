@@ -84,10 +84,6 @@ export default async function CampaignDetailPage({ params }) {
           </div>
 
           <aside className="decision-panel">
-            <div className="decision-panel-head">
-              <h2>핵심 정보만 먼저 보세요</h2>
-              <p>혜택, 마감, 인원만 다시 보고 원문으로 이동하세요.</p>
-            </div>
             <div>
               <span>제공 혜택</span>
               <strong>{campaign.benefit_text || '미공개'}</strong>
