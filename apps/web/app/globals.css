@@ -621,8 +621,8 @@ input, select {
   .filter-grid, .campaign-grid { grid-template-columns: 1fr; }
   .hero-panel { padding: 24px; }
   .hero-copy h1 { font-size: 2.5rem; }
-  .campaign-card { padding: 16px; }
-  .campaign-card h3 { font-size: 1.24rem; }
+  .campaign-card { padding: 14px; }
+  .campaign-card h3 { font-size: 1.08rem; }
   .card-fact-grid, .card-actions { grid-template-columns: 1fr; }
   .detail-media, .detail-image, .detail-image-fallback { min-height: 220px; }
   .saved-row, .related-card { flex-direction: column; align-items: start; }
