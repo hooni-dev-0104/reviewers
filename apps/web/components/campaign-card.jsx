@@ -8,12 +8,10 @@ import {
   formatSourceName,
   formatSourceTone,
   formatText,
-  getConfidence,
   getDeadlineState
 } from '@/lib/format';
 
 export function CampaignCard({ campaign }) {
-  const confidence = getConfidence(campaign);
   const deadlineState = getDeadlineState(campaign.apply_deadline);
   const sourceSlug = campaign.sources?.slug || 'unknown';
   const title = formatText(campaign.title);
@@ -40,7 +38,6 @@ export function CampaignCard({ campaign }) {
 
         <div className="card-topline">
           <span className="source-chip">{formatSourceName(campaign.sources)}</span>
-          <span className={`badge badge-${confidence.tone}`}>{confidence.label}</span>
         </div>
       </Link>
 
