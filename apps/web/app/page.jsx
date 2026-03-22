@@ -47,7 +47,7 @@ export default async function HomePage({ searchParams }) {
             <span className="eyebrow">캠페인 찾기</span>
             <h2>필터로 먼저 좁히고, 카드에서 바로 고르기</h2>
           </div>
-          <p>기본 화면은 출처를 고르게 섞어서 보여줘서, 여러 사이트 캠페인을 한 번에 비교하기 쉬워요.</p>
+          <p>여러 출처의 캠페인을 한 번에 비교할 수 있게 보여줘요.</p>
         </div>
 
         <FilterBar sources={sources} searchParams={resolvedSearchParams} />
