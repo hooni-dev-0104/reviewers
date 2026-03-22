@@ -84,8 +84,8 @@ export default async function CampaignDetailPage({ params }) {
           <aside className="decision-panel">
             <div className="decision-panel-head">
               <span className="eyebrow">빠른 판단</span>
-              <h2>지원 전에 이것만 보면 돼요</h2>
-              <p>카드에서 괜찮아 보였다면, 여기서 한 번 더 정리해서 보고 원문으로 이동하세요.</p>
+              <h2>지원 전 핵심 조건만 확인하세요</h2>
+              <p>혜택, 마감, 인원만 다시 보고 괜찮으면 원문으로 이동하세요.</p>
             </div>
             <div>
               <span>제공 혜택</span>
@@ -100,7 +100,7 @@ export default async function CampaignDetailPage({ params }) {
               <strong>{campaign.recruit_count ? `${campaign.recruit_count}명` : '미공개'}</strong>
             </div>
             <div className="detail-notice">
-              지역, 예약, 추가 비용처럼 빠지기 쉬운 조건은 원문에서 마지막으로 다시 확인하세요.
+              지역·예약·추가 비용은 원문에서 마지막으로 확인하세요.
             </div>
             <div className="decision-actions">
               <a href={campaign.original_url} target="_blank" rel="noreferrer" className="primary-action">
