@@ -13,14 +13,14 @@ export function SiteShell({ children, visitorWidget, campaignCount }) {
             <Link href="/" className="brand-mark">
               reviewers
             </Link>
-            <p>지원 전에 필요한 정보만 빠르게</p>
+            <p>혜택·마감·지역부터 빠르게</p>
           </div>
           <nav>
             <Link href="/">탐색</Link>
             <Link href="/account">계정</Link>
             <Link href="/saved">저장</Link>
             <Link href="/reminders">리마인드</Link>
-            <Link href="/trust">신뢰 기준</Link>
+            <Link href="/trust">확인 기준</Link>
             {showOps ? <Link href="/ops">운영</Link> : null}
           </nav>
           <AccountStatus />

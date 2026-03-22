@@ -16,6 +16,7 @@ export function CampaignCard({ campaign }) {
   const confidence = getConfidence(campaign);
   const deadlineState = getDeadlineState(campaign.apply_deadline);
   const sourceSlug = campaign.sources?.slug || 'unknown';
+  const confidenceLabel = getConfidenceLabel(confidence.label);
   const summary = pickSummary(campaign);
   const reward = campaign.benefit_text || '혜택 확인 필요';
   const deadline = formatDeadline(campaign.apply_deadline);
@@ -25,7 +26,7 @@ export function CampaignCard({ campaign }) {
     <article className={`campaign-card tone-${formatSourceTone(sourceSlug)}`}>
       <div className="card-topline">
         <span className="source-chip">{formatSourceName(campaign.sources)}</span>
-        <span className={`badge badge-${confidence.tone}`}>{confidence.label}</span>
+        <span className={`badge badge-${confidence.tone}`}>{confidenceLabel}</span>
       </div>
 
       <Link href={`/campaign/${campaign.id}`} className="card-link-block">
@@ -41,11 +42,11 @@ export function CampaignCard({ campaign }) {
 
       <div className="card-fact-grid">
         <div className="fact-card fact-card-wide">
-          <span>제공 내역</span>
+          <span>혜택</span>
           <strong>{reward}</strong>
         </div>
         <div className="fact-card">
-          <span>마감일</span>
+          <span>모집 마감</span>
           <strong>{deadline}</strong>
           <small>{deadlineState.label}</small>
         </div>
@@ -56,26 +57,35 @@ export function CampaignCard({ campaign }) {
       </div>
 
       <div className="card-actions">
-        <Link href={`/campaign/${campaign.id}`}>상세 보기</Link>
+        <Link href={`/campaign/${campaign.id}`}>세부 보기</Link>
         <SavedCampaignButton campaignId={campaign.id} />
         <a href={campaign.original_url} target="_blank" rel="noreferrer">
-          원문 이동
+          원문 보기
         </a>
       </div>
     </article>
   );
 }
 
+function getConfidenceLabel(label) {
+  return {
+    '정보 안정적': '조건 확인됨',
+    '정보 보강 필요': '추가 확인 필요',
+    '검토 필요': '검토 필요'
+  }[label] || label;
+}
+
 function pickSummary(campaign) {
   const title = String(campaign.title || '').trim();
   const snippet = String(campaign.snippet || '').trim();
+  const prioritySummary = '혜택·마감·지역을 먼저 확인해 보세요.';
 
   if (!snippet) {
-    return '클릭 전에 핵심 조건을 빠르게 확인하고, 원문에서 최종 조건만 검증해보세요.';
+    return prioritySummary;
   }
 
   if (snippet === title || snippet.replaceAll(' ', '') === title.replaceAll(' ', '')) {
-    return `${formatRegion(campaign)} · ${formatPlatform(campaign.platform_type)} · ${formatCampaignType(campaign.campaign_type)}`;
+    return prioritySummary;
   }
 
   return snippet;

@@ -24,46 +24,46 @@ export default async function HomePage({ searchParams }) {
     <SiteShell campaignCount={campaignCount} visitorWidget={<VisitorWidget initialCounts={visitorCounts} />}>
       <section className="hero-panel">
         <div className="hero-copy">
-          <span className="eyebrow">Applicant-first campaign finder</span>
+          <span className="eyebrow">캠페인 한눈에 보기</span>
           <h1>
-            오늘 지원할 체험단,
+            오늘 볼 캠페인,
             <br />
-            더 빠르고 선명하게 고르자.
+            혜택과 마감부터 바로 보자.
           </h1>
           <p>
-            레뷰·리뷰노트·포블로그·디너의여왕 데이터를 한 번에 모아, 마감일·혜택·출처 신뢰도를 중심으로
-            빠르게 판단할 수 있게 만들었어요.
+            레뷰·리뷰노트·포블로그·디너의여왕 데이터를 모아 혜택, 마감, 지역, 출처 순으로 먼저 확인할 수
+            있게 정리했어요.
           </p>
           <div className="hero-actions">
-            <Link href="#explore">지금 둘러보기</Link>
+            <Link href="#explore">결과 보기</Link>
             <Link href="/trust" className="ghost-link">
-              신뢰 기준 보기
+              확인 기준 보기
             </Link>
           </div>
           <div className="hero-reading-guide">
             <div>
               <strong>1</strong>
-              <span>혜택 · 마감 · 인원 먼저</span>
+              <span>혜택 · 마감 먼저</span>
             </div>
             <div>
               <strong>2</strong>
-              <span>배지로 정보 신뢰도 체크</span>
+              <span>지역 · 플랫폼으로 좁히기</span>
             </div>
             <div>
               <strong>3</strong>
-              <span>괜찮으면 저장 후 원문 이동</span>
+              <span>괜찮은 카드만 원문 확인</span>
             </div>
           </div>
         </div>
         <div className="hero-sidecard">
           <div className="hero-sidecard-head">
-            <span className="eyebrow">Scan 기준</span>
-            <strong>요즘 잘 보는 기준</strong>
+            <span className="eyebrow">읽는 순서</span>
+            <strong>먼저 확인할 것</strong>
           </div>
           <ul>
-            <li>급한 마감은 카드에서 바로 표시</li>
-            <li>정보가 부족한 캠페인은 검토 필요 배지 제공</li>
-            <li>클릭 전에도 혜택/지역/인원 빠르게 확인</li>
+            <li>혜택이 선명하고 마감이 가까운 카드부터 보기</li>
+            <li>지역과 플랫폼은 카드 안에서 바로 비교하기</li>
+            <li>정보가 비어 있으면 원문에서 한 번 더 확인하기</li>
           </ul>
         </div>
       </section>
@@ -71,37 +71,37 @@ export default async function HomePage({ searchParams }) {
       <section className="stats-strip">
         <div>
           <strong>{campaigns.length.toLocaleString('ko-KR')}</strong>
-          <span>현재 조건 결과</span>
+          <span>지금 보이는 결과</span>
         </div>
         <div>
           <strong>{sources.length.toLocaleString('ko-KR')}</strong>
-          <span>활성 출처</span>
+          <span>연결된 출처</span>
         </div>
         <div>
           <strong>4개</strong>
-          <span>핵심 수집 소스</span>
+          <span>수집 소스</span>
         </div>
       </section>
 
       <section id="explore" className="explore-panel">
         <div className="section-headline">
           <div>
-            <span className="eyebrow">Explore</span>
-            <h2>필터로 바로 좁히고, 카드에서 바로 판단하기</h2>
+            <span className="eyebrow">결과 탐색</span>
+            <h2>필터로 먼저 좁히고, 카드에서 바로 고르기</h2>
           </div>
-          <p>불완전한 데이터는 숨기지 않고 그대로 보여줘서 클릭 전에 더 정확하게 판단할 수 있어요.</p>
+          <p>불완전한 정보도 숨기지 않고 그대로 보여줘서, 클릭 전에 먼저 확인할 수 있게 했어요.</p>
         </div>
 
         <FilterBar sources={sources} searchParams={resolvedSearchParams} />
         <ActiveFilters searchParams={resolvedSearchParams} resultCount={campaigns.length} />
         <div className="feed-guidance">
           <div className="guidance-card">
-            <strong>빠르게 보는 법</strong>
-            <span>혜택이 선명하고 마감이 가까운 카드부터 보면 지원 효율이 높아요.</span>
+            <strong>먼저 볼 것</strong>
+            <span>혜택이 선명하고 마감이 가까운 카드부터 보면 판단이 빨라져요.</span>
           </div>
           <div className="guidance-card">
-            <strong>검토 필요 배지</strong>
-            <span>요약 정보가 약할 수 있으니 상세나 원문에서 한 번 더 확인해보세요.</span>
+            <strong>다시 볼 것</strong>
+            <span>정보가 약한 카드는 상세나 원문에서 한 번 더 확인해보세요.</span>
           </div>
         </div>
         <CampaignGrid campaigns={campaigns} sponsor={sponsor} />
