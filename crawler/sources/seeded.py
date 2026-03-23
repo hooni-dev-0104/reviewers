@@ -691,15 +691,36 @@ class SeoulOppaSourceAdapter(PlaceholderSourceAdapter):
 
 
 class GangnamMatzipSourceAdapter(PlaceholderSourceAdapter):
-    listing_url = "https://xn--939au0g4vj8sq.net/"
+    listing_urls = (
+        "https://xn--939au0g4vj8sq.net/",
+        "https://xn--939au0g4vj8sq.net/cp/?ca=20",
+        "https://xn--939au0g4vj8sq.net/cp/?ca=30",
+        "https://xn--939au0g4vj8sq.net/cp/?ca=40",
+        "https://xn--939au0g4vj8sq.net/cp/?ch=clip",
+        "https://xn--939au0g4vj8sq.net/cp/?rec=rc",
+        "https://xn--939au0g4vj8sq.net/cp/?spc=50",
+        "https://xn--939au0g4vj8sq.net/cp/?sst=cmp_ask_num&sod=desc",
+        "https://xn--939au0g4vj8sq.net/cp/?sst=cmp_date_select&sod=asc",
+        "https://xn--939au0g4vj8sq.net/cp/?sst=wr_datetime&sod=desc",
+    )
 
     def __init__(self, definition: SourceDefinition, detail_limit: int | None = None):
         super().__init__(definition)
         self.detail_limit = detail_limit
 
     def fetch(self) -> list[dict]:
-        listing_html = fetch_text_url(self.listing_url)
-        listing_items = parse_gangnammatzip_listing(listing_html, source_id=self.definition.source_id)
+        listing_items: list[dict] = []
+        seen_urls: set[str] = set()
+        for listing_url in self.listing_urls:
+            try:
+                listing_html = fetch_text_url(listing_url)
+            except Exception:
+                continue
+            for item in parse_gangnammatzip_listing(listing_html, source_id=self.definition.source_id):
+                if item["original_url"] in seen_urls:
+                    continue
+                seen_urls.add(item["original_url"])
+                listing_items.append(item)
         selected_items = listing_items if self.detail_limit is None else listing_items[: self.detail_limit]
         items = []
         for item in selected_items:

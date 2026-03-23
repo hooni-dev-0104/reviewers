@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 
-PUBLIC_SOURCE_SLUGS = ["4blog", "dinnerqueen", "reviewnote", "revu"]
+PUBLIC_SOURCE_SLUGS = ["4blog", "dinnerqueen", "reviewnote", "revu", "seouloppa", "gangnammatzip"]
 
 APPLICANT_CORE_FIELDS = [
     ("title", "title"),

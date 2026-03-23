@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from crawler.config import AppConfig
+from crawler.models import SourceDefinition
 
 
 class SupabaseRequestError(RuntimeError):
@@ -67,6 +68,32 @@ class SupabasePostgrestClient:
                 "apikey": self.config.supabase_service_role_key,
                 "Authorization": f"Bearer {self.config.supabase_service_role_key}",
             },
+        )
+        result = self._request(spec)
+        return result[0] if result else None
+
+    def upsert_source(self, definition: SourceDefinition, priority: int = 100, notes: str | None = None) -> dict[str, Any] | None:
+        query = urllib.parse.urlencode({"on_conflict": "slug"})
+        payload = {
+            "name": definition.name,
+            "slug": definition.slug,
+            "base_url": definition.base_url,
+            "homepage_url": definition.base_url,
+            "platform_type": definition.platform_type,
+            "crawl_method": definition.crawl_method,
+            "priority": priority,
+            "notes": notes,
+        }
+        spec = RequestSpec(
+            method="POST",
+            url=f"{self.config.supabase_url}/rest/v1/{self.config.sources_table}?{query}",
+            headers={
+                "apikey": self.config.supabase_service_role_key,
+                "Authorization": f"Bearer {self.config.supabase_service_role_key}",
+                "Content-Type": "application/json",
+                "Prefer": "resolution=merge-duplicates,return=representation",
+            },
+            body=json.dumps([payload], ensure_ascii=False).encode("utf-8"),
         )
         result = self._request(spec)
         return result[0] if result else None

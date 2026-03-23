@@ -25,6 +25,25 @@ def _iter_batches(items: list[dict[str, Any]], batch_size: int):
         yield items[start : start + batch_size]
 
 
+def _source_priority(slug: str) -> int:
+    return {
+        "reviewnote": 10,
+        "revu": 20,
+        "dinnerqueen": 30,
+        "mrblog": 40,
+        "4blog": 50,
+        "seouloppa": 60,
+        "gangnammatzip": 70,
+    }.get(slug, 100)
+
+
+def _source_notes(slug: str) -> str | None:
+    return {
+        "seouloppa": "후보 소스 1차 파서 구현",
+        "gangnammatzip": "후보 소스 1차 파서 구현",
+    }.get(slug)
+
+
 def _kst_today() -> date:
     return datetime.now(timezone(timedelta(hours=9))).date()
 
@@ -83,7 +102,13 @@ def run_source_pipeline(
     if client and not effective_dry_run:
         source_row = client.get_source_by_slug(source_slug)
         if source_row is None:
-            raise ValueError(f"source slug '{source_slug}' not found in Supabase sources table")
+            source_row = client.upsert_source(
+                definition,
+                priority=_source_priority(source_slug),
+                notes=_source_notes(source_slug),
+            )
+        if source_row is None:
+            raise ValueError(f"source slug '{source_slug}' could not be ensured in Supabase sources table")
         definition = SourceDefinition(
             slug=definition.slug,
             name=definition.name,

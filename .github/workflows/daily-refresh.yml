@@ -41,6 +41,8 @@ jobs:
             --source dinnerqueen \
             --source reviewnote \
             --source revu \
+            --source seouloppa \
+            --source gangnammatzip \
             --write \
             --delete-before-refresh
 
