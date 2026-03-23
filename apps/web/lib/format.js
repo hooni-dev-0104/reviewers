@@ -23,6 +23,8 @@ const SOURCE_TONES = {
   dinnerqueen: 'rose'
 };
 
+const NON_LOCATION_TAGS = new Set(['배송형', '구매평', '기자단', '방문형', '클립', '서비스', '블로그', '인스타', '유튜브', '릴스']);
+
 export function formatText(value) {
   return String(value || '')
     .replaceAll('&amp;', '&')
@@ -116,4 +118,80 @@ export function getConfidence(record) {
 
 export function formatCount(value) {
   return new Intl.NumberFormat('ko-KR').format(value || 0);
+}
+
+function splitLeadingAnnotations(value) {
+  const annotations = [];
+  let remaining = formatText(value);
+
+  while (remaining.startsWith('[')) {
+    const end = remaining.indexOf(']');
+    if (end === -1) {
+      break;
+    }
+    annotations.push(remaining.slice(1, end).trim());
+    remaining = remaining.slice(end + 1).trim();
+  }
+
+  return {
+    annotations,
+    cleaned: remaining || formatText(value)
+  };
+}
+
+function looksLikeLocationTag(value) {
+  const token = formatText(value);
+  if (!token || NON_LOCATION_TAGS.has(token)) {
+    return false;
+  }
+
+  return /(?:서울|경기|인천|부산|대구|대전|광주|울산|세종|강원|충북|충남|전북|전남|경북|경남|제주|시|군|구|동|읍|면|로|길)/.test(token);
+}
+
+function uniqueParts(parts) {
+  return [...new Set(parts.map((part) => formatText(part)).filter(Boolean))];
+}
+
+export function getMapSearchQuery(record) {
+  if (!record) {
+    return null;
+  }
+
+  const title = formatText(record.title);
+  if (!title) {
+    return null;
+  }
+
+  const { annotations, cleaned } = splitLeadingAnnotations(title);
+  const annotationLocation = annotations.find(looksLikeLocationTag);
+  const locationHint = annotationLocation ? annotationLocation.replaceAll('/', ' ') : null;
+  const parts = uniqueParts([
+    record.region_primary_name,
+    record.region_secondary_name,
+    locationHint,
+    cleaned
+  ]);
+
+  if (!parts.length) {
+    return null;
+  }
+
+  const hasLocation = parts.some((part) => looksLikeLocationTag(part));
+  const isVisitLike = record.campaign_type === 'visit' || Boolean(record.region_primary_name || record.region_secondary_name || locationHint);
+
+  if (!hasLocation && !isVisitLike) {
+    return null;
+  }
+
+  return parts.join(' ');
+}
+
+export function getKakaoMapSearchUrl(record) {
+  const query = getMapSearchQuery(record);
+  return query ? `https://map.kakao.com/link/search/${encodeURIComponent(query)}` : null;
+}
+
+export function getNaverMapSearchUrl(record) {
+  const query = getMapSearchQuery(record);
+  return query ? `https://map.naver.com/p/search/${encodeURIComponent(query)}` : null;
 }

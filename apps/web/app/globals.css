@@ -285,6 +285,7 @@ input, select {
 .campaign-card h3 { font-size: 1.15rem; line-height: 1.22; margin: 0; letter-spacing: -0.035em; }
 .card-link-block { display: grid; gap: 6px; }
 .card-link-block p { min-height: 0; font-size: 0.9rem; line-height: 1.55; color: var(--muted); }
+.card-visual-shell { position: relative; }
 .card-visual {
   position: relative;
   aspect-ratio: 16 / 9;
@@ -328,6 +329,56 @@ input, select {
   justify-content: space-between;
   gap: 8px;
   align-items: center;
+}
+.map-launch-menu { position: relative; }
+.map-trigger {
+  list-style: none;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid #d8e2f0;
+  background: rgba(255, 255, 255, 0.94);
+  color: #213047;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+.map-trigger::-webkit-details-marker { display: none; }
+.map-trigger svg { width: 16px; height: 16px; fill: currentColor; }
+.map-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 132px;
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 16px;
+  border: 1px solid #d8e2f0;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14);
+  z-index: 4;
+}
+.map-popover strong {
+  font-size: 0.74rem;
+  color: var(--muted);
+  font-weight: 700;
+}
+.map-popover a,
+.detail-map-links a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  border-radius: 12px;
+  border: 1px solid #d8e2f0;
+  background: #ffffff;
+  color: #213047;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
 }
 .source-chip, .chip-row span, .badge {
   display: inline-flex;
@@ -385,6 +436,11 @@ input, select {
 .card-actions a:first-child {
   background: #eef2ff;
   border-color: #d7ddfb;
+}
+.detail-map-links {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 .card-visual {
   cursor: pointer;
@@ -739,6 +795,10 @@ input, select {
   .card-image-fallback { font-size: 0.8rem; }
   .card-topline { top: 7px; left: 7px; right: 7px; gap: 5px; }
   .card-topline .badge { display: none; }
+  .map-trigger { width: 28px; height: 28px; }
+  .map-trigger svg { width: 14px; height: 14px; }
+  .map-popover { min-width: 118px; padding: 8px; gap: 5px; }
+  .map-popover a { min-height: 30px; font-size: 0.72rem; }
   .source-chip, .chip-row span, .badge { padding: 4px 7px; font-size: 0.66rem; }
   .card-link-block { grid-area: content; gap: 3px; align-self: start; }
   .card-link-block p {
@@ -756,6 +816,7 @@ input, select {
   .fact-card strong { font-size: 0.78rem; }
   .fact-card small, .fact-card span { font-size: 0.64rem; }
   .card-actions { display: none; }
+  .detail-map-links { grid-template-columns: 1fr; }
   .detail-media, .detail-image, .detail-image-fallback { min-height: 220px; }
   .saved-row, .related-card { flex-direction: column; align-items: start; }
 }

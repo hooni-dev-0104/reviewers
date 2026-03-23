@@ -4,6 +4,8 @@ import { notFound } from 'next/navigation';
 import {
   formatCampaignType,
   formatDeadline,
+  getKakaoMapSearchUrl,
+  getNaverMapSearchUrl,
   formatPlatform,
   formatRegion,
   formatSourceName,
@@ -32,6 +34,8 @@ export default async function CampaignDetailPage({ params }) {
   const displayTitle = formatText(campaign.title);
   const confidence = getConfidence(campaign);
   const deadlineState = getDeadlineState(campaign.apply_deadline);
+  const kakaoMapUrl = getKakaoMapSearchUrl(campaign);
+  const naverMapUrl = getNaverMapSearchUrl(campaign);
   const relatedCampaigns = await getRelatedCampaigns(campaign);
   const detailImage = getDetailImageSrc(campaign.thumbnail_url);
 
@@ -103,6 +107,16 @@ export default async function CampaignDetailPage({ params }) {
               <a href={campaign.original_url} target="_blank" rel="noreferrer" className="primary-action">
                 원문 보기
               </a>
+              {kakaoMapUrl && naverMapUrl ? (
+                <div className="detail-map-links">
+                  <a href={kakaoMapUrl} target="_blank" rel="noreferrer">
+                    카카오맵
+                  </a>
+                  <a href={naverMapUrl} target="_blank" rel="noreferrer">
+                    네이버지도
+                  </a>
+                </div>
+              ) : null}
               <Link href="/#explore" className="secondary-link">다른 캠페인 더 보기</Link>
             </div>
           </aside>

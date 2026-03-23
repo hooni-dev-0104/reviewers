@@ -10,6 +10,7 @@ import {
   formatText,
   getDeadlineState
 } from '@/lib/format';
+import { MapLaunchMenu } from '@/components/map-launch-menu';
 
 export function CampaignCard({ campaign }) {
   const deadlineState = getDeadlineState(campaign.apply_deadline);
@@ -23,23 +24,25 @@ export function CampaignCard({ campaign }) {
 
   return (
     <article className={`campaign-card tone-${formatSourceTone(sourceSlug)}`}>
-      <Link
-        href={`/campaign/${campaign.id}`}
-        className={`card-visual ${campaign.thumbnail_url ? 'has-image' : 'no-image'}`}
-        aria-label={`${title} 상세 보기`}
-      >
-        {thumbnailSrc ? (
-          <img src={thumbnailSrc} alt="" className="card-image" loading="lazy" />
-        ) : (
-          <div className="card-image-fallback" aria-hidden="true">
-            <span>{formatPlatform(campaign.platform_type)}</span>
-          </div>
-        )}
-
+      <div className="card-visual-shell">
+        <Link
+          href={`/campaign/${campaign.id}`}
+          className={`card-visual ${campaign.thumbnail_url ? 'has-image' : 'no-image'}`}
+          aria-label={`${title} 상세 보기`}
+        >
+          {thumbnailSrc ? (
+            <img src={thumbnailSrc} alt="" className="card-image" loading="lazy" />
+          ) : (
+            <div className="card-image-fallback" aria-hidden="true">
+              <span>{formatPlatform(campaign.platform_type)}</span>
+            </div>
+          )}
+        </Link>
         <div className="card-topline">
           <span className="source-chip">{formatSourceName(campaign.sources)}</span>
+          <MapLaunchMenu campaign={campaign} />
         </div>
-      </Link>
+      </div>
 
       <Link href={`/campaign/${campaign.id}`} className="card-link-block">
         <h3>{title}</h3>
