@@ -128,6 +128,7 @@ function applyCampaignFilters(params, searchParams, { forCount = false } = {}) {
 
   params.set('select', CAMPAIGN_SELECT);
   params.set('status', 'eq.active');
+  andConditions.push(`or(apply_deadline.is.null,apply_deadline.gte.${getKstToday()})`);
   if (!forCount) {
     params.set('limit', String(limit));
     params.set('offset', String(offset));
@@ -273,6 +274,7 @@ export const getRegionHierarchy = cache(async function getRegionHierarchy() {
     order: 'region_primary_name.asc,region_secondary_name.asc',
     limit: '5000'
   });
+  params.set('or', `(apply_deadline.is.null,apply_deadline.gte.${getKstToday()})`);
   const response = await supabaseFetch(`/campaigns?${params.toString()}`);
   const rows = await response.json();
   const hierarchy = {};
@@ -315,7 +317,8 @@ export const getSources = cache(async function getSources() {
 });
 
 export async function getCampaignCount() {
-  const response = await supabaseFetch('/campaigns?select=id&status=eq.active', {
+  const today = getKstToday();
+  const response = await supabaseFetch(`/campaigns?select=id&status=eq.active&or=(apply_deadline.is.null,apply_deadline.gte.${today})`, {
     method: 'HEAD',
     headers: { Prefer: 'count=exact' }
   });
