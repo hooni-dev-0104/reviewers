@@ -7,6 +7,15 @@ import { isValidOpsCookie } from '@/lib/auth';
 
 const OPS_COOKIE = 'rv_ops';
 
+function getKstToday() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(new Date());
+}
+
 export async function isOpsAuthenticated() {
   const cookieStore = await cookies();
   return isValidOpsCookie(cookieStore.get(OPS_COOKIE)?.value || '');
@@ -26,7 +35,7 @@ export async function getOpsSnapshot() {
     sponsors
   ] = await Promise.all([
     countRows('campaigns', { status: 'eq.active' }),
-    countRows('site_daily_visitors', { visit_date: `eq.${new Date().toISOString().slice(0, 10)}` }),
+    countRows('site_daily_visitors', { visit_date: `eq.${getKstToday()}` }),
     countRows('site_daily_visitors'),
     countRows('app_users'),
     countRows('user_saved_campaigns'),

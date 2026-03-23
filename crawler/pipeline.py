@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from crawler.config import AppConfig
@@ -16,12 +16,29 @@ class PipelineStats:
     fetched: int = 0
     normalized: int = 0
     failed: int = 0
+    skipped: int = 0
 
 
 def _iter_batches(items: list[dict[str, Any]], batch_size: int):
     batch_size = max(1, batch_size)
     for start in range(0, len(items), batch_size):
         yield items[start : start + batch_size]
+
+
+def _kst_today() -> date:
+    return datetime.now(timezone(timedelta(hours=9))).date()
+
+
+def _is_expired(campaign: CampaignRecord, today: date | None = None) -> bool:
+    today = today or _kst_today()
+    if campaign.status == "expired":
+        return True
+    if not campaign.apply_deadline:
+        return False
+    try:
+        return date.fromisoformat(str(campaign.apply_deadline)) < today
+    except Exception:
+        return False
 
 
 def build_campaign_payload(campaign: CampaignRecord) -> dict[str, Any]:
@@ -83,10 +100,15 @@ def run_source_pipeline(
     errors: list[str] = []
     deleted_count = 0
     job_row: dict[str, Any] | None = None
+    today = _kst_today()
 
     for raw in rows:
         try:
-            normalized.append(normalize_campaign(definition.slug, definition.source_id, raw))
+            campaign = normalize_campaign(definition.slug, definition.source_id, raw)
+            if _is_expired(campaign, today=today):
+                stats.skipped += 1
+                continue
+            normalized.append(campaign)
             stats.normalized += 1
         except Exception as exc:
             stats.failed += 1
@@ -104,9 +126,12 @@ def run_source_pipeline(
         )
         if created_job:
             job_row = created_job[0]
+        if definition.source_id:
+            expired_rows = client.delete_expired_campaigns_for_source(definition.source_id, today=today.isoformat()) or []
+            deleted_count += len(expired_rows)
         if delete_before_refresh and definition.source_id:
             deleted_rows = client.delete_campaigns_for_source(definition.source_id) or []
-            deleted_count = len(deleted_rows)
+            deleted_count += len(deleted_rows)
         if payload:
             for batch in _iter_batches(payload, config.upsert_batch_size):
                 client.upsert_campaigns(batch)
@@ -118,7 +143,7 @@ def run_source_pipeline(
                     "fetched_count": stats.fetched,
                     "inserted_count": stats.normalized,
                     "updated_count": 0,
-                    "skipped_count": 0,
+                    "skipped_count": stats.skipped,
                     "failed_count": stats.failed,
                     "error_summary": "\n".join(errors[:5]) if errors else None,
                     "finished_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),

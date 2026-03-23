@@ -49,6 +49,15 @@ function baseUrl() {
   return `${process.env.NEXT_PUBLIC_SUPABASE_URL || requireEnv('SUPABASE_URL')}/rest/v1`;
 }
 
+function getKstToday() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(new Date());
+}
+
 function canonicalRegion(value) {
   const raw = String(value || '').trim();
   if (!raw) {
@@ -314,7 +323,7 @@ export async function getCampaignCount() {
 }
 
 export async function getVisitorCounts() {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getKstToday();
   const [daily, total] = await Promise.all([
     countRows(`/site_daily_visitors?select=id&visit_date=eq.${today}`),
     countRows('/site_daily_visitors?select=id')
@@ -323,7 +332,7 @@ export async function getVisitorCounts() {
 }
 
 export async function recordVisitor({ visitorId, path }) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getKstToday();
   await supabaseFetch('/site_daily_visitors', {
     method: 'POST',
     headers: { Prefer: 'resolution=ignore-duplicates,return=minimal' },

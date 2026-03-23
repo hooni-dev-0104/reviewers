@@ -1,6 +1,8 @@
 import json
 import tempfile
 import unittest
+from datetime import date
+from unittest import mock
 from pathlib import Path
 
 from crawler.config import AppConfig
@@ -82,6 +84,36 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(result["totals"]["fetched"], 2)
         self.assertEqual(result["totals"]["normalized"], 2)
         self.assertEqual(result["totals"]["deleted"], 0)
+
+    def test_run_source_pipeline_skips_expired_deadline(self):
+        sample = [
+            {
+                "title": "지난 캠페인",
+                "original_url": "https://example.com/campaign/old",
+                "apply_deadline": "2026-03-20",
+                "status": "active",
+            },
+            {
+                "title": "현재 캠페인",
+                "original_url": "https://example.com/campaign/live",
+                "apply_deadline": "2026-03-25",
+                "status": "active",
+            },
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "sample.json"
+            path.write_text(json.dumps(sample, ensure_ascii=False), encoding="utf-8")
+            with mock.patch("crawler.pipeline._kst_today", return_value=date(2026, 3, 23)):
+                result = run_source_pipeline(
+                    "reviewnote",
+                    AppConfig(dry_run=True),
+                    source_file=str(path),
+                    dry_run=True,
+                )
+        self.assertEqual(result["stats"].fetched, 2)
+        self.assertEqual(result["stats"].normalized, 1)
+        self.assertEqual(result["stats"].skipped, 1)
+        self.assertEqual(len(result["payload"]), 1)
 
     def test_transform_4blog_item(self):
         raw = {

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timedelta, timezone
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
@@ -36,6 +37,11 @@ def build_upsert_campaigns_request(config: AppConfig, payload: list[dict[str, An
     return RequestSpec("POST", url, headers, json.dumps(payload, ensure_ascii=False).encode("utf-8"))
 
 
+def _kst_today() -> str:
+    kst = timezone(timedelta(hours=9))
+    return datetime.now(kst).date().isoformat()
+
+
 class SupabasePostgrestClient:
     def __init__(self, config: AppConfig):
         self.config = config
@@ -67,6 +73,25 @@ class SupabasePostgrestClient:
 
     def delete_campaigns_for_source(self, source_id: str) -> Any:
         query = urllib.parse.urlencode({"source_id": f"eq.{source_id}"})
+        spec = RequestSpec(
+            method="DELETE",
+            url=f"{self.config.supabase_url}/rest/v1/{self.config.campaigns_table}?{query}",
+            headers={
+                "apikey": self.config.supabase_service_role_key,
+                "Authorization": f"Bearer {self.config.supabase_service_role_key}",
+                "Prefer": "return=representation",
+            },
+        )
+        return self._request(spec)
+
+    def delete_expired_campaigns_for_source(self, source_id: str, today: str | None = None) -> Any:
+        today = today or _kst_today()
+        query = urllib.parse.urlencode(
+            {
+                "source_id": f"eq.{source_id}",
+                "or": f"(status.eq.expired,apply_deadline.lt.{today})",
+            }
+        )
         spec = RequestSpec(
             method="DELETE",
             url=f"{self.config.supabase_url}/rest/v1/{self.config.campaigns_table}?{query}",
