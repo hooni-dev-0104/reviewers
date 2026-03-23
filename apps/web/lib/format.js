@@ -195,3 +195,10 @@ export function getNaverMapSearchUrl(record) {
   const query = getMapSearchQuery(record);
   return query ? `https://map.naver.com/p/search/${encodeURIComponent(query)}` : null;
 }
+
+export function getInternalMapLaunchUrl(record, provider) {
+  if (!record?.id || !provider) {
+    return null;
+  }
+  return `/api/map-link?id=${encodeURIComponent(record.id)}&provider=${encodeURIComponent(provider)}`;
+}

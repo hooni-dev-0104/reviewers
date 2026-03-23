@@ -1,9 +1,9 @@
-import { getKakaoMapSearchUrl, getMapSearchQuery, getNaverMapSearchUrl } from '@/lib/format';
+import { getInternalMapLaunchUrl, getMapSearchQuery } from '@/lib/format';
 
 export function MapLaunchMenu({ campaign, className = '' }) {
   const query = getMapSearchQuery(campaign);
-  const kakaoUrl = getKakaoMapSearchUrl(campaign);
-  const naverUrl = getNaverMapSearchUrl(campaign);
+  const kakaoUrl = getInternalMapLaunchUrl(campaign, 'kakao');
+  const naverUrl = getInternalMapLaunchUrl(campaign, 'naver');
 
   if (!query || !kakaoUrl || !naverUrl) {
     return null;

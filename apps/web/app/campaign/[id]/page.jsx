@@ -4,8 +4,7 @@ import { notFound } from 'next/navigation';
 import {
   formatCampaignType,
   formatDeadline,
-  getKakaoMapSearchUrl,
-  getNaverMapSearchUrl,
+  getInternalMapLaunchUrl,
   formatPlatform,
   formatRegion,
   formatSourceName,
@@ -34,8 +33,8 @@ export default async function CampaignDetailPage({ params }) {
   const displayTitle = formatText(campaign.title);
   const confidence = getConfidence(campaign);
   const deadlineState = getDeadlineState(campaign.apply_deadline);
-  const kakaoMapUrl = getKakaoMapSearchUrl(campaign);
-  const naverMapUrl = getNaverMapSearchUrl(campaign);
+  const kakaoMapUrl = getInternalMapLaunchUrl(campaign, 'kakao');
+  const naverMapUrl = getInternalMapLaunchUrl(campaign, 'naver');
   const relatedCampaigns = await getRelatedCampaigns(campaign);
   const detailImage = getDetailImageSrc(campaign.thumbnail_url);
 
