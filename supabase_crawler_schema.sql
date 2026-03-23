@@ -90,6 +90,7 @@ create table if not exists public.campaigns (
   region_secondary_id uuid references public.regions(id) on delete set null,
   region_primary_name text,
   region_secondary_name text,
+  exact_location text,
   benefit_text text,
   recruit_count integer,
   apply_deadline timestamptz,
@@ -203,6 +204,9 @@ create table if not exists public.sponsor_slots (
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
 );
+
+alter table public.campaigns
+  add column if not exists exact_location text;
 
 create index if not exists idx_sources_is_active on public.sources (is_active, priority);
 create index if not exists idx_campaigns_source_id on public.campaigns (source_id);

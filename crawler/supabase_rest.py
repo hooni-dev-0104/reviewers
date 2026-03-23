@@ -57,7 +57,13 @@ class SupabasePostgrestClient:
             raise SupabaseRequestError(str(exc)) from exc
 
     def upsert_campaigns(self, payload: list[dict[str, Any]]) -> Any:
-        return self._request(build_upsert_campaigns_request(self.config, payload))
+        try:
+            return self._request(build_upsert_campaigns_request(self.config, payload))
+        except SupabaseRequestError as exc:
+            if "exact_location" not in str(exc):
+                raise
+            fallback_payload = [{key: value for key, value in row.items() if key != "exact_location"} for row in payload]
+            return self._request(build_upsert_campaigns_request(self.config, fallback_payload))
 
     def insert_campaign_snapshots(self, payload: list[dict[str, Any]]) -> Any:
         if not payload:

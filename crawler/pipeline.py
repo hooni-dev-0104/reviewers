@@ -72,6 +72,7 @@ def build_campaign_payload(campaign: CampaignRecord) -> dict[str, Any]:
         "subcategory_name": campaign.subcategory_name,
         "region_primary_name": campaign.region_primary_name,
         "region_secondary_name": campaign.region_secondary_name,
+        "exact_location": campaign.exact_location,
         "benefit_text": campaign.benefit_text,
         "recruit_count": campaign.recruit_count,
         "apply_deadline": campaign.apply_deadline,

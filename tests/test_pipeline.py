@@ -48,6 +48,7 @@ class PipelineTests(unittest.TestCase):
         payload = build_campaign_payload(campaign)
         self.assertEqual(payload["source_id"], "source-1")
         self.assertEqual(payload["original_url"], "https://example.com/c/1")
+        self.assertIsNone(payload["exact_location"])
 
     def test_build_campaign_snapshot_payloads(self):
         campaign = normalize_campaign(

@@ -27,6 +27,7 @@ class CampaignRecord:
     subcategory_name: str | None = None
     region_primary_name: str | None = None
     region_secondary_name: str | None = None
+    exact_location: str | None = None
     benefit_text: str | None = None
     recruit_count: int | None = None
     apply_deadline: str | None = None
