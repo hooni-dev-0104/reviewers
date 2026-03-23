@@ -202,14 +202,26 @@ def run_daily_refresh(
         source_file = None
         if source_file_dir:
             source_file = f"{source_file_dir.rstrip('/')}/{slug}.json"
-        result = run_source_pipeline(
-            slug,
-            config,
-            source_file=source_file,
-            dry_run=dry_run,
-            delete_before_refresh=delete_before_refresh,
-            report_mode=report_mode,
-        )
+        try:
+            result = run_source_pipeline(
+                slug,
+                config,
+                source_file=source_file,
+                dry_run=dry_run,
+                delete_before_refresh=delete_before_refresh,
+                report_mode=report_mode,
+            )
+        except Exception as exc:
+            result = {
+                "source": slug,
+                "dry_run": config.dry_run if dry_run is None else dry_run,
+                "delete_before_refresh": delete_before_refresh,
+                "report_mode": report_mode,
+                "deleted_count": 0,
+                "stats": PipelineStats(fetched=0, normalized=0, failed=1, skipped=0),
+                "payload": [],
+                "errors": [str(exc)],
+            }
         results.append(result)
         totals["fetched"] += result["stats"].fetched
         totals["normalized"] += result["stats"].normalized

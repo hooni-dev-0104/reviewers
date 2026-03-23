@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 import html as html_lib
 from pathlib import Path
 import re
-from urllib.parse import quote, urlencode, unquote
+from urllib.parse import parse_qs, quote, urlencode, unquote, urljoin, urlsplit
 
 from crawler.models import SourceDefinition
 from crawler.sources.base import (
@@ -14,6 +14,7 @@ from crawler.sources.base import (
     fetch_json_with_headers,
     fetch_session_json,
     fetch_text_url,
+    post_form_for_text,
     post_json_with_headers,
 )
 
@@ -675,44 +676,48 @@ class SeoulOppaSourceAdapter(PlaceholderSourceAdapter):
         self.detail_limit = detail_limit
 
     def fetch(self) -> list[dict]:
-        listing_html = fetch_text_url(self.listing_url)
+        listing_html = fetch_text_url(self.listing_url, timeout=12)
         listing_items: list[dict] = []
         seen_urls: set[str] = set()
         for listing_url in _extract_seouloppa_listing_urls(listing_html):
             try:
-                page_html = listing_html if listing_url == self.listing_url else fetch_text_url(listing_url)
+                page_html = listing_html if listing_url == self.listing_url else fetch_text_url(listing_url, timeout=12)
+                fragments = _fetch_seouloppa_listing_fragments(listing_url, base_html=page_html)
             except Exception:
                 continue
-            for item in parse_seouloppa_listing(page_html, source_id=self.definition.source_id):
-                if item["original_url"] in seen_urls:
-                    continue
-                seen_urls.add(item["original_url"])
-                listing_items.append(item)
-        selected_items = listing_items if self.detail_limit is None else listing_items[: self.detail_limit]
-        items = []
-        for item in selected_items:
+            for fragment in fragments:
+                for item in parse_seouloppa_listing(fragment, source_id=self.definition.source_id):
+                    if item["original_url"] in seen_urls:
+                        continue
+                    seen_urls.add(item["original_url"])
+                    listing_items.append(item)
+        detail_targets = listing_items if self.detail_limit is None else listing_items[: self.detail_limit]
+        detail_map = {item["original_url"]: index for index, item in enumerate(detail_targets)}
+        items = [dict(item) for item in listing_items]
+        for item in items:
+            if item["original_url"] not in detail_map:
+                continue
             try:
-                detail_html = fetch_text_url(item["original_url"])
+                detail_html = fetch_text_url(item["original_url"], timeout=10)
             except Exception:
                 detail_html = None
             if detail_html:
-                item = enrich_seouloppa_detail(item, detail_html)
-            items.append(item)
+                item.update(enrich_seouloppa_detail(item, detail_html))
         return items
 
 
 class GangnamMatzipSourceAdapter(PlaceholderSourceAdapter):
     listing_urls = (
-        "https://xn--939au0g4vj8sq.net/",
-        "https://xn--939au0g4vj8sq.net/cp/?ca=20",
-        "https://xn--939au0g4vj8sq.net/cp/?ca=30",
-        "https://xn--939au0g4vj8sq.net/cp/?ca=40",
-        "https://xn--939au0g4vj8sq.net/cp/?ch=clip",
-        "https://xn--939au0g4vj8sq.net/cp/?rec=rc",
-        "https://xn--939au0g4vj8sq.net/cp/?spc=50",
-        "https://xn--939au0g4vj8sq.net/cp/?sst=cmp_ask_num&sod=desc",
-        "https://xn--939au0g4vj8sq.net/cp/?sst=cmp_date_select&sod=asc",
-        "https://xn--939au0g4vj8sq.net/cp/?sst=wr_datetime&sod=desc",
+        "https://gangnam-review.net/",
+        "https://gangnam-review.net/cp/?ca=20",
+        "https://gangnam-review.net/cp/?ca=30",
+        "https://gangnam-review.net/cp/?ca=40",
+        "https://gangnam-review.net/cp/?ch=clip",
+        "https://gangnam-review.net/cp/?rec=rc",
+        "https://gangnam-review.net/cp/?spc=50",
+        "https://gangnam-review.net/cp/?sst=cmp_ask_num&sod=desc",
+        "https://gangnam-review.net/cp/?sst=cmp_date_select&sod=asc",
+        "https://gangnam-review.net/cp/?sst=wr_datetime&sod=desc",
     )
 
     def __init__(self, definition: SourceDefinition, detail_limit: int | None = None):
@@ -722,26 +727,47 @@ class GangnamMatzipSourceAdapter(PlaceholderSourceAdapter):
     def fetch(self) -> list[dict]:
         listing_items: list[dict] = []
         seen_urls: set[str] = set()
+        discovered_listing_urls: list[str] = []
         for listing_url in self.listing_urls:
             try:
                 listing_html = fetch_text_url(listing_url)
             except Exception:
                 continue
-            for item in parse_gangnammatzip_listing(listing_html, source_id=self.definition.source_id):
-                if item["original_url"] in seen_urls:
-                    continue
-                seen_urls.add(item["original_url"])
-                listing_items.append(item)
-        selected_items = listing_items if self.detail_limit is None else listing_items[: self.detail_limit]
-        items = []
-        for item in selected_items:
+            discovered_listing_urls.append(listing_url)
+            for nested in _extract_gangnammatzip_listing_urls(listing_html):
+                if nested not in discovered_listing_urls:
+                    discovered_listing_urls.append(nested)
+            for fragment in _fetch_gangnammatzip_listing_fragments(listing_url, base_html=listing_html):
+                for item in parse_gangnammatzip_listing(fragment, source_id=self.definition.source_id):
+                    if item["original_url"] in seen_urls:
+                        continue
+                    seen_urls.add(item["original_url"])
+                    listing_items.append(item)
+
+        for listing_url in discovered_listing_urls[len(self.listing_urls) :]:
+            try:
+                listing_html = fetch_text_url(listing_url)
+            except Exception:
+                continue
+            for fragment in _fetch_gangnammatzip_listing_fragments(listing_url, base_html=listing_html):
+                for item in parse_gangnammatzip_listing(fragment, source_id=self.definition.source_id):
+                    if item["original_url"] in seen_urls:
+                        continue
+                    seen_urls.add(item["original_url"])
+                    listing_items.append(item)
+
+        detail_targets = listing_items if self.detail_limit is None else listing_items[: self.detail_limit]
+        detail_map = {item["original_url"]: index for index, item in enumerate(detail_targets)}
+        items = [dict(item) for item in listing_items]
+        for item in items:
+            if item["original_url"] not in detail_map:
+                continue
             try:
                 detail_html = fetch_text_url(item["original_url"])
             except Exception:
                 detail_html = None
             if detail_html:
-                item = enrich_gangnammatzip_detail(item, detail_html)
-            items.append(item)
+                item.update(enrich_gangnammatzip_detail(item, detail_html))
         return items
 
 
@@ -825,6 +851,114 @@ def _parse_yy_mm_dd_range(value: str | None) -> tuple[str | None, str | None]:
         return None, None
 
 
+def _estimate_deadline_from_d_label(value: str | None, today: date | None = None) -> str | None:
+    if not value:
+        return None
+    today = today or date.today()
+    compact = value.strip().lower().replace(" ", "")
+    if compact in {"d-day", "dday", "today", "오늘마감", "오늘-내일마감"}:
+        return today.isoformat()
+    match = re.search(r"d-(\d+)", compact)
+    if match:
+        return (today + timedelta(days=int(match.group(1)))).isoformat()
+    match = re.search(r"(\d+)일남음", compact)
+    if match:
+        return (today + timedelta(days=int(match.group(1)))).isoformat()
+    return None
+
+
+def _extract_query_params(url: str) -> dict[str, str]:
+    query = parse_qs(urlsplit(url).query)
+    return {key: values[-1] for key, values in query.items() if values}
+
+
+def _build_seouloppa_ajax_payload(listing_url: str, page: int, more: int | None = None) -> dict[str, Any]:
+    query = _extract_query_params(listing_url)
+    return {
+        "cat": query.get("cat", ""),
+        "qq": query.get("qq", ""),
+        "q": query.get("q", ""),
+        "q1": query.get("q1", ""),
+        "q2": query.get("q2", ""),
+        "ar1": query.get("ar1", ""),
+        "ar2": query.get("ar2", ""),
+        "sort": query.get("sort", ""),
+        "page": page,
+        "more": more if more is not None else max(36, page * 36),
+        "rows": 36,
+    }
+
+
+def _fetch_seouloppa_listing_fragments(
+    listing_url: str,
+    base_html: str | None = None,
+    max_pages: int = 5,
+) -> list[str]:
+    base_page = base_html if base_html is not None else fetch_text_url(listing_url)
+    pages = [base_page]
+    seen_fragments: set[str] = set()
+    ajax_url = "https://www.seoulouba.co.kr/campaign/ajax/list.ajax.php"
+    next_page = int(_extract_first(r'id="list_more_btn"[^>]*data-page="(\d+)"', base_page) or 2)
+    current_more = int(_extract_first(r'id="list_more_btn"[^>]*data-more="(\d+)"', base_page) or 0)
+
+    for _ in range(max_pages - 1):
+        try:
+            fragment = post_form_for_text(
+                ajax_url,
+                _build_seouloppa_ajax_payload(listing_url, next_page, more=current_more or None),
+                headers={"X-Requested-With": "XMLHttpRequest", "Referer": listing_url},
+                timeout=10,
+            )
+        except Exception:
+            break
+        normalized = fragment.strip()
+        if not normalized or normalized in seen_fragments or "campaign_content" not in normalized:
+            break
+        seen_fragments.add(normalized)
+        pages.append(fragment)
+        next_page += 1
+        current_more += 36
+    return pages
+
+
+def _build_gangnammatzip_ajax_url(listing_url: str, rpage: int) -> str:
+    split = urlsplit(listing_url)
+    query = parse_qs(split.query)
+    params: list[tuple[str, str]] = []
+    for key in ("ca", "stx", "sst", "sod", "channel", "ch", "local_1", "local_2", "spc", "rec", "year"):
+        for value in query.get(key, []):
+            if value:
+                params.append((key, value))
+    params.append(("rpage", str(rpage)))
+    return f"https://gangnam-review.net/theme/go/_list_cmp_tpl.php?{urlencode(params)}"
+
+
+def _fetch_gangnammatzip_listing_fragments(
+    listing_url: str,
+    base_html: str | None = None,
+    max_pages: int = 12,
+) -> list[str]:
+    pages = [base_html if base_html is not None else fetch_text_url(listing_url)]
+    seen_fragments: set[str] = set()
+
+    for rpage in range(1, max_pages + 1):
+        try:
+            fragment = fetch_text_url(_build_gangnammatzip_ajax_url(listing_url, rpage))
+        except Exception:
+            break
+        normalized = fragment.strip()
+        if (
+            not normalized
+            or normalized in seen_fragments
+            or "list_item" not in normalized
+            or "조회된 캠페인이 없습니다." in normalized
+        ):
+            break
+        seen_fragments.add(normalized)
+        pages.append(fragment)
+    return pages
+
+
 def _clean_bracket_title(title: str) -> tuple[str, str | None, str | None]:
     annotations, cleaned = _split_4blog_title_annotations(title)
     region_primary = None
@@ -861,14 +995,35 @@ def _clean_seouloppa_title(title: str) -> tuple[str, str | None, str | None]:
 
 def _extract_seouloppa_listing_urls(html: str) -> list[str]:
     urls = {"https://www.seoulouba.co.kr/campaign/?qq=popular"}
-    for href in re.findall(r'href="([^"]*campaign/\?cat=\d+[^"]*)"', html):
+    patterns = (r'href="([^"]*campaign/\?cat=\d+[^"]*)"', r'href="(\?cat=\d+[^"]*)"')
+    for pattern in patterns:
+        for href in re.findall(pattern, html):
+            cleaned = html_lib.unescape(href).strip()
+            if not cleaned:
+                continue
+            if cleaned.startswith("http"):
+                urls.add(cleaned)
+            elif cleaned.startswith("/"):
+                urls.add(f"https://www.seoulouba.co.kr{cleaned}")
+            elif cleaned.startswith("?"):
+                urls.add(f"https://www.seoulouba.co.kr/campaign/{cleaned}")
+    return sorted(urls)
+
+
+def _extract_gangnammatzip_listing_urls(html: str) -> list[str]:
+    urls: set[str] = set()
+    for href in re.findall(r'href="(https?://[^"]+/cp/\?[^"]+)"', html):
         cleaned = html_lib.unescape(href).strip()
-        if cleaned.startswith("http"):
-            urls.add(cleaned)
-        elif cleaned.startswith("/"):
-            urls.add(f"https://www.seoulouba.co.kr{cleaned}")
-        elif cleaned.startswith("?"):
-            urls.add(f"https://www.seoulouba.co.kr/campaign/{cleaned}")
+        if any(key in cleaned for key in ("ca=", "ch=", "rec=", "spc=", "sst=")):
+            urls.add(
+                cleaned
+                .replace("https://강남맛집.net", "https://gangnam-review.net")
+                .replace("https://xn--939au0g4vj8sq.net", "https://gangnam-review.net")
+            )
+    for href in re.findall(r'href="(/cp/\?[^"]+)"', html):
+        cleaned = html_lib.unescape(href).strip()
+        if any(key in cleaned for key in ("ca=", "ch=", "rec=", "spc=", "sst=")):
+            urls.add(urljoin("https://gangnam-review.net", cleaned))
     return sorted(urls)
 
 
@@ -920,6 +1075,7 @@ def parse_seouloppa_listing(html: str, source_id: str | None = None) -> list[dic
         raw_status = 'active'
         if d_day.lower() == 'd-day':
             raw_status = 'active'
+        apply_deadline = _estimate_deadline_from_d_label(d_day)
         items.append({
             'source_id': source_id,
             'campaign_id': campaign_id,
@@ -933,7 +1089,7 @@ def parse_seouloppa_listing(html: str, source_id: str | None = None) -> list[dic
             'region_secondary_name': region_secondary,
             'benefit_text': benefit_text,
             'recruit_count': int(recruit.replace(',', '')) if recruit else None,
-            'apply_deadline': None,
+            'apply_deadline': apply_deadline,
             'published_at': None,
             'thumbnail_url': image_url,
             'snippet': benefit_text,
@@ -986,23 +1142,25 @@ def parse_gangnammatzip_listing(html: str, source_id: str | None = None) -> list
         title, region_primary, region_secondary = _clean_bracket_title(html_lib.unescape(raw_title.strip()))
         platform_type = {'blog': 'blog', 'insta': 'instagram', 'youtube': 'youtube', 'clip': 'instagram'}.get(platform_class, 'blog')
         campaign_type = GANGNAMMATZIP_TYPE_MAP.get(type_label.strip(), 'visit')
+        subtitle_text = _strip_tags(html_lib.unescape(subtitle.strip()))
+        apply_deadline = _estimate_deadline_from_d_label(dday_label)
         items.append({
             'source_id': source_id,
             'campaign_id': campaign_id,
             'title': title,
-            'original_url': f'https://xn--939au0g4vj8sq.net{relative_url}',
+            'original_url': f'https://gangnam-review.net{relative_url}',
             'platform_type': platform_type,
             'campaign_type': campaign_type if campaign_type in {'visit','delivery','purchase','content'} else 'etc',
             'category_name': None,
             'subcategory_name': type_label.strip(),
             'region_primary_name': region_primary,
             'region_secondary_name': region_secondary,
-            'benefit_text': html_lib.unescape(subtitle.strip()),
+            'benefit_text': subtitle_text,
             'recruit_count': int(recruit.replace(',', '')) if recruit else None,
-            'apply_deadline': None,
+            'apply_deadline': apply_deadline,
             'published_at': None,
             'thumbnail_url': image_url if image_url.startswith('http') else f'https:{image_url}',
-            'snippet': html_lib.unescape(subtitle.strip()),
+            'snippet': subtitle_text,
             'raw_status': 'active',
             'status': 'active',
             'requires_review': False,
@@ -1184,7 +1342,7 @@ def get_adapter(source_slug: str, source_file: str | None = None, report_mode: b
     if source_slug == "dinnerqueen":
         return DinnerQueenSourceAdapter(definition, page_limit=1 if report_mode else 20, detail_limit=12 if report_mode else None)
     if source_slug == "seouloppa":
-        return SeoulOppaSourceAdapter(definition, detail_limit=24 if report_mode else 140)
+        return SeoulOppaSourceAdapter(definition, detail_limit=24 if report_mode else 40)
     if source_slug == "gangnammatzip":
-        return GangnamMatzipSourceAdapter(definition, detail_limit=10 if report_mode else None)
+        return GangnamMatzipSourceAdapter(definition, detail_limit=10 if report_mode else 120)
     return PlaceholderSourceAdapter(definition)

@@ -1,7 +1,7 @@
 import json
 import tempfile
 import unittest
-from datetime import date
+from datetime import date, timedelta
 from unittest import mock
 from pathlib import Path
 
@@ -11,7 +11,14 @@ from crawler.reporting import build_source_quality_report
 from crawler.normalization import normalize_campaign
 from crawler.sources.seeded import (
     DinnerQueenSourceAdapter,
+    GangnamMatzipSourceAdapter,
     SEEDED_SOURCES,
+    SeoulOppaSourceAdapter,
+    _build_gangnammatzip_ajax_url,
+    _build_seouloppa_ajax_payload,
+    _estimate_deadline_from_d_label,
+    _extract_gangnammatzip_listing_urls,
+    _extract_seouloppa_listing_urls,
     enrich_4blog_item_from_detail,
     enrich_gangnammatzip_detail,
     enrich_seouloppa_detail,
@@ -86,6 +93,34 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(result["totals"]["fetched"], 2)
         self.assertEqual(result["totals"]["normalized"], 2)
         self.assertEqual(result["totals"]["deleted"], 0)
+
+    def test_run_daily_refresh_continues_after_source_error(self):
+        def fake_run_source_pipeline(slug, *args, **kwargs):
+            if slug == "revu":
+                raise RuntimeError("HTTP Error 429: Too Many Requests")
+            return {
+                "source": slug,
+                "dry_run": True,
+                "delete_before_refresh": True,
+                "report_mode": False,
+                "deleted_count": 0,
+                "stats": type("Stats", (), {"fetched": 2, "normalized": 2, "failed": 0, "skipped": 0})(),
+                "payload": [{"title": "ok"}],
+                "errors": [],
+            }
+
+        with mock.patch("crawler.pipeline.run_source_pipeline", side_effect=fake_run_source_pipeline):
+            result = run_daily_refresh(
+                ["reviewnote", "revu", "4blog"],
+                AppConfig(dry_run=True),
+                dry_run=True,
+            )
+
+        self.assertEqual(result["totals"]["fetched"], 4)
+        self.assertEqual(result["totals"]["normalized"], 4)
+        self.assertEqual(result["totals"]["failed"], 1)
+        revu_result = next(item for item in result["results"] if item["source"] == "revu")
+        self.assertIn("429", revu_result["errors"][0])
 
     def test_run_source_pipeline_skips_expired_deadline(self):
         sample = [
@@ -297,6 +332,7 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(item["region_primary_name"], "서울")
         self.assertEqual(item["region_secondary_name"], "강남")
         self.assertEqual(item["recruit_count"], 5)
+        self.assertEqual(item["apply_deadline"], (date.today() + timedelta(days=1)).isoformat())
 
     def test_enrich_seouloppa_detail(self):
         item = {
@@ -350,6 +386,7 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(item["region_primary_name"], "서울")
         self.assertEqual(item["region_secondary_name"], "강남")
         self.assertEqual(item["recruit_count"], 1)
+        self.assertEqual(item["apply_deadline"], (date.today() + timedelta(days=9)).isoformat())
 
     def test_enrich_gangnammatzip_detail(self):
         item = {
@@ -368,6 +405,83 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(enriched["benefit_text"], "롯데상품권 (30만원)")
         self.assertEqual(enriched["published_at"], "2026-03-03")
         self.assertEqual(enriched["apply_deadline"], "2026-03-31")
+
+    def test_extract_seouloppa_listing_urls_keeps_category_urls_only(self):
+        html = """
+        <a href="https://www.seoulouba.co.kr/campaign/?cat=377">방문형</a>
+        <a href="?cat=&qq=popular&q=&q1=&q2=&&ar1=455">서울</a>
+        """
+        urls = _extract_seouloppa_listing_urls(html)
+        self.assertIn("https://www.seoulouba.co.kr/campaign/?cat=377", urls)
+        self.assertNotIn("https://www.seoulouba.co.kr/campaign/?cat=&qq=popular&q=&q1=&q2=&&ar1=455", urls)
+
+    def test_build_seouloppa_ajax_payload_tracks_filters(self):
+        payload = _build_seouloppa_ajax_payload(
+            "https://www.seoulouba.co.kr/campaign/?cat=377&qq=popular&ar1=455&sort=deadline",
+            page=3,
+        )
+        self.assertEqual(payload["cat"], "377")
+        self.assertEqual(payload["qq"], "popular")
+        self.assertEqual(payload["ar1"], "455")
+        self.assertEqual(payload["sort"], "deadline")
+        self.assertEqual(payload["page"], 3)
+
+    def test_extract_gangnammatzip_listing_urls_discovers_category_links(self):
+        html = """
+        <a href="https://강남맛집.net/cp/?ca=30">제품</a>
+        <a href="/cp/?rec=rc">선정확률 높은 캠페인</a>
+        """
+        urls = _extract_gangnammatzip_listing_urls(html)
+        self.assertIn("https://gangnam-review.net/cp/?ca=30", urls)
+        self.assertIn("https://gangnam-review.net/cp/?rec=rc", urls)
+
+    def test_build_gangnammatzip_ajax_url_preserves_filters(self):
+        url = _build_gangnammatzip_ajax_url(
+            "https://gangnam-review.net/cp/?ca=20&rec=rc&sst=cmp_date_select&sod=asc",
+            rpage=2,
+        )
+        self.assertIn("ca=20", url)
+        self.assertIn("rec=rc", url)
+        self.assertIn("sst=cmp_date_select", url)
+        self.assertIn("sod=asc", url)
+        self.assertIn("rpage=2", url)
+
+    def test_estimate_deadline_from_labels(self):
+        self.assertEqual(_estimate_deadline_from_d_label("D-day", today=date(2026, 3, 23)), "2026-03-23")
+        self.assertEqual(_estimate_deadline_from_d_label("D-3", today=date(2026, 3, 23)), "2026-03-26")
+        self.assertEqual(_estimate_deadline_from_d_label("6일 남음", today=date(2026, 3, 23)), "2026-03-29")
+
+    def test_seouloppa_adapter_does_not_truncate_list_to_detail_limit(self):
+        listing_html = """
+        <li class="campaign_content">
+          <div class="load_campaign"><a href="https://www.seoulouba.co.kr/campaign/?c=1" class="tum_img"><img src="https://example.com/1.jpg"></a></div>
+          <div class="load_info"><div class="com_icon"><div class="icon_tag"><span>방문형</span></div></div><div class="t_ttl"><a href="https://www.seoulouba.co.kr/campaign/?c=1"><strong class="s_campaign_title">[서울] A</strong></a></div><div class="t_basic"><span class="basic_blue">A</span></div><div class="campaign_day_people"><div class="d_day"><span>D-1</span></div><div class="recruit"><span>신청 1 <span class="span_gray">/ 모집 1</span></span></div></div></div><div class="icon_box"><img src="https://www.seoulouba.co.kr/theme/souba3/img/thum_ch_blog.png"></div>
+        </li>
+        <li class="campaign_content">
+          <div class="load_campaign"><a href="https://www.seoulouba.co.kr/campaign/?c=2" class="tum_img"><img src="https://example.com/2.jpg"></a></div>
+          <div class="load_info"><div class="com_icon"><div class="icon_tag"><span>방문형</span></div></div><div class="t_ttl"><a href="https://www.seoulouba.co.kr/campaign/?c=2"><strong class="s_campaign_title">[서울] B</strong></a></div><div class="t_basic"><span class="basic_blue">B</span></div><div class="campaign_day_people"><div class="d_day"><span>D-2</span></div><div class="recruit"><span>신청 1 <span class="span_gray">/ 모집 1</span></span></div></div></div><div class="icon_box"><img src="https://www.seoulouba.co.kr/theme/souba3/img/thum_ch_blog.png"></div>
+        </li>
+        """
+
+        with mock.patch("crawler.sources.seeded.fetch_text_url", return_value=listing_html), mock.patch(
+            "crawler.sources.seeded._fetch_seouloppa_listing_fragments", return_value=[listing_html]
+        ):
+            items = SeoulOppaSourceAdapter(SEEDED_SOURCES["seouloppa"], detail_limit=1).fetch()
+
+        self.assertEqual(len(items), 2)
+
+    def test_gangnammatzip_adapter_does_not_truncate_list_to_detail_limit(self):
+        listing_html = """
+        <li class='list_item ' data-product='1'><div><div class='imgArea'><a href='/cp/?id=1'><img src='//example.com/1.jpg'></a></div><div class='textArea'><dl><span class='label'><em class='blog'>Blog</em><em class='type'>방문형</em><span class='dday'><em class='day_c'>6일 남음</em></span></span><dt class='tit'><a href='/cp/?id=1'>[서울] A</a></dt><dd class='sub_tit'>A</dd></dl><div class='item_detail'><p class='item_info'><span class='numb'><b style='color:#000'>신청 0</b> / 모집 1</span></p></div></div></div></li>
+        <li class='list_item ' data-product='2'><div><div class='imgArea'><a href='/cp/?id=2'><img src='//example.com/2.jpg'></a></div><div class='textArea'><dl><span class='label'><em class='blog'>Blog</em><em class='type'>방문형</em><span class='dday'><em class='day_c'>6일 남음</em></span></span><dt class='tit'><a href='/cp/?id=2'>[서울] B</a></dt><dd class='sub_tit'>B</dd></dl><div class='item_detail'><p class='item_info'><span class='numb'><b style='color:#000'>신청 0</b> / 모집 1</span></p></div></div></div></li>
+        """
+
+        with mock.patch("crawler.sources.seeded.fetch_text_url", return_value=listing_html), mock.patch(
+            "crawler.sources.seeded._fetch_gangnammatzip_listing_fragments", return_value=[listing_html]
+        ), mock.patch("crawler.sources.seeded._extract_gangnammatzip_listing_urls", return_value=[]):
+            items = GangnamMatzipSourceAdapter(SEEDED_SOURCES["gangnammatzip"], detail_limit=1).fetch()
+
+        self.assertEqual(len(items), 2)
 
     def test_transform_reviewnote_api_item(self):
         item = transform_reviewnote_api_item(

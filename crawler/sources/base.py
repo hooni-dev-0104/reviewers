@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import ssl
 import http.cookiejar
+import urllib.parse
 import urllib.request
 import urllib.error
 from abc import ABC, abstractmethod
@@ -127,3 +128,20 @@ def post_json_with_headers(url: str, headers: dict[str, str], payload: dict[str,
     context = ssl._create_unverified_context()
     with urllib.request.urlopen(request, timeout=timeout, context=context) as response:
         return json.loads(response.read().decode("utf-8", errors="ignore"))
+
+
+def post_form_for_text(url: str, payload: dict[str, Any], headers: dict[str, str] | None = None, timeout: int = 30) -> str:
+    request = urllib.request.Request(
+        url,
+        data=urllib.parse.urlencode(payload).encode("utf-8"),
+        headers={
+            "User-Agent": "Mozilla/5.0 (compatible; ReviewersCrawler/0.1; +https://reviewers.local)",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            **(headers or {}),
+        },
+        method="POST",
+    )
+    context = ssl._create_unverified_context()
+    with urllib.request.urlopen(request, timeout=timeout, context=context) as response:
+        return response.read().decode("utf-8", errors="ignore")
