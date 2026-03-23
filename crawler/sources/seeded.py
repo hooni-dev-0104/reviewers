@@ -1107,7 +1107,10 @@ class DinnerQueenSourceAdapter(PlaceholderSourceAdapter):
         selected_cards = cards if self.detail_limit is None else cards[: self.detail_limit]
         for card in selected_cards:
             campaign_id = card["campaign_id"]
-            detail_html = fetch_text_url(f"https://dinnerqueen.net/taste/{campaign_id}")
+            try:
+                detail_html = fetch_text_url(f"https://dinnerqueen.net/taste/{campaign_id}")
+            except Exception:
+                continue
             item = transform_dinnerqueen_detail(detail_html, campaign_id, source_id=self.definition.source_id)
             item["title"] = card["list_title"] or item["title"]
             if card["badge_type"] == "배송":

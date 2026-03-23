@@ -10,6 +10,8 @@ from crawler.pipeline import build_campaign_payload, run_daily_refresh, run_sour
 from crawler.reporting import build_source_quality_report
 from crawler.normalization import normalize_campaign
 from crawler.sources.seeded import (
+    DinnerQueenSourceAdapter,
+    SEEDED_SOURCES,
     enrich_4blog_item_from_detail,
     enrich_gangnammatzip_detail,
     enrich_seouloppa_detail,
@@ -114,6 +116,49 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(result["stats"].normalized, 1)
         self.assertEqual(result["stats"].skipped, 1)
         self.assertEqual(len(result["payload"]), 1)
+
+    def test_dinnerqueen_adapter_skips_failed_detail(self):
+        response = {
+            "layout": """
+            <a class="qz-dq-card__link" href="/taste/1" title="A">
+              <strong style="letter-spacing: -0.2px">방문</strong>
+              <span class="color-subtitle">신청 1</span><span> / 모집 1</span>
+            </a>
+            <a class="qz-dq-card__link" href="/taste/2" title="B">
+              <strong style="letter-spacing: -0.2px">방문</strong>
+              <span class="color-subtitle">신청 1</span><span> / 모집 2</span>
+            </a>
+            """,
+            "has_next": False,
+        }
+
+        def fake_fetch_text(url):
+            if url.endswith("/taste/1"):
+                raise TimeoutError("boom")
+            return """
+            <html>
+              <head>
+                <meta property="og:title" content="맛있는 파스타 | 디너의여왕" />
+                <meta property="og:image" content="https://example.com/thumb.jpg" />
+              </head>
+              <body>
+                <a href="/taste?ct=배달">배달</a>
+                <a href="/taste?area1=서울&amp;area2=강남">지역</a>
+                <div>제공내역</div>
+                <p class="qz-body-kr mb-qz-body2-kr color-title">파스타 2개 제공<br>음료 포함</p>
+                <div>기간: 26.03.16 – 26.04.12</div>
+              </body>
+            </html>
+            """
+
+        with mock.patch("crawler.sources.seeded.fetch_session_json", return_value=response), mock.patch(
+            "crawler.sources.seeded.fetch_text_url", side_effect=fake_fetch_text
+        ):
+            adapter = DinnerQueenSourceAdapter(SEEDED_SOURCES["dinnerqueen"], page_limit=1)
+            items = adapter.fetch()
+
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["title"], "B")
 
     def test_transform_4blog_item(self):
         raw = {
