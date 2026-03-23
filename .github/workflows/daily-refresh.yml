@@ -12,9 +12,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  refresh:
+  preflight:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    outputs:
+      enabled: ${{ steps.toggle.outputs.enabled }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,8 +34,36 @@ jobs:
           ENABLE_SCHEDULED_REFRESH: ${{ secrets.ENABLE_SCHEDULED_REFRESH }}
         run: echo "enabled=${ENABLE_SCHEDULED_REFRESH}" >> "$GITHUB_OUTPUT"
 
-      - name: Scheduled refresh
-        if: steps.toggle.outputs.enabled == 'true'
+      - name: Refresh skipped
+        if: steps.toggle.outputs.enabled != 'true'
+        run: echo "ENABLE_SCHEDULED_REFRESH is not true; skipping live refresh run."
+
+  refresh:
+    needs: preflight
+    if: needs.preflight.outputs.enabled == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        source:
+          - 4blog
+          - dinnerqueen
+          - reviewnote
+          - revu
+          - seouloppa
+          - gangnammatzip
+    name: refresh-${{ matrix.source }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Refresh source
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -43,16 +72,6 @@ jobs:
           REVU_PASSWORD: ${{ secrets.REVU_PASSWORD }}
           CRAWLER_DRY_RUN: "false"
         run: |
-          python -m crawler.cli run-scheduled \
-            --source 4blog \
-            --source dinnerqueen \
-            --source reviewnote \
-            --source revu \
-            --source seouloppa \
-            --source gangnammatzip \
+          python -m crawler.cli run-source ${{ matrix.source }} \
             --write \
             --delete-before-refresh
-
-      - name: Refresh skipped
-        if: steps.toggle.outputs.enabled != 'true'
-        run: echo "ENABLE_SCHEDULED_REFRESH is not true; skipping live refresh run."
