@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 
 const PLATFORM_OPTIONS = [
+  ['all', '전체 플랫폼'],
   ['blog', '블로그'],
   ['instagram', '인스타'],
   ['youtube', '유튜브'],
@@ -10,6 +11,7 @@ const PLATFORM_OPTIONS = [
 ];
 
 const TYPE_OPTIONS = [
+  ['all', '전체 유형'],
   ['visit', '방문형'],
   ['delivery', '배송형'],
   ['purchase', '구매형'],
@@ -38,12 +40,16 @@ function normalizeSelection(value) {
 
 export function FilterBar({ sources, searchParams }) {
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const selectedPlatforms = useMemo(() => normalizeSelection(searchParams.platform).filter((value) => value !== 'all'), [searchParams.platform]);
-  const selectedTypes = useMemo(() => normalizeSelection(searchParams.type).filter((value) => value !== 'all'), [searchParams.type]);
-  const selectedSources = useMemo(() => normalizeSelection(searchParams.source).filter((value) => value !== 'all'), [searchParams.source]);
+  const [platforms, setPlatforms] = useState(() => normalizeSelection(searchParams.platform).filter((value) => value !== 'all'));
+  const [types, setTypes] = useState(() => normalizeSelection(searchParams.type).filter((value) => value !== 'all'));
+  const [sourceValues, setSourceValues] = useState(() => normalizeSelection(searchParams.source).filter((value) => value !== 'all'));
 
   return (
     <form className="filter-shell">
+      <input type="hidden" name="platform" value={platforms.join(',')} />
+      <input type="hidden" name="type" value={types.join(',')} />
+      <input type="hidden" name="source" value={sourceValues.join(',')} />
+
       <div className="search-row search-row-primary">
         <div className="search-stack search-stack-grow">
           <label htmlFor="search">검색</label>
@@ -70,13 +76,26 @@ export function FilterBar({ sources, searchParams }) {
 
       {showAdvanced ? (
         <div className="filter-grid">
-          <CheckboxGroup name="platform" label="플랫폼" options={PLATFORM_OPTIONS} selected={selectedPlatforms} />
-          <CheckboxGroup name="type" label="유형" options={TYPE_OPTIONS} selected={selectedTypes} />
-          <CheckboxGroup
-            name="source"
+          <MultiSelect
+            label="플랫폼"
+            options={PLATFORM_OPTIONS}
+            values={platforms}
+            onChange={setPlatforms}
+          />
+          <MultiSelect
+            label="유형"
+            options={TYPE_OPTIONS}
+            values={types}
+            onChange={setTypes}
+          />
+          <MultiSelect
             label="출처"
-            options={sources.map((source) => [source.slug, source.name])}
-            selected={selectedSources}
+            options={[
+              ['all', '전체 출처'],
+              ...sources.map((source) => [source.slug, source.name])
+            ]}
+            values={sourceValues}
+            onChange={setSourceValues}
           />
           <Select name="deadline" label="마감" options={DEADLINE_OPTIONS} value={searchParams.deadline || 'all'} />
           <Select name="sort" label="정렬" options={SORT_OPTIONS} value={searchParams.sort || 'deadline'} />
@@ -110,21 +129,48 @@ function Select({ name, label, options, value }) {
   );
 }
 
-function CheckboxGroup({ name, label, options, selected }) {
+function MultiSelect({ label, options, values, onChange }) {
+  const selectedSet = new Set(values);
+
+  function handleSelectChange(event) {
+    const value = event.target.value;
+    if (value === 'all') {
+      onChange([]);
+      event.target.value = 'all';
+      return;
+    }
+    if (!selectedSet.has(value)) {
+      onChange([...values, value]);
+    }
+    event.target.value = 'all';
+  }
+
+  function handleRemove(value) {
+    onChange(values.filter((item) => item !== value));
+  }
+
   return (
     <div className="search-stack checkbox-group-wrap">
-      <span className="checkbox-group-label">{label}</span>
-      <div className="checkbox-group">
-        {options.map(([value, labelText]) => {
-          const checked = selected.includes(value);
-          return (
-            <label key={value} className={`check-chip ${checked ? 'is-selected' : ''}`}>
-              <input type="checkbox" name={name} value={value} defaultChecked={checked} />
-              <span>{labelText}</span>
-            </label>
-          );
-        })}
-      </div>
+      <label>{label}</label>
+      <select defaultValue="all" onChange={handleSelectChange}>
+        {options.map(([optionValue, optionLabel]) => (
+          <option key={optionValue} value={optionValue}>
+            {optionLabel}
+          </option>
+        ))}
+      </select>
+      {values.length ? (
+        <div className="checkbox-group">
+          {values.map((value) => {
+            const labelText = options.find(([optionValue]) => optionValue === value)?.[1] || value;
+            return (
+              <button key={value} type="button" className="check-chip is-selected" onClick={() => handleRemove(value)}>
+                {labelText} ×
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
     </div>
   );
 }
