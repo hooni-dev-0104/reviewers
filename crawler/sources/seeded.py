@@ -124,6 +124,35 @@ SEOULOUPPA_TYPE_MAP = {
     "방문형": "visit",
 }
 
+SEOULOUPPA_LISTING_URLS = (
+    "https://www.seoulouba.co.kr/campaign/?qq=popular",
+    "https://www.seoulouba.co.kr/campaign/?cat=377",
+    "https://www.seoulouba.co.kr/campaign/?cat=378",
+    "https://www.seoulouba.co.kr/campaign/?cat=379",
+    "https://www.seoulouba.co.kr/campaign/?cat=380",
+    "https://www.seoulouba.co.kr/campaign/?cat=381",
+    "https://www.seoulouba.co.kr/campaign/?cat=382",
+    "https://www.seoulouba.co.kr/campaign/?cat=383",
+    "https://www.seoulouba.co.kr/campaign/?cat=384",
+    "https://www.seoulouba.co.kr/campaign/?cat=385",
+    "https://www.seoulouba.co.kr/campaign/?cat=386",
+    "https://www.seoulouba.co.kr/campaign/?cat=387",
+    "https://www.seoulouba.co.kr/campaign/?cat=388",
+    "https://www.seoulouba.co.kr/campaign/?cat=389",
+    "https://www.seoulouba.co.kr/campaign/?cat=390",
+    "https://www.seoulouba.co.kr/campaign/?cat=391",
+    "https://www.seoulouba.co.kr/campaign/?cat=446",
+    "https://www.seoulouba.co.kr/campaign/?cat=447",
+    "https://www.seoulouba.co.kr/campaign/?cat=448",
+    "https://www.seoulouba.co.kr/campaign/?cat=449",
+    "https://www.seoulouba.co.kr/campaign/?cat=450",
+    "https://www.seoulouba.co.kr/campaign/?cat=505",
+    "https://www.seoulouba.co.kr/campaign/?cat=506",
+    "https://www.seoulouba.co.kr/campaign/?cat=507",
+    "https://www.seoulouba.co.kr/campaign/?cat=508",
+    "https://www.seoulouba.co.kr/campaign/?cat=510",
+)
+
 GANGNAMMATZIP_TYPE_MAP = {
     "배송형": "delivery",
     "기자단": "content",
@@ -676,12 +705,16 @@ class SeoulOppaSourceAdapter(PlaceholderSourceAdapter):
         self.detail_limit = detail_limit
 
     def fetch(self) -> list[dict]:
-        listing_html = fetch_text_url(self.listing_url, timeout=12)
+        try:
+            listing_html = fetch_text_url(self.listing_url, timeout=10)
+        except Exception:
+            listing_html = None
         listing_items: list[dict] = []
         seen_urls: set[str] = set()
-        for listing_url in _extract_seouloppa_listing_urls(listing_html):
+        seed_urls = _extract_seouloppa_listing_urls(listing_html) if listing_html else list(SEOULOUPPA_LISTING_URLS)
+        for listing_url in seed_urls:
             try:
-                page_html = listing_html if listing_url == self.listing_url else fetch_text_url(listing_url, timeout=12)
+                page_html = listing_html if listing_html and listing_url == self.listing_url else fetch_text_url(listing_url, timeout=10)
                 fragments = _fetch_seouloppa_listing_fragments(listing_url, base_html=page_html)
             except Exception:
                 continue
@@ -892,9 +925,9 @@ def _build_seouloppa_ajax_payload(listing_url: str, page: int, more: int | None 
 def _fetch_seouloppa_listing_fragments(
     listing_url: str,
     base_html: str | None = None,
-    max_pages: int = 5,
+    max_pages: int = 3,
 ) -> list[str]:
-    base_page = base_html if base_html is not None else fetch_text_url(listing_url)
+    base_page = base_html if base_html is not None else fetch_text_url(listing_url, timeout=10)
     pages = [base_page]
     seen_fragments: set[str] = set()
     ajax_url = "https://www.seoulouba.co.kr/campaign/ajax/list.ajax.php"
@@ -994,7 +1027,7 @@ def _clean_seouloppa_title(title: str) -> tuple[str, str | None, str | None]:
 
 
 def _extract_seouloppa_listing_urls(html: str) -> list[str]:
-    urls = {"https://www.seoulouba.co.kr/campaign/?qq=popular"}
+    urls = set(SEOULOUPPA_LISTING_URLS)
     patterns = (r'href="([^"]*campaign/\?cat=\d+[^"]*)"', r'href="(\?cat=\d+[^"]*)"')
     for pattern in patterns:
         for href in re.findall(pattern, html):
