@@ -1,9 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 const PLATFORM_OPTIONS = [
-  ['all', '전체 플랫폼'],
   ['blog', '블로그'],
   ['instagram', '인스타'],
   ['youtube', '유튜브'],
@@ -11,7 +10,6 @@ const PLATFORM_OPTIONS = [
 ];
 
 const TYPE_OPTIONS = [
-  ['all', '전체 유형'],
   ['visit', '방문형'],
   ['delivery', '배송형'],
   ['purchase', '구매형'],
@@ -31,8 +29,18 @@ const SORT_OPTIONS = [
   ['slots', '모집 많은 순']
 ];
 
+function normalizeSelection(value) {
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => String(item).split(',')).map((item) => item.trim()).filter(Boolean);
+  }
+  return String(value || '').split(',').map((item) => item.trim()).filter(Boolean);
+}
+
 export function FilterBar({ sources, searchParams }) {
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const selectedPlatforms = useMemo(() => normalizeSelection(searchParams.platform).filter((value) => value !== 'all'), [searchParams.platform]);
+  const selectedTypes = useMemo(() => normalizeSelection(searchParams.type).filter((value) => value !== 'all'), [searchParams.type]);
+  const selectedSources = useMemo(() => normalizeSelection(searchParams.source).filter((value) => value !== 'all'), [searchParams.source]);
 
   return (
     <form className="filter-shell">
@@ -62,16 +70,13 @@ export function FilterBar({ sources, searchParams }) {
 
       {showAdvanced ? (
         <div className="filter-grid">
-          <Select name="platform" label="플랫폼" options={PLATFORM_OPTIONS} value={searchParams.platform || 'all'} />
-          <Select name="type" label="유형" options={TYPE_OPTIONS} value={searchParams.type || 'all'} />
-          <Select
+          <CheckboxGroup name="platform" label="플랫폼" options={PLATFORM_OPTIONS} selected={selectedPlatforms} />
+          <CheckboxGroup name="type" label="유형" options={TYPE_OPTIONS} selected={selectedTypes} />
+          <CheckboxGroup
             name="source"
             label="출처"
-            options={[
-              ['all', '전체 출처'],
-              ...sources.map((source) => [source.slug, source.name])
-            ]}
-            value={searchParams.source || 'all'}
+            options={sources.map((source) => [source.slug, source.name])}
+            selected={selectedSources}
           />
           <Select name="deadline" label="마감" options={DEADLINE_OPTIONS} value={searchParams.deadline || 'all'} />
           <Select name="sort" label="정렬" options={SORT_OPTIONS} value={searchParams.sort || 'deadline'} />
@@ -101,6 +106,25 @@ function Select({ name, label, options, value }) {
           </option>
         ))}
       </select>
+    </div>
+  );
+}
+
+function CheckboxGroup({ name, label, options, selected }) {
+  return (
+    <div className="search-stack checkbox-group-wrap">
+      <span className="checkbox-group-label">{label}</span>
+      <div className="checkbox-group">
+        {options.map(([value, labelText]) => {
+          const checked = selected.includes(value);
+          return (
+            <label key={value} className={`check-chip ${checked ? 'is-selected' : ''}`}>
+              <input type="checkbox" name={name} value={value} defaultChecked={checked} />
+              <span>{labelText}</span>
+            </label>
+          );
+        })}
+      </div>
     </div>
   );
 }

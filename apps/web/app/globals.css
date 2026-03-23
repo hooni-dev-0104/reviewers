@@ -192,6 +192,29 @@ a { color: inherit; text-decoration: none; }
   justify-self: end;
 }
 .search-stack { display: grid; gap: 8px; width: 100%; }
+.checkbox-group-wrap { gap: 10px; }
+.checkbox-group-label { font-size: 0.92rem; font-weight: 700; }
+.checkbox-group { display: flex; flex-wrap: wrap; gap: 8px; }
+.check-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+.check-chip input { display: none; }
+.check-chip.is-selected {
+  background: #fff3e8;
+  border-color: #ffcf99;
+  color: #b65c00;
+}
 .filter-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; }
 input, select {
   width: 100%;
@@ -676,6 +699,8 @@ input, select {
   .filter-grid { grid-template-columns: 1fr; gap: 7px; }
   .search-stack { gap: 5px; }
   .search-stack label { font-size: 0.82rem; }
+  .checkbox-group { gap: 6px; }
+  .check-chip { min-height: 34px; padding: 7px 10px; font-size: 0.8rem; }
   input, select { min-height: 38px; padding: 9px 11px; font-size: 0.88rem; border-radius: 14px; }
   .campaign-grid { grid-template-columns: 1fr; gap: 10px; }
   .hero-panel { padding: 24px; }

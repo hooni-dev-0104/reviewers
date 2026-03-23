@@ -86,6 +86,14 @@ function buildRegionCondition(token) {
   return `or(region_primary_name.ilike.*${token}*,region_secondary_name.ilike.*${token}*)`;
 }
 
+
+function normalizeMultiValue(value) {
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => String(item).split(',')).map((item) => item.trim()).filter(Boolean);
+  }
+  return String(value || '').split(',').map((item) => item.trim()).filter(Boolean);
+}
+
 function publicHeaders() {
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || requireEnv('SUPABASE_SERVICE_ROLE_KEY');
   return {
@@ -124,6 +132,9 @@ async function supabaseFetch(path, init = {}, { service = false } = {}) {
 
 function applyCampaignFilters(params, searchParams, { forCount = false } = {}) {
   const { search, platform, type, source, region, regionPrimary, regionSecondary, deadline, trust, sort = 'deadline', limit = 24, offset = 0 } = searchParams;
+  const platformValues = normalizeMultiValue(platform).filter((value) => value !== 'all');
+  const typeValues = normalizeMultiValue(type).filter((value) => value !== 'all');
+  const sourceValues = normalizeMultiValue(source).filter((value) => value !== 'all');
   const andConditions = [];
 
   params.set('select', CAMPAIGN_SELECT);
@@ -140,14 +151,20 @@ function applyCampaignFilters(params, searchParams, { forCount = false } = {}) {
       `or(title.ilike.*${escaped}*,benefit_text.ilike.*${escaped}*,category_name.ilike.*${escaped}*,region_primary_name.ilike.*${escaped}*,region_secondary_name.ilike.*${escaped}*,snippet.ilike.*${escaped}*)`
     );
   }
-  if (platform && platform !== 'all') {
-    params.set('platform_type', `eq.${platform}`);
+  if (platformValues.length === 1) {
+    params.set('platform_type', `eq.${platformValues[0]}`);
+  } else if (platformValues.length > 1) {
+    params.set('platform_type', `in.(${platformValues.join(',')})`);
   }
-  if (type && type !== 'all') {
-    params.set('campaign_type', `eq.${type}`);
+  if (typeValues.length === 1) {
+    params.set('campaign_type', `eq.${typeValues[0]}`);
+  } else if (typeValues.length > 1) {
+    params.set('campaign_type', `in.(${typeValues.join(',')})`);
   }
-  if (source && source !== 'all') {
-    params.set('sources.slug', `eq.${source}`);
+  if (sourceValues.length === 1) {
+    params.set('sources.slug', `eq.${sourceValues[0]}`);
+  } else if (sourceValues.length > 1) {
+    params.set('sources.slug', `in.(${sourceValues.join(',')})`);
   }
   if (regionPrimary && regionPrimary !== 'all') {
     if (regionSecondary && regionSecondary !== 'all') {

@@ -1,5 +1,12 @@
 import Link from 'next/link';
 
+function normalizeSelection(value) {
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => String(item).split(',')).map((item) => item.trim()).filter(Boolean);
+  }
+  return String(value || '').split(',').map((item) => item.trim()).filter(Boolean);
+}
+
 const LABELS = {
   source: {
     reviewnote: '리뷰노트',
@@ -33,11 +40,15 @@ const LABELS = {
 };
 
 export function ActiveFilters({ searchParams = {}, resultCount }) {
+  const platformValues = normalizeSelection(searchParams.platform).filter((value) => value !== 'all');
+  const typeValues = normalizeSelection(searchParams.type).filter((value) => value !== 'all');
+  const sourceValues = normalizeSelection(searchParams.source).filter((value) => value !== 'all');
+
   const entries = [
     searchParams.search ? ['검색', searchParams.search] : null,
-    searchParams.platform && searchParams.platform !== 'all' ? ['플랫폼', LABELS.platform[searchParams.platform] || searchParams.platform] : null,
-    searchParams.type && searchParams.type !== 'all' ? ['유형', LABELS.type[searchParams.type] || searchParams.type] : null,
-    searchParams.source && searchParams.source !== 'all' ? ['출처', LABELS.source[searchParams.source] || searchParams.source] : null,
+    platformValues.length ? ['플랫폼', platformValues.map((value) => LABELS.platform[value] || value).join(', ')] : null,
+    typeValues.length ? ['유형', typeValues.map((value) => LABELS.type[value] || value).join(', ')] : null,
+    sourceValues.length ? ['출처', sourceValues.map((value) => LABELS.source[value] || value).join(', ')] : null,
     searchParams.deadline && searchParams.deadline !== 'all' ? ['마감', LABELS.deadline[searchParams.deadline] || searchParams.deadline] : null,
     searchParams.sort && searchParams.sort !== 'deadline' ? ['정렬', LABELS.sort[searchParams.sort] || searchParams.sort] : null,
     searchParams.region ? ['지역', searchParams.region] : null
