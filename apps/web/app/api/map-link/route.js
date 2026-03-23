@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 
-import { getMapSearchQuery } from '@/lib/format';
 import { getCampaignById } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
@@ -11,16 +10,16 @@ export async function GET(request) {
   const provider = searchParams.get('provider');
 
   if (!id || !provider || !['kakao', 'naver'].includes(provider)) {
-    return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
+    return NextResponse.redirect(new URL('/', request.url), { status: 302 });
   }
 
   const campaign = await getCampaignById(id);
   if (!campaign) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    return NextResponse.redirect(new URL('/', request.url), { status: 302 });
   }
 
   const exactLocation = await resolveExactLocation(campaign);
-  const query = exactLocation || getMapSearchQuery(campaign);
+  const query = normalizePreciseLocation(exactLocation);
   const target = query ? buildProviderSearchUrl(provider, query) : null;
 
   if (!target) {
@@ -113,4 +112,21 @@ function cleanLocation(value) {
   }
 
   return compact;
+}
+
+function normalizePreciseLocation(value) {
+  const compact = cleanLocation(value);
+  if (!compact) {
+    return null;
+  }
+
+  let normalized = compact
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s+\)/g, ')')
+    .trim();
+
+  normalized = normalized.replace(/(\d+층)\s+[^\s]+$/, '$1');
+  normalized = normalized.replace(/(\d+호)\s+[^\s]+$/, '$1');
+
+  return normalized;
 }

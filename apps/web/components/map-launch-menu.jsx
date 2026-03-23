@@ -1,11 +1,11 @@
-import { getInternalMapLaunchUrl, getMapSearchQuery } from '@/lib/format';
+import { getInternalMapLaunchUrl, getMapSearchQuery, supportsExactMap } from '@/lib/format';
 
 export function MapLaunchMenu({ campaign, className = '' }) {
   const query = getMapSearchQuery(campaign);
   const kakaoUrl = getInternalMapLaunchUrl(campaign, 'kakao');
   const naverUrl = getInternalMapLaunchUrl(campaign, 'naver');
 
-  if (!query || !kakaoUrl || !naverUrl) {
+  if (!supportsExactMap(campaign) || !query || !kakaoUrl || !naverUrl) {
     return null;
   }
 

@@ -24,6 +24,7 @@ const SOURCE_TONES = {
 };
 
 const NON_LOCATION_TAGS = new Set(['배송형', '구매평', '기자단', '방문형', '클립', '서비스', '블로그', '인스타', '유튜브', '릴스']);
+const EXACT_MAP_SOURCE_SLUGS = new Set(['seouloppa', 'gangnammatzip', '4blog']);
 
 export function formatText(value) {
   return String(value || '')
@@ -201,4 +202,8 @@ export function getInternalMapLaunchUrl(record, provider) {
     return null;
   }
   return `/api/map-link?id=${encodeURIComponent(record.id)}&provider=${encodeURIComponent(provider)}`;
+}
+
+export function supportsExactMap(record) {
+  return EXACT_MAP_SOURCE_SLUGS.has(record?.sources?.slug || '');
 }

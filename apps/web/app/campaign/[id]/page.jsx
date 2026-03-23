@@ -5,6 +5,7 @@ import {
   formatCampaignType,
   formatDeadline,
   getInternalMapLaunchUrl,
+  supportsExactMap,
   formatPlatform,
   formatRegion,
   formatSourceName,
@@ -106,7 +107,7 @@ export default async function CampaignDetailPage({ params }) {
               <a href={campaign.original_url} target="_blank" rel="noreferrer" className="primary-action">
                 원문 보기
               </a>
-              {kakaoMapUrl && naverMapUrl ? (
+              {supportsExactMap(campaign) && kakaoMapUrl && naverMapUrl ? (
                 <div className="detail-map-links">
                   <a href={kakaoMapUrl} target="_blank" rel="noreferrer">
                     카카오맵
