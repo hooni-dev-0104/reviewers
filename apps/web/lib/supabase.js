@@ -221,7 +221,8 @@ export const getCampaigns = cache(async function getCampaigns(searchParams = {})
   const params = new URLSearchParams();
   applyCampaignFilters(params, searchParams);
   const response = await supabaseFetch(`/campaigns?${params.toString()}`);
-  return response.json();
+  const rows = await response.json();
+  return attachExactLocations(rows);
 });
 
 export async function getCampaignSearchCount(searchParams = {}) {
@@ -242,7 +243,8 @@ export const getCampaignById = cache(async function getCampaignById(id) {
   });
   const response = await supabaseFetch(`/campaigns?${params.toString()}`);
   const rows = await response.json();
-  return rows[0] || null;
+  const [enriched] = await attachExactLocations(rows);
+  return enriched || null;
 });
 
 export async function getCampaignExactLocation(id) {
@@ -277,7 +279,8 @@ export async function getCampaignsByIds(ids = []) {
     limit: String(Math.min(filteredIds.length, 50))
   });
   const response = await supabaseFetch(`/campaigns?${params.toString()}`);
-  return response.json();
+  const rows = await response.json();
+  return attachExactLocations(rows);
 }
 
 export async function getRelatedCampaigns(campaign, limit = 4) {
@@ -298,7 +301,54 @@ export async function getRelatedCampaigns(campaign, limit = 4) {
 
   const response = await supabaseFetch(`/campaigns?${params.toString()}`);
   const rows = await response.json();
-  return rows.filter((row) => row.id !== campaign.id).slice(0, limit);
+  const enriched = await attachExactLocations(rows);
+  return enriched.filter((row) => row.id !== campaign.id).slice(0, limit);
+}
+
+async function attachExactLocations(campaigns = []) {
+  if (!Array.isArray(campaigns) || !campaigns.length) {
+    return campaigns;
+  }
+
+  try {
+    const locations = await getCampaignExactLocationsByIds(campaigns.map((campaign) => campaign.id));
+    return campaigns.map((campaign) => ({
+      ...campaign,
+      exact_location: locations.get(campaign.id) || null
+    }));
+  } catch {
+    return campaigns;
+  }
+}
+
+async function getCampaignExactLocationsByIds(ids = []) {
+  const filteredIds = [...new Set(ids.filter(Boolean))];
+  if (!filteredIds.length) {
+    return new Map();
+  }
+
+  const params = new URLSearchParams({
+    select: 'campaign_id,raw_payload',
+    campaign_id: `in.(${filteredIds.join(',')})`,
+    order: 'campaign_id.asc,crawled_at.desc',
+    limit: String(Math.max(filteredIds.length * 4, 50))
+  });
+  const response = await supabaseFetch(`/campaign_snapshots?${params.toString()}`, {}, { service: true });
+  const rows = await response.json();
+  const locations = new Map();
+
+  for (const row of rows) {
+    const campaignId = row?.campaign_id;
+    if (!campaignId || locations.has(campaignId)) {
+      continue;
+    }
+    const exactLocation = row?.raw_payload?.exact_location || row?.raw_payload?.site_location || row?.raw_payload?.address;
+    if (typeof exactLocation === 'string' && exactLocation.trim()) {
+      locations.set(campaignId, exactLocation.trim());
+    }
+  }
+
+  return locations;
 }
 
 
