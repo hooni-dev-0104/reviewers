@@ -676,7 +676,18 @@ class SeoulOppaSourceAdapter(PlaceholderSourceAdapter):
 
     def fetch(self) -> list[dict]:
         listing_html = fetch_text_url(self.listing_url)
-        listing_items = parse_seouloppa_listing(listing_html, source_id=self.definition.source_id)
+        listing_items: list[dict] = []
+        seen_urls: set[str] = set()
+        for listing_url in _extract_seouloppa_listing_urls(listing_html):
+            try:
+                page_html = listing_html if listing_url == self.listing_url else fetch_text_url(listing_url)
+            except Exception:
+                continue
+            for item in parse_seouloppa_listing(page_html, source_id=self.definition.source_id):
+                if item["original_url"] in seen_urls:
+                    continue
+                seen_urls.add(item["original_url"])
+                listing_items.append(item)
         selected_items = listing_items if self.detail_limit is None else listing_items[: self.detail_limit]
         items = []
         for item in selected_items:
@@ -846,6 +857,19 @@ def _clean_seouloppa_title(title: str) -> tuple[str, str | None, str | None]:
         break
 
     return cleaned, region_primary, region_secondary
+
+
+def _extract_seouloppa_listing_urls(html: str) -> list[str]:
+    urls = {"https://www.seoulouba.co.kr/campaign/?qq=popular"}
+    for href in re.findall(r'href="([^"]*campaign/\?cat=\d+[^"]*)"', html):
+        cleaned = html_lib.unescape(href).strip()
+        if cleaned.startswith("http"):
+            urls.add(cleaned)
+        elif cleaned.startswith("/"):
+            urls.add(f"https://www.seoulouba.co.kr{cleaned}")
+        elif cleaned.startswith("?"):
+            urls.add(f"https://www.seoulouba.co.kr/campaign/{cleaned}")
+    return sorted(urls)
 
 
 def _infer_region_from_address_text(address_text: str | None) -> tuple[str | None, str | None]:
@@ -1160,7 +1184,7 @@ def get_adapter(source_slug: str, source_file: str | None = None, report_mode: b
     if source_slug == "dinnerqueen":
         return DinnerQueenSourceAdapter(definition, page_limit=1 if report_mode else 20, detail_limit=12 if report_mode else None)
     if source_slug == "seouloppa":
-        return SeoulOppaSourceAdapter(definition, detail_limit=20 if report_mode else 80)
+        return SeoulOppaSourceAdapter(definition, detail_limit=24 if report_mode else 140)
     if source_slug == "gangnammatzip":
         return GangnamMatzipSourceAdapter(definition, detail_limit=10 if report_mode else None)
     return PlaceholderSourceAdapter(definition)
