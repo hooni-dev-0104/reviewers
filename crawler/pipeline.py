@@ -85,6 +85,35 @@ def build_campaign_payload(campaign: CampaignRecord) -> dict[str, Any]:
     }
 
 
+def build_campaign_snapshot_payloads(
+    upserted_rows: list[dict[str, Any]],
+    campaigns: list[CampaignRecord],
+) -> list[dict[str, Any]]:
+    campaign_map = {
+        (campaign.source_id, campaign.original_url): campaign
+        for campaign in campaigns
+    }
+    snapshots = []
+    for row in upserted_rows or []:
+        key = (row.get("source_id"), row.get("original_url"))
+        campaign = campaign_map.get(key)
+        if not campaign or not row.get("id"):
+            continue
+        campaign.ensure_crawled_at()
+        snapshots.append(
+            {
+                "campaign_id": row["id"],
+                "title": campaign.title,
+                "benefit_text": campaign.benefit_text,
+                "apply_deadline": campaign.apply_deadline,
+                "status": campaign.status,
+                "raw_payload": campaign.raw_payload,
+                "crawled_at": campaign.crawled_at,
+            }
+        )
+    return snapshots
+
+
 def run_source_pipeline(
     source_slug: str,
     config: AppConfig,
@@ -139,7 +168,6 @@ def run_source_pipeline(
             stats.failed += 1
             errors.append(str(exc))
 
-    payload = [build_campaign_payload(item) for item in normalized]
     if not effective_dry_run and client:
         created_job = client.create_crawl_job(
             definition.source_id,
@@ -157,9 +185,13 @@ def run_source_pipeline(
         if delete_before_refresh and definition.source_id:
             deleted_rows = client.delete_campaigns_for_source(definition.source_id) or []
             deleted_count += len(deleted_rows)
-        if payload:
-            for batch in _iter_batches(payload, config.upsert_batch_size):
-                client.upsert_campaigns(batch)
+        if normalized:
+            for batch in _iter_batches(normalized, config.upsert_batch_size):
+                payload_batch = [build_campaign_payload(item) for item in batch]
+                upserted_rows = client.upsert_campaigns(payload_batch) or []
+                snapshot_batch = build_campaign_snapshot_payloads(upserted_rows, batch)
+                if snapshot_batch:
+                    client.insert_campaign_snapshots(snapshot_batch)
         if job_row and job_row.get("id"):
             client.update_crawl_job(
                 job_row["id"],
@@ -174,6 +206,7 @@ def run_source_pipeline(
                     "finished_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
                 },
             )
+    payload = [build_campaign_payload(item) for item in normalized]
 
     return {
         "source": definition.slug,

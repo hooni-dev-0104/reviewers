@@ -59,6 +59,22 @@ class SupabasePostgrestClient:
     def upsert_campaigns(self, payload: list[dict[str, Any]]) -> Any:
         return self._request(build_upsert_campaigns_request(self.config, payload))
 
+    def insert_campaign_snapshots(self, payload: list[dict[str, Any]]) -> Any:
+        if not payload:
+            return []
+        spec = RequestSpec(
+            method="POST",
+            url=f"{self.config.supabase_url}/rest/v1/{self.config.campaign_snapshots_table}",
+            headers={
+                "apikey": self.config.supabase_service_role_key,
+                "Authorization": f"Bearer {self.config.supabase_service_role_key}",
+                "Content-Type": "application/json",
+                "Prefer": "return=minimal",
+            },
+            body=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        )
+        return self._request(spec)
+
     def get_source_by_slug(self, slug: str) -> dict[str, Any] | None:
         query = urllib.parse.urlencode({"slug": f"eq.{slug}", "select": "*", "limit": "1"})
         spec = RequestSpec(

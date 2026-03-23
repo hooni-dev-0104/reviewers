@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-import { getCampaignById } from '@/lib/supabase';
+import { getCampaignById, getCampaignExactLocation } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +18,8 @@ export async function GET(request) {
     return NextResponse.redirect(new URL('/', request.url), { status: 302 });
   }
 
-  const exactLocation = await resolveExactLocation(campaign);
+  const storedExactLocation = await getCampaignExactLocation(id);
+  const exactLocation = storedExactLocation || await resolveExactLocation(campaign);
   const query = normalizePreciseLocation(exactLocation);
   const target = query ? buildProviderSearchUrl(provider, query) : null;
 

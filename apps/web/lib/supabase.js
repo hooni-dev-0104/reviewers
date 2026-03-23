@@ -245,6 +245,24 @@ export const getCampaignById = cache(async function getCampaignById(id) {
   return rows[0] || null;
 });
 
+export async function getCampaignExactLocation(id) {
+  if (!id) {
+    return null;
+  }
+
+  const params = new URLSearchParams({
+    select: 'raw_payload',
+    campaign_id: `eq.${id}`,
+    order: 'crawled_at.desc',
+    limit: '1'
+  });
+  const response = await supabaseFetch(`/campaign_snapshots?${params.toString()}`, {}, { service: true });
+  const rows = await response.json();
+  const rawPayload = rows[0]?.raw_payload;
+  const exactLocation = rawPayload?.exact_location || rawPayload?.site_location || rawPayload?.address;
+  return typeof exactLocation === 'string' ? exactLocation : null;
+}
+
 export async function getCampaignsByIds(ids = []) {
   const filteredIds = ids.filter(Boolean);
   if (!filteredIds.length) {

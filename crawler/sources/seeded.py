@@ -268,6 +268,8 @@ def enrich_4blog_item_from_detail(item: dict, detail_html: str) -> dict:
 
     if location_text and not enriched.get("snippet"):
         enriched["snippet"] = location_text
+    if location_text:
+        enriched["exact_location"] = _strip_tags(location_text)
 
     return enriched
 
@@ -1146,6 +1148,8 @@ def enrich_seouloppa_detail(item: dict, detail_html: str) -> dict:
     if apply_deadline:
         enriched['apply_deadline'] = apply_deadline
     address_text = _extract_first(r"addressSearch\('([^']+)'", detail_html, re.S)
+    if address_text:
+        enriched['exact_location'] = _strip_tags(address_text)
     region_primary, region_secondary = _infer_region_from_address_text(address_text)
     if region_primary and not enriched.get('region_primary_name'):
         enriched['region_primary_name'] = region_primary
@@ -1218,6 +1222,9 @@ def enrich_gangnammatzip_detail(item: dict, detail_html: str) -> dict:
             enriched['apply_deadline'] = date(current_year, rm, rd).isoformat()
         except Exception:
             pass
+    address_text = _extract_first(r'var\s+loca\s*=\s*"([^"]+)"', detail_html, re.S)
+    if address_text:
+        enriched['exact_location'] = _strip_tags(address_text)
     return enriched
 
 def _strip_tags(value: str) -> str:

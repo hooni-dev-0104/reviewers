@@ -6,7 +6,7 @@ from unittest import mock
 from pathlib import Path
 
 from crawler.config import AppConfig
-from crawler.pipeline import build_campaign_payload, run_daily_refresh, run_source_pipeline
+from crawler.pipeline import build_campaign_payload, build_campaign_snapshot_payloads, run_daily_refresh, run_source_pipeline
 from crawler.reporting import build_source_quality_report
 from crawler.normalization import normalize_campaign
 from crawler.sources.seeded import (
@@ -48,6 +48,27 @@ class PipelineTests(unittest.TestCase):
         payload = build_campaign_payload(campaign)
         self.assertEqual(payload["source_id"], "source-1")
         self.assertEqual(payload["original_url"], "https://example.com/c/1")
+
+    def test_build_campaign_snapshot_payloads(self):
+        campaign = normalize_campaign(
+            "reviewnote",
+            "source-1",
+            {
+                "title": "테스트",
+                "original_url": "https://example.com/c/1",
+                "platform_type": "blog",
+                "campaign_type": "visit",
+                "exact_location": "서울 강남구 테헤란로 1",
+            },
+        )
+        campaign.crawled_at = "2026-03-23T00:00:00Z"
+        snapshots = build_campaign_snapshot_payloads(
+            [{"id": "campaign-1", "source_id": "source-1", "original_url": "https://example.com/c/1"}],
+            [campaign],
+        )
+        self.assertEqual(len(snapshots), 1)
+        self.assertEqual(snapshots[0]["campaign_id"], "campaign-1")
+        self.assertEqual(snapshots[0]["raw_payload"]["exact_location"], "서울 강남구 테헤란로 1")
 
     def test_run_source_pipeline_with_file(self):
         sample = [
@@ -360,6 +381,7 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(enriched["apply_deadline"], "2026-03-23")
         self.assertEqual(enriched["region_primary_name"], "서울")
         self.assertEqual(enriched["region_secondary_name"], "강남구")
+        self.assertEqual(enriched["exact_location"], "서울 강남구 강남대로102길 28 (역삼동)")
 
     def test_parse_gangnammatzip_listing(self):
         html = """
@@ -405,6 +427,12 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(enriched["benefit_text"], "롯데상품권 (30만원)")
         self.assertEqual(enriched["published_at"], "2026-03-03")
         self.assertEqual(enriched["apply_deadline"], "2026-03-31")
+
+    def test_enrich_gangnammatzip_detail_extracts_exact_location(self):
+        item = {}
+        detail_html = 'var loca = "경기 파주시 경의로 1114 (야당동, 에펠타워) 2층 네일갤러리";'
+        enriched = enrich_gangnammatzip_detail(item, detail_html)
+        self.assertEqual(enriched["exact_location"], "경기 파주시 경의로 1114 (야당동, 에펠타워) 2층 네일갤러리")
 
     def test_extract_seouloppa_listing_urls_keeps_category_urls_only(self):
         html = """
