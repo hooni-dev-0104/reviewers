@@ -720,17 +720,27 @@ class SeoulOppaSourceAdapter(PlaceholderSourceAdapter):
         self.detail_limit = detail_limit
 
     def fetch(self) -> list[dict]:
+        fetch_errors: list[str] = []
+
         try:
             listing_html = fetch_text_url(
                 self.listing_url,
                 timeout=SEOULOUPPA_FETCH_TIMEOUT,
                 headers=SEOULOUPPA_BROWSER_HEADERS,
             )
-        except Exception:
+        except Exception as exc:
+            fetch_errors.append(f"initial listing failed: {self.listing_url} :: {_format_source_exception(exc)}")
             listing_html = None
         listing_items: list[dict] = []
         seen_urls: set[str] = set()
         seed_urls = _extract_seouloppa_listing_urls(listing_html) if listing_html else list(SEOULOUPPA_LISTING_URLS)
+        if listing_html:
+            print(
+                f"[seouloppa] initial listing ok: bytes={len(listing_html)} "
+                f"campaign_content={listing_html.count('campaign_content')} seed_urls={len(seed_urls)}"
+            )
+        else:
+            print(f"[seouloppa] initial listing unavailable; falling back to {len(seed_urls)} seeded listing urls")
         for listing_url in seed_urls:
             try:
                 page_html = (
@@ -743,14 +753,23 @@ class SeoulOppaSourceAdapter(PlaceholderSourceAdapter):
                     )
                 )
                 fragments = _fetch_seouloppa_listing_fragments(listing_url, base_html=page_html)
-            except Exception:
+            except Exception as exc:
+                fetch_errors.append(f"listing fetch failed: {listing_url} :: {_format_source_exception(exc)}")
                 continue
+            parsed_count = 0
             for fragment in fragments:
-                for item in parse_seouloppa_listing(fragment, source_id=self.definition.source_id):
+                parsed_items = parse_seouloppa_listing(fragment, source_id=self.definition.source_id)
+                parsed_count += len(parsed_items)
+                for item in parsed_items:
                     if item["original_url"] in seen_urls:
                         continue
                     seen_urls.add(item["original_url"])
                     listing_items.append(item)
+            if parsed_count == 0:
+                fetch_errors.append(
+                    "listing parsed zero items: "
+                    f"{listing_url} :: bytes={len(page_html)} campaign_content={page_html.count('campaign_content')}"
+                )
         prioritized_items = sorted(
             listing_items,
             key=lambda item: (
@@ -774,10 +793,18 @@ class SeoulOppaSourceAdapter(PlaceholderSourceAdapter):
                         "Referer": self.listing_url,
                     },
                 )
-            except Exception:
+            except Exception as exc:
+                fetch_errors.append(f"detail fetch failed: {item['original_url']} :: {_format_source_exception(exc)}")
                 detail_html = None
             if detail_html:
                 item.update(enrich_seouloppa_detail(item, detail_html))
+        print(
+            f"[seouloppa] fetched listing_items={len(listing_items)} "
+            f"detail_targets={len(detail_targets)} errors={len(fetch_errors)}"
+        )
+        if not listing_items and fetch_errors:
+            for message in fetch_errors[:12]:
+                print(f"[seouloppa] {message}")
         return items
 
 
@@ -1127,6 +1154,10 @@ def _infer_region_from_address_text(address_text: str | None) -> tuple[str | Non
     secondary = parts[1] if len(parts) > 1 else None
 
     return primary, secondary
+
+
+def _format_source_exception(exc: Exception) -> str:
+    return f"{type(exc).__name__}: {exc}"
 
 
 def parse_seouloppa_listing(html: str, source_id: str | None = None) -> list[dict]:
