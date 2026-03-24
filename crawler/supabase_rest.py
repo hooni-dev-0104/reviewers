@@ -60,9 +60,16 @@ class SupabasePostgrestClient:
         try:
             return self._request(build_upsert_campaigns_request(self.config, payload))
         except SupabaseRequestError as exc:
-            if "exact_location" not in str(exc):
+            if not any(key in str(exc) for key in ("exact_location", "latitude", "longitude")):
                 raise
-            fallback_payload = [{key: value for key, value in row.items() if key != "exact_location"} for row in payload]
+            fallback_payload = [
+                {
+                    key: value
+                    for key, value in row.items()
+                    if key not in {"exact_location", "latitude", "longitude"}
+                }
+                for row in payload
+            ]
             return self._request(build_upsert_campaigns_request(self.config, fallback_payload))
 
     def insert_campaign_snapshots(self, payload: list[dict[str, Any]]) -> Any:
@@ -80,6 +87,44 @@ class SupabasePostgrestClient:
             body=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
         )
         return self._request(spec)
+
+    def get_latest_snapshot_map_data(self, campaign_ids: list[str]) -> dict[str, tuple[float, float]]:
+        filtered_ids = [campaign_id for campaign_id in campaign_ids if campaign_id]
+        if not filtered_ids:
+            return {}
+
+        query = urllib.parse.urlencode(
+            {
+                "select": "campaign_id,raw_payload",
+                "campaign_id": f"in.({','.join(filtered_ids)})",
+                "order": "campaign_id.asc,crawled_at.desc",
+                "limit": str(max(len(filtered_ids) * 4, 50)),
+            }
+        )
+        spec = RequestSpec(
+            method="GET",
+            url=f"{self.config.supabase_url}/rest/v1/{self.config.campaign_snapshots_table}?{query}",
+            headers={
+                "apikey": self.config.supabase_service_role_key,
+                "Authorization": f"Bearer {self.config.supabase_service_role_key}",
+            },
+        )
+        rows = self._request(spec) or []
+        data: dict[str, tuple[float, float]] = {}
+        for row in rows:
+            campaign_id = row.get("campaign_id")
+            if not campaign_id or campaign_id in data:
+                continue
+            raw_payload = row.get("raw_payload") or {}
+            lat = raw_payload.get("latitude")
+            lng = raw_payload.get("longitude")
+            if lat is None or lng is None:
+                continue
+            try:
+                data[campaign_id] = (float(lat), float(lng))
+            except Exception:
+                continue
+        return data
 
     def get_source_by_slug(self, slug: str) -> dict[str, Any] | None:
         query = urllib.parse.urlencode({"slug": f"eq.{slug}", "select": "*", "limit": "1"})

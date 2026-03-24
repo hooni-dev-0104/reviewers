@@ -43,12 +43,16 @@ class PipelineTests(unittest.TestCase):
                 "original_url": "https://example.com/c/1",
                 "platform_type": "blog",
                 "campaign_type": "visit",
+                "latitude": 37.5,
+                "longitude": 127.0,
             },
         )
         payload = build_campaign_payload(campaign)
         self.assertEqual(payload["source_id"], "source-1")
         self.assertEqual(payload["original_url"], "https://example.com/c/1")
         self.assertIsNone(payload["exact_location"])
+        self.assertEqual(payload["latitude"], 37.5)
+        self.assertEqual(payload["longitude"], 127.0)
 
     def test_build_campaign_snapshot_payloads(self):
         campaign = normalize_campaign(

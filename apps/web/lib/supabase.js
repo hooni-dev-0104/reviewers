@@ -222,7 +222,7 @@ export const getCampaigns = cache(async function getCampaigns(searchParams = {})
   applyCampaignFilters(params, searchParams);
   const response = await supabaseFetch(`/campaigns?${params.toString()}`);
   const rows = await response.json();
-  return attachExactLocations(rows);
+  return attachLocationData(rows);
 });
 
 export async function getCampaignSearchCount(searchParams = {}) {
@@ -243,7 +243,7 @@ export const getCampaignById = cache(async function getCampaignById(id) {
   });
   const response = await supabaseFetch(`/campaigns?${params.toString()}`);
   const rows = await response.json();
-  const [enriched] = await attachExactLocations(rows);
+  const [enriched] = await attachLocationData(rows);
   return enriched || null;
 });
 
@@ -280,7 +280,7 @@ export async function getCampaignsByIds(ids = []) {
   });
   const response = await supabaseFetch(`/campaigns?${params.toString()}`);
   const rows = await response.json();
-  return attachExactLocations(rows);
+  return attachLocationData(rows);
 }
 
 export async function getRelatedCampaigns(campaign, limit = 4) {
@@ -301,27 +301,29 @@ export async function getRelatedCampaigns(campaign, limit = 4) {
 
   const response = await supabaseFetch(`/campaigns?${params.toString()}`);
   const rows = await response.json();
-  const enriched = await attachExactLocations(rows);
+  const enriched = await attachLocationData(rows);
   return enriched.filter((row) => row.id !== campaign.id).slice(0, limit);
 }
 
-async function attachExactLocations(campaigns = []) {
+async function attachLocationData(campaigns = []) {
   if (!Array.isArray(campaigns) || !campaigns.length) {
     return campaigns;
   }
 
   try {
-    const locations = await getCampaignExactLocationsByIds(campaigns.map((campaign) => campaign.id));
+    const locations = await getCampaignLocationDataByIds(campaigns.map((campaign) => campaign.id));
     return campaigns.map((campaign) => ({
       ...campaign,
-      exact_location: locations.get(campaign.id) || null
+      exact_location: locations.get(campaign.id)?.exact_location || null,
+      latitude: locations.get(campaign.id)?.latitude ?? null,
+      longitude: locations.get(campaign.id)?.longitude ?? null
     }));
   } catch {
     return campaigns;
   }
 }
 
-async function getCampaignExactLocationsByIds(ids = []) {
+async function getCampaignLocationDataByIds(ids = []) {
   const filteredIds = [...new Set(ids.filter(Boolean))];
   if (!filteredIds.length) {
     return new Map();
@@ -343,8 +345,14 @@ async function getCampaignExactLocationsByIds(ids = []) {
       continue;
     }
     const exactLocation = row?.raw_payload?.exact_location || row?.raw_payload?.site_location || row?.raw_payload?.address;
-    if (typeof exactLocation === 'string' && exactLocation.trim()) {
-      locations.set(campaignId, exactLocation.trim());
+    const latitude = row?.raw_payload?.latitude;
+    const longitude = row?.raw_payload?.longitude;
+    if ((typeof exactLocation === 'string' && exactLocation.trim()) || (latitude != null && longitude != null)) {
+      locations.set(campaignId, {
+        exact_location: typeof exactLocation === 'string' ? exactLocation.trim() : null,
+        latitude: latitude != null ? Number(latitude) : null,
+        longitude: longitude != null ? Number(longitude) : null
+      });
     }
   }
 

@@ -81,6 +81,8 @@ def normalize_campaign(source_slug: str, source_id: str | None, raw: dict[str, A
         region_primary_name=raw.get("region_primary_name"),
         region_secondary_name=raw.get("region_secondary_name"),
         exact_location=raw.get("exact_location"),
+        latitude=raw.get("latitude"),
+        longitude=raw.get("longitude"),
         benefit_text=raw.get("benefit_text"),
         recruit_count=raw.get("recruit_count"),
         apply_deadline=raw.get("apply_deadline"),

@@ -91,6 +91,8 @@ create table if not exists public.campaigns (
   region_primary_name text,
   region_secondary_name text,
   exact_location text,
+  latitude double precision,
+  longitude double precision,
   benefit_text text,
   recruit_count integer,
   apply_deadline timestamptz,
@@ -207,6 +209,12 @@ create table if not exists public.sponsor_slots (
 
 alter table public.campaigns
   add column if not exists exact_location text;
+
+alter table public.campaigns
+  add column if not exists latitude double precision;
+
+alter table public.campaigns
+  add column if not exists longitude double precision;
 
 create index if not exists idx_sources_is_active on public.sources (is_active, priority);
 create index if not exists idx_campaigns_source_id on public.campaigns (source_id);

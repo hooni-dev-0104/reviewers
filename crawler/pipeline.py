@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
+import json
 from typing import Any
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 
 from crawler.config import AppConfig
 from crawler.models import CampaignRecord, SourceDefinition
@@ -17,6 +20,13 @@ class PipelineStats:
     normalized: int = 0
     failed: int = 0
     skipped: int = 0
+
+
+GEOCODE_BUDGETS = {
+    "seouloppa": 40,
+    "gangnammatzip": 60,
+    "4blog": 20,
+}
 
 
 def _iter_batches(items: list[dict[str, Any]], batch_size: int):
@@ -73,6 +83,8 @@ def build_campaign_payload(campaign: CampaignRecord) -> dict[str, Any]:
         "region_primary_name": campaign.region_primary_name,
         "region_secondary_name": campaign.region_secondary_name,
         "exact_location": campaign.exact_location,
+        "latitude": campaign.latitude,
+        "longitude": campaign.longitude,
         "benefit_text": campaign.benefit_text,
         "recruit_count": campaign.recruit_count,
         "apply_deadline": campaign.apply_deadline,
@@ -113,6 +125,68 @@ def build_campaign_snapshot_payloads(
             }
         )
     return snapshots
+
+
+def _source_geocode_budget(slug: str) -> int:
+    return GEOCODE_BUDGETS.get(slug, 0)
+
+
+def _geocode_exact_location(query: str) -> tuple[float, float] | None:
+    if not query:
+        return None
+    params = urlencode(
+        {
+            "q": query,
+            "format": "jsonv2",
+            "limit": "1",
+            "countrycodes": "kr",
+            "addressdetails": "0",
+        }
+    )
+    request = Request(
+        f"https://nominatim.openstreetmap.org/search?{params}",
+        headers={
+            "User-Agent": "ReviewKokCrawlerGeocoder/1.0 (https://reviewkok.vercel.app)",
+            "Accept-Language": "ko-KR,ko;q=0.9,en;q=0.8",
+        },
+    )
+    with urlopen(request, timeout=12) as response:  # noqa: S310
+        rows = json.loads(response.read().decode("utf-8"))
+    first = rows[0] if rows else None
+    if not first or not first.get("lat") or not first.get("lon"):
+        return None
+    return float(first["lat"]), float(first["lon"])
+
+
+def enrich_campaign_coordinates(
+    source_slug: str,
+    campaigns: list[CampaignRecord],
+    cached_map_data: dict[tuple[str | None, str], tuple[float, float]] | None = None,
+) -> None:
+    budget = _source_geocode_budget(source_slug)
+    for campaign in campaigns:
+        cache_key = (campaign.source_id, campaign.original_url)
+        cached = cached_map_data.get(cache_key) if cached_map_data else None
+        if cached:
+            campaign.latitude, campaign.longitude = cached
+            campaign.raw_payload["latitude"] = cached[0]
+            campaign.raw_payload["longitude"] = cached[1]
+            continue
+
+        if budget <= 0:
+            continue
+        if campaign.campaign_type != "visit" or not campaign.exact_location:
+            continue
+        try:
+            coordinates = _geocode_exact_location(campaign.exact_location)
+        except Exception:
+            coordinates = None
+        if not coordinates:
+            continue
+        campaign.latitude, campaign.longitude = coordinates
+        campaign.raw_payload["latitude"] = coordinates[0]
+        campaign.raw_payload["longitude"] = coordinates[1]
+        budget -= 1
 
 
 def run_source_pipeline(
@@ -190,6 +264,20 @@ def run_source_pipeline(
             for batch in _iter_batches(normalized, config.upsert_batch_size):
                 payload_batch = [build_campaign_payload(item) for item in batch]
                 upserted_rows = client.upsert_campaigns(payload_batch) or []
+                snapshot_map_data = client.get_latest_snapshot_map_data([row.get("id") for row in upserted_rows])
+                row_map = {
+                    (row.get("source_id"), row.get("original_url")): row.get("id")
+                    for row in upserted_rows
+                }
+                cached_map_data = {}
+                for campaign in batch:
+                    campaign_id = row_map.get((campaign.source_id, campaign.original_url))
+                    if campaign_id and campaign_id in snapshot_map_data:
+                        cached_map_data[(campaign.source_id, campaign.original_url)] = snapshot_map_data[campaign_id]
+                enrich_campaign_coordinates(definition.slug, batch, cached_map_data)
+                geocoded_payload_batch = [build_campaign_payload(item) for item in batch if item.latitude is not None and item.longitude is not None]
+                if geocoded_payload_batch:
+                    client.upsert_campaigns(geocoded_payload_batch)
                 snapshot_batch = build_campaign_snapshot_payloads(upserted_rows, batch)
                 if snapshot_batch:
                     client.insert_campaign_snapshots(snapshot_batch)
