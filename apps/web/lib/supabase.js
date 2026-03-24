@@ -228,6 +228,29 @@ export const getCampaigns = cache(async function getCampaigns(searchParams = {})
   return attachLocationData(rows);
 });
 
+export async function getMapEligibleCampaigns(searchParams = {}) {
+  const typeValues = normalizeMultiValue(searchParams.type).filter((value) => value !== 'all');
+  if (typeValues.length && !typeValues.includes('visit')) {
+    return [];
+  }
+
+  const params = new URLSearchParams();
+  applyCampaignFilters(params, { ...searchParams, type: 'visit', limit: 240, offset: 0 });
+  params.set('latitude', 'not.is.null');
+  params.set('longitude', 'not.is.null');
+
+  const response = await supabaseFetch(`/campaigns?${params.toString()}`);
+  const rows = await response.json();
+  const campaigns = await attachLocationData(rows);
+
+  return campaigns.filter(
+    (campaign) =>
+      campaign.exact_location &&
+      Number.isFinite(campaign.latitude) &&
+      Number.isFinite(campaign.longitude)
+  );
+}
+
 export async function getCampaignSearchCount(searchParams = {}) {
   const params = new URLSearchParams();
   applyCampaignFilters(params, searchParams, { forCount: true });
