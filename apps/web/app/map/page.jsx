@@ -2,28 +2,25 @@ import { FilterBar } from '@/components/filter-bar';
 import { MapExplorer } from '@/components/map-explorer';
 import { SiteShell } from '@/components/site-shell';
 import { VisitorWidget } from '@/components/visitor-widget';
-import { getCampaignCount, getCampaigns, getSources, getVisitorCounts } from '@/lib/supabase';
+import { getCampaignCount, getSources, getVisitorCounts } from '@/lib/supabase';
+import { getMapCampaigns } from '@/lib/map-data';
 
 export const dynamic = 'force-dynamic';
 
 export default async function MapPage({ searchParams }) {
   const resolvedSearchParams = await searchParams;
   const [campaigns, sources, visitorCounts, campaignCount] = await Promise.all([
-    getCampaigns({ ...resolvedSearchParams, limit: 160, offset: 0 }),
+    getMapCampaigns(resolvedSearchParams),
     getSources(),
     getVisitorCounts(),
     getCampaignCount()
   ]);
 
-  const mappableCampaigns = campaigns
-    .filter((campaign) => campaign.campaign_type === 'visit' && campaign.exact_location)
-    .slice(0, 120);
-
   return (
     <SiteShell campaignCount={campaignCount} visitorWidget={<VisitorWidget initialCounts={visitorCounts} />}>
       <section className="explore-panel map-page-shell">
         <FilterBar sources={sources} searchParams={resolvedSearchParams} />
-        <MapExplorer campaigns={mappableCampaigns} />
+        <MapExplorer campaigns={campaigns} />
       </section>
     </SiteShell>
   );

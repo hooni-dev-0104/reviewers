@@ -540,6 +540,44 @@ input, select {
   border-radius: 20px;
   background: #eef2f7;
 }
+.map-surface {
+  width: 100%;
+  min-height: 560px;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #eef2f7;
+}
+.map-pin-wrapper,
+.map-cluster-wrapper {
+  background: transparent;
+  border: 0;
+}
+.map-pin {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--accent), #8b5cf6);
+  border: 3px solid #fff;
+  box-shadow: 0 8px 22px rgba(255, 122, 0, 0.25);
+}
+.map-pin.active {
+  transform: scale(1.15);
+  box-shadow: 0 10px 24px rgba(124, 88, 255, 0.35);
+}
+.map-cluster {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--accent), #8b5cf6);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 800;
+  border: 3px solid #fff;
+  box-shadow: 0 12px 28px rgba(124, 88, 255, 0.28);
+}
 
 .map-list-head {
   display: flex;
@@ -547,6 +585,19 @@ input, select {
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 12px;
+}
+.map-count-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 700;
 }
 
 .map-card-list {
