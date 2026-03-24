@@ -624,7 +624,7 @@ input, select {
 
 .map-list-select {
   display: grid;
-  gap: 6px;
+  gap: 7px;
   text-align: left;
   width: 100%;
   padding: 0;
@@ -632,6 +632,9 @@ input, select {
   background: transparent;
   box-shadow: none;
   color: #213047;
+  align-items: start;
+  justify-items: start;
+  justify-content: stretch;
 }
 
 .map-list-select:hover {
@@ -646,18 +649,25 @@ input, select {
   line-height: 1.28;
   letter-spacing: -0.03em;
   color: #142033;
+  text-align: left;
 }
 
 .map-list-card p,
 .map-list-card small {
   margin: 0;
   color: var(--muted);
+  text-align: left;
+}
+
+.map-list-select .source-chip {
+  justify-self: start;
 }
 
 .map-list-card a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
   min-height: 36px;
   border-radius: 12px;
   border: 1px solid var(--line);

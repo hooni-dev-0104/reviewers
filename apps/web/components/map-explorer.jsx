@@ -17,11 +17,11 @@ export function MapExplorer({ campaigns = [] }) {
   const mapContainerRef = useRef(null);
   const mapStateRef = useRef(null);
 
-  const [selectedId, setSelectedId] = useState(campaigns[0]?.id || null);
+  const [selectedId, setSelectedId] = useState(null);
   const [visibleIds, setVisibleIds] = useState(() => campaigns.map((campaign) => campaign.id));
 
   const selectedCampaign = useMemo(
-    () => campaigns.find((campaign) => campaign.id === selectedId) || campaigns[0] || null,
+    () => campaigns.find((campaign) => campaign.id === selectedId) || null,
     [campaigns, selectedId]
   );
 
@@ -87,18 +87,18 @@ export function MapExplorer({ campaigns = [] }) {
   return (
     <section className="map-layout">
       <div className="map-canvas-panel">
-        {selectedCampaign ? (
-            <div className="map-canvas-head">
-              <div>
-                <span className="eyebrow">선택한 장소</span>
-                <h2>{formatText(selectedCampaign.title)}</h2>
-                <p>{selectedCampaign.exact_location}</p>
-              </div>
-              <div className="detail-map-links">
-                <a href={kakaoUrl} target="_blank" rel="noreferrer">카카오맵</a>
-              </div>
+        <div className="map-canvas-head">
+          <div>
+            <span className="eyebrow">{selectedCampaign ? '선택한 장소' : '지도 둘러보기'}</span>
+            <h2>{selectedCampaign ? formatText(selectedCampaign.title) : '캠페인을 눌러 상세 위치를 확인해보세요'}</h2>
+            <p>{selectedCampaign ? selectedCampaign.exact_location : '기본으로 하나를 강제 선택하지 않고 전체 위치를 먼저 보여드려요.'}</p>
+          </div>
+          {selectedCampaign ? (
+            <div className="detail-map-links">
+              <a href={kakaoUrl} target="_blank" rel="noreferrer">카카오맵</a>
             </div>
-        ) : null}
+          ) : null}
+        </div>
 
         <div ref={mapContainerRef} className="map-surface" />
       </div>
