@@ -631,6 +631,7 @@ input, select {
   border: 0;
   background: transparent;
   box-shadow: none;
+  color: #213047;
 }
 
 .map-list-select:hover {
@@ -644,6 +645,7 @@ input, select {
   font-size: 1rem;
   line-height: 1.28;
   letter-spacing: -0.03em;
+  color: #142033;
 }
 
 .map-list-card p,
