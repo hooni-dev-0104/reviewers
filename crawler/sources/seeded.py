@@ -124,6 +124,19 @@ SEOULOUPPA_TYPE_MAP = {
     "방문형": "visit",
 }
 
+SEOULOUPPA_BROWSER_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/137.0.0.0 Safari/537.36"
+    ),
+    "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Cache-Control": "no-cache",
+    "Pragma": "no-cache",
+}
+
+SEOULOUPPA_FETCH_TIMEOUT = 20
+
 SEOULOUPPA_LISTING_URLS = (
     "https://www.seoulouba.co.kr/campaign/?qq=popular",
     "https://www.seoulouba.co.kr/campaign/?cat=377",
@@ -708,7 +721,11 @@ class SeoulOppaSourceAdapter(PlaceholderSourceAdapter):
 
     def fetch(self) -> list[dict]:
         try:
-            listing_html = fetch_text_url(self.listing_url, timeout=10)
+            listing_html = fetch_text_url(
+                self.listing_url,
+                timeout=SEOULOUPPA_FETCH_TIMEOUT,
+                headers=SEOULOUPPA_BROWSER_HEADERS,
+            )
         except Exception:
             listing_html = None
         listing_items: list[dict] = []
@@ -716,7 +733,15 @@ class SeoulOppaSourceAdapter(PlaceholderSourceAdapter):
         seed_urls = _extract_seouloppa_listing_urls(listing_html) if listing_html else list(SEOULOUPPA_LISTING_URLS)
         for listing_url in seed_urls:
             try:
-                page_html = listing_html if listing_html and listing_url == self.listing_url else fetch_text_url(listing_url, timeout=10)
+                page_html = (
+                    listing_html
+                    if listing_html and listing_url == self.listing_url
+                    else fetch_text_url(
+                        listing_url,
+                        timeout=SEOULOUPPA_FETCH_TIMEOUT,
+                        headers=SEOULOUPPA_BROWSER_HEADERS,
+                    )
+                )
                 fragments = _fetch_seouloppa_listing_fragments(listing_url, base_html=page_html)
             except Exception:
                 continue
@@ -741,7 +766,14 @@ class SeoulOppaSourceAdapter(PlaceholderSourceAdapter):
             if item["original_url"] not in detail_map:
                 continue
             try:
-                detail_html = fetch_text_url(item["original_url"], timeout=10)
+                detail_html = fetch_text_url(
+                    item["original_url"],
+                    timeout=SEOULOUPPA_FETCH_TIMEOUT,
+                    headers={
+                        **SEOULOUPPA_BROWSER_HEADERS,
+                        "Referer": self.listing_url,
+                    },
+                )
             except Exception:
                 detail_html = None
             if detail_html:
@@ -937,7 +969,15 @@ def _fetch_seouloppa_listing_fragments(
     base_html: str | None = None,
     max_pages: int = 3,
 ) -> list[str]:
-    base_page = base_html if base_html is not None else fetch_text_url(listing_url, timeout=10)
+    base_page = (
+        base_html
+        if base_html is not None
+        else fetch_text_url(
+            listing_url,
+            timeout=SEOULOUPPA_FETCH_TIMEOUT,
+            headers=SEOULOUPPA_BROWSER_HEADERS,
+        )
+    )
     pages = [base_page]
     seen_fragments: set[str] = set()
     ajax_url = "https://www.seoulouba.co.kr/campaign/ajax/list.ajax.php"
@@ -949,8 +989,12 @@ def _fetch_seouloppa_listing_fragments(
             fragment = post_form_for_text(
                 ajax_url,
                 _build_seouloppa_ajax_payload(listing_url, next_page, more=current_more or None),
-                headers={"X-Requested-With": "XMLHttpRequest", "Referer": listing_url},
-                timeout=10,
+                headers={
+                    **SEOULOUPPA_BROWSER_HEADERS,
+                    "X-Requested-With": "XMLHttpRequest",
+                    "Referer": listing_url,
+                },
+                timeout=SEOULOUPPA_FETCH_TIMEOUT,
             )
         except Exception:
             break

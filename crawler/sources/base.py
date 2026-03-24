@@ -41,12 +41,13 @@ class PlaceholderSourceAdapter(BaseSourceAdapter):
         )
 
 
-def fetch_text_url(url: str, timeout: int = 30) -> str:
+def fetch_text_url(url: str, timeout: int = 30, headers: dict[str, str] | None = None) -> str:
     request = urllib.request.Request(
         url,
         headers={
             "User-Agent": "Mozilla/5.0 (compatible; ReviewersCrawler/0.1; +https://reviewers.local)",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            **(headers or {}),
         },
     )
     try:
