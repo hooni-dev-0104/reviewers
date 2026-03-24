@@ -7,14 +7,15 @@ import { formatDeadline, formatRegion, formatSourceName, formatText, getInternal
 
 const LEAFLET_JS_URL = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
 const LEAFLET_CSS_URL = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+const KAKAO_SDK_URL = 'https://dapi.kakao.com/v2/maps/sdk.js';
+const KAKAO_MAP_APP_KEY = process.env.NEXT_PUBLIC_KAKAO_MAP_APP_KEY;
 const DEFAULT_CENTER = [37.5665, 126.978];
-const CLUSTER_CELL_SIZE = 64;
+const KAKAO_MAX_AUTO_ZOOM_LEVEL = 6;
+const KAKAO_CLUSTER_MIN_LEVEL = 8;
 
 export function MapExplorer({ campaigns = [] }) {
-  const mapRef = useRef(null);
-  const leafletRef = useRef(null);
-  const leafletLibRef = useRef(null);
-  const markerLayerRef = useRef(null);
+  const mapContainerRef = useRef(null);
+  const mapStateRef = useRef(null);
 
   const [selectedId, setSelectedId] = useState(campaigns[0]?.id || null);
   const [visibleIds, setVisibleIds] = useState(() => campaigns.map((campaign) => campaign.id));
@@ -34,66 +35,42 @@ export function MapExplorer({ campaigns = [] }) {
     let cancelled = false;
 
     async function bootMap() {
-      if (!campaigns.length || !mapRef.current) {
+      if (!campaigns.length || !mapContainerRef.current) {
         return;
       }
 
-      const L = await loadLeaflet();
-      if (cancelled || !mapRef.current || leafletRef.current) {
+      const state = await createMapState(mapContainerRef.current, campaigns);
+      if (cancelled || !state || !mapContainerRef.current || mapStateRef.current) {
         return;
       }
 
-      leafletLibRef.current = L;
-      const map = L.map(mapRef.current, {
-        zoomControl: true,
-        attributionControl: true
-      }).setView(DEFAULT_CENTER, 7);
-
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap'
-      }).addTo(map);
-
-      markerLayerRef.current = L.layerGroup().addTo(map);
-      leafletRef.current = map;
-
-      const bounds = L.latLngBounds(campaigns.map((campaign) => [campaign.latitude, campaign.longitude]));
-      if (bounds.isValid()) {
-        map.fitBounds(bounds.pad(0.08), { maxZoom: 13 });
-      }
-
-      map.on('moveend zoomend', () => {
-        updateVisibleIds(map, campaigns, setVisibleIds);
-        renderMarkers({ map, L, campaigns, selectedId, setSelectedId, layer: markerLayerRef.current });
-      });
-
-      updateVisibleIds(map, campaigns, setVisibleIds);
-      renderMarkers({ map, L, campaigns, selectedId, setSelectedId, layer: markerLayerRef.current });
+      mapStateRef.current = state;
+      attachViewportListener(state, campaigns, setVisibleIds);
+      updateVisibleIdsForState(state, campaigns, setVisibleIds);
+      renderMarkersForState(state, campaigns, selectedId, setSelectedId);
     }
 
     bootMap();
 
     return () => {
       cancelled = true;
-      if (leafletRef.current) {
-        leafletRef.current.remove();
-        leafletRef.current = null;
-        markerLayerRef.current = null;
+      if (mapStateRef.current) {
+        destroyMapState(mapStateRef.current);
+        mapStateRef.current = null;
       }
     };
   }, [campaigns]);
 
   useEffect(() => {
-    const map = leafletRef.current;
-    const L = leafletLibRef.current;
-    const layer = markerLayerRef.current;
-    if (!map || !L || !layer) {
+    const state = mapStateRef.current;
+    if (!state) {
       return;
     }
 
     if (selectedCampaign) {
-      map.panTo([selectedCampaign.latitude, selectedCampaign.longitude], { animate: true });
+      focusCampaignOnMap(state, selectedCampaign);
     }
-    renderMarkers({ map, L, campaigns, selectedId, setSelectedId, layer });
+    renderMarkersForState(state, campaigns, selectedId, setSelectedId);
   }, [campaigns, selectedCampaign, selectedId]);
 
   if (!campaigns.length) {
@@ -123,7 +100,7 @@ export function MapExplorer({ campaigns = [] }) {
             </div>
         ) : null}
 
-        <div ref={mapRef} className="map-surface" />
+        <div ref={mapContainerRef} className="map-surface" />
       </div>
 
       <div className="map-list-panel">
@@ -162,75 +139,203 @@ export function MapExplorer({ campaigns = [] }) {
   );
 }
 
-function updateVisibleIds(map, campaigns, setVisibleIds) {
-  const bounds = map.getBounds();
+async function createMapState(container, campaigns) {
+  const kakao = await loadKakaoMap();
+  if (kakao?.maps) {
+    return createKakaoMapState(container, kakao, campaigns);
+  }
+
+  const L = await loadLeaflet();
+  if (!L) {
+    return null;
+  }
+
+  return createLeafletMapState(container, L, campaigns);
+}
+
+function createLeafletMapState(container, L, campaigns) {
+  const map = L.map(container, {
+    zoomControl: true,
+    attributionControl: true
+  }).setView(DEFAULT_CENTER, 7);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+
+  const layer = L.layerGroup().addTo(map);
+  const bounds = L.latLngBounds(campaigns.map((campaign) => [campaign.latitude, campaign.longitude]));
+  if (bounds.isValid()) {
+    map.fitBounds(bounds.pad(0.08), { maxZoom: 11 });
+  }
+
+  return {
+    engine: 'leaflet',
+    container,
+    map,
+    lib: L,
+    layer,
+    viewportCleanup: null
+  };
+}
+
+function createKakaoMapState(container, kakao, campaigns) {
+  const map = new kakao.maps.Map(container, {
+    center: new kakao.maps.LatLng(DEFAULT_CENTER[0], DEFAULT_CENTER[1]),
+    level: 13
+  });
+
+  map.addControl(new kakao.maps.MapTypeControl(), kakao.maps.ControlPosition.TOPRIGHT);
+  map.addControl(new kakao.maps.ZoomControl(), kakao.maps.ControlPosition.RIGHT);
+  fitKakaoBounds(map, kakao, campaigns);
+
+  return {
+    engine: 'kakao',
+    container,
+    map,
+    lib: kakao,
+    clusterer: new kakao.maps.MarkerClusterer({
+      map,
+      averageCenter: true,
+      minLevel: KAKAO_CLUSTER_MIN_LEVEL,
+      disableClickZoom: true
+    }),
+    markers: [],
+    viewportCleanup: null
+  };
+}
+
+function attachViewportListener(state, campaigns, setVisibleIds) {
+  if (state.engine === 'kakao') {
+    const handler = () => updateVisibleIdsForState(state, campaigns, setVisibleIds);
+    state.lib.maps.event.addListener(state.map, 'idle', handler);
+    state.viewportCleanup = () => state.lib.maps.event.removeListener(state.map, 'idle', handler);
+    return;
+  }
+
+  const handler = () => updateVisibleIdsForState(state, campaigns, setVisibleIds);
+  state.map.on('moveend zoomend', handler);
+  state.viewportCleanup = () => state.map.off('moveend zoomend', handler);
+}
+
+function destroyMapState(state) {
+  if (!state) {
+    return;
+  }
+
+  state.viewportCleanup?.();
+
+  if (state.engine === 'kakao') {
+    state.clusterer?.clear();
+    state.markers?.forEach((marker) => marker.setMap(null));
+    if (state.container) {
+      state.container.innerHTML = '';
+    }
+    return;
+  }
+
+  state.map?.remove();
+}
+
+function updateVisibleIdsForState(state, campaigns, setVisibleIds) {
+  if (state.engine === 'kakao') {
+    const bounds = state.map.getBounds();
+    const ids = campaigns
+      .filter((campaign) => bounds.contain(new state.lib.maps.LatLng(campaign.latitude, campaign.longitude)))
+      .map((campaign) => campaign.id);
+    setVisibleIds(ids);
+    return;
+  }
+
+  const bounds = state.map.getBounds();
   const ids = campaigns
     .filter((campaign) => bounds.contains([campaign.latitude, campaign.longitude]))
     .map((campaign) => campaign.id);
   setVisibleIds(ids);
 }
 
-function renderMarkers({ map, L, campaigns, selectedId, setSelectedId, layer }) {
+function renderMarkersForState(state, campaigns, selectedId, setSelectedId) {
+  if (state.engine === 'kakao') {
+    renderKakaoMarkers(state, campaigns, selectedId, setSelectedId);
+    return;
+  }
+
+  renderLeafletMarkers(state, campaigns, selectedId, setSelectedId);
+}
+
+function renderLeafletMarkers(state, campaigns, selectedId, setSelectedId) {
+  const { map, lib: L, layer } = state;
   if (!map || !L || !layer) {
     return;
   }
 
   layer.clearLayers();
-  const clusters = clusterCampaigns(map, campaigns);
 
-  for (const cluster of clusters) {
-    if (cluster.campaigns.length === 1) {
-      const campaign = cluster.campaigns[0];
-      const marker = L.marker([campaign.latitude, campaign.longitude], {
-        icon: L.divIcon({
-          className: 'map-pin-wrapper',
-          html: `<div class="map-pin ${campaign.id === selectedId ? 'active' : ''}"></div>`,
-          iconSize: [22, 22],
-          iconAnchor: [11, 11]
-        })
-      });
-
-      marker.on('click', () => setSelectedId(campaign.id));
-      layer.addLayer(marker);
-      continue;
-    }
-
-    const marker = L.marker([cluster.latitude, cluster.longitude], {
+  for (const campaign of campaigns) {
+    const marker = L.marker([campaign.latitude, campaign.longitude], {
       icon: L.divIcon({
-        className: 'map-cluster-wrapper',
-        html: `<div class="map-cluster">${cluster.campaigns.length}</div>`,
-        iconSize: [36, 36],
-        iconAnchor: [18, 18]
+        className: 'map-pin-wrapper',
+        html: `<div class="map-pin ${campaign.id === selectedId ? 'active' : ''}"></div>`,
+        iconSize: [22, 22],
+        iconAnchor: [11, 11]
       })
     });
 
-    marker.on('click', () => {
-      const bounds = L.latLngBounds(cluster.campaigns.map((campaign) => [campaign.latitude, campaign.longitude]));
-      map.fitBounds(bounds.pad(0.25), { maxZoom: Math.max(map.getZoom() + 1, 13) });
-    });
-
+    marker.on('click', () => setSelectedId(campaign.id));
     layer.addLayer(marker);
   }
 }
 
-function clusterCampaigns(map, campaigns) {
-  const buckets = new Map();
-
-  for (const campaign of campaigns) {
-    const point = map.project([campaign.latitude, campaign.longitude], map.getZoom());
-    const key = `${Math.floor(point.x / CLUSTER_CELL_SIZE)}:${Math.floor(point.y / CLUSTER_CELL_SIZE)}`;
-    const bucket = buckets.get(key) || { campaigns: [], x: 0, y: 0 };
-    bucket.campaigns.push(campaign);
-    bucket.x += campaign.longitude;
-    bucket.y += campaign.latitude;
-    buckets.set(key, bucket);
+function renderKakaoMarkers(state, campaigns, selectedId, setSelectedId) {
+  const { lib: kakao, clusterer } = state;
+  if (!kakao?.maps || !clusterer) {
+    return;
   }
 
-  return [...buckets.values()].map((bucket) => ({
-    campaigns: bucket.campaigns,
-    latitude: bucket.y / bucket.campaigns.length,
-    longitude: bucket.x / bucket.campaigns.length
-  }));
+  clusterer.clear();
+  state.markers.forEach((marker) => marker.setMap(null));
+
+  state.markers = campaigns.map((campaign) => {
+    const marker = new kakao.maps.Marker({
+      position: new kakao.maps.LatLng(campaign.latitude, campaign.longitude),
+      title: formatText(campaign.title),
+      clickable: true,
+      zIndex: campaign.id === selectedId ? 10 : 1
+    });
+
+    kakao.maps.event.addListener(marker, 'click', () => setSelectedId(campaign.id));
+    return marker;
+  });
+
+  clusterer.addMarkers(state.markers);
+}
+
+function focusCampaignOnMap(state, selectedCampaign) {
+  if (!selectedCampaign) {
+    return;
+  }
+
+  if (state.engine === 'kakao') {
+    state.map.panTo(new state.lib.maps.LatLng(selectedCampaign.latitude, selectedCampaign.longitude));
+    return;
+  }
+
+  state.map.panTo([selectedCampaign.latitude, selectedCampaign.longitude], { animate: true });
+}
+
+function fitKakaoBounds(map, kakao, campaigns) {
+  const bounds = new kakao.maps.LatLngBounds();
+
+  for (const campaign of campaigns) {
+    bounds.extend(new kakao.maps.LatLng(campaign.latitude, campaign.longitude));
+  }
+
+  if (!bounds.isEmpty()) {
+    map.setBounds(bounds, 64, 64, 64, 64);
+    if (map.getLevel() < KAKAO_MAX_AUTO_ZOOM_LEVEL) {
+      map.setLevel(KAKAO_MAX_AUTO_ZOOM_LEVEL);
+    }
+  }
 }
 
 async function loadLeaflet() {
@@ -245,6 +350,22 @@ async function loadLeaflet() {
   await ensureStylesheet(LEAFLET_CSS_URL, 'reviewkok-leaflet-css');
   await ensureScript(LEAFLET_JS_URL, 'reviewkok-leaflet-js');
   return window.L;
+}
+
+async function loadKakaoMap() {
+  if (typeof window === 'undefined' || !KAKAO_MAP_APP_KEY) {
+    return null;
+  }
+
+  if (window.kakao?.maps) {
+    await new Promise((resolve) => window.kakao.maps.load(resolve));
+    return window.kakao;
+  }
+
+  const src = `${KAKAO_SDK_URL}?appkey=${encodeURIComponent(KAKAO_MAP_APP_KEY)}&autoload=false&libraries=clusterer`;
+  await ensureScript(src, 'reviewkok-kakao-map-js');
+  await new Promise((resolve) => window.kakao.maps.load(resolve));
+  return window.kakao;
 }
 
 function ensureStylesheet(href, id) {
@@ -265,8 +386,14 @@ function ensureStylesheet(href, id) {
 
 function ensureScript(src, id) {
   return new Promise((resolve, reject) => {
-    if (document.getElementById(id) && window.L) {
-      resolve();
+    const existing = document.getElementById(id);
+    if (existing) {
+      if (existing.dataset.loaded === 'true' || window.L || window.kakao?.maps) {
+        resolve();
+        return;
+      }
+      existing.addEventListener('load', () => resolve(), { once: true });
+      existing.addEventListener('error', reject, { once: true });
       return;
     }
 
@@ -274,7 +401,10 @@ function ensureScript(src, id) {
     script.id = id;
     script.src = src;
     script.async = true;
-    script.onload = () => resolve();
+    script.onload = () => {
+      script.dataset.loaded = 'true';
+      resolve();
+    };
     script.onerror = reject;
     document.body.appendChild(script);
   });

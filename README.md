@@ -76,8 +76,9 @@ The repository now includes a Vercel-ready Next.js app for applicant-facing disc
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_PUBLIC_ANON_KEY
+NEXT_PUBLIC_KAKAO_MAP_APP_KEY=YOUR_KAKAO_JAVASCRIPT_KEY
 SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY
-NEXT_PUBLIC_SITE_URL=https://reviewers-ten.vercel.app
+NEXT_PUBLIC_SITE_URL=https://reviewkok.vercel.app
 OPS_DASHBOARD_KEY=YOUR_OPS_DASHBOARD_PASSWORD
 ```
 
