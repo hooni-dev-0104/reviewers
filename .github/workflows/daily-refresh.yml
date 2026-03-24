@@ -47,18 +47,24 @@ jobs:
     needs: preflight
     if: needs.preflight.outputs.refresh_mode == 'run'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        source:
-          - 4blog
-          - dinnerqueen
-          - reviewnote
-          - revu
-          - seouloppa
-          - gangnammatzip
+        include:
+          - source: 4blog
+            timeout_minutes: 20
+          - source: dinnerqueen
+            timeout_minutes: 25
+          - source: reviewnote
+            timeout_minutes: 15
+          - source: revu
+            timeout_minutes: 15
+          - source: seouloppa
+            timeout_minutes: 45
+          - source: gangnammatzip
+            timeout_minutes: 25
     name: refresh-${{ matrix.source }}
+    timeout-minutes: ${{ matrix.timeout_minutes }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
