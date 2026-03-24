@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 import json
+import re
 from typing import Any
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -23,8 +24,8 @@ class PipelineStats:
 
 
 GEOCODE_BUDGETS = {
-    "seouloppa": 40,
-    "gangnammatzip": 60,
+    "seouloppa": 60,
+    "gangnammatzip": 180,
     "4blog": 20,
 }
 
@@ -158,6 +159,31 @@ def _geocode_exact_location(query: str) -> tuple[float, float] | None:
     return float(first["lat"]), float(first["lon"])
 
 
+def _normalize_exact_location_candidates(value: str | None) -> list[str]:
+    compact = " ".join(str(value or "").split()).strip()
+    if not compact:
+        return []
+
+    candidates = [compact]
+    trimmed = compact
+    trimmed = trimmed.replace(" ,", ",").replace("( ", "(").replace(" )", ")")
+
+    floor_trimmed = trimmed
+    floor_trimmed = re.sub(r"((?:지하\s*\d+층|\d+층|\d+호)\b).*", r"\1", floor_trimmed).strip()
+    if floor_trimmed and floor_trimmed not in candidates:
+        candidates.append(floor_trimmed)
+
+    address_only = re.sub(r"((?:[가-힣0-9]+로|[가-힣0-9]+길)\s*\d+(?:-\d+)?)\s.*", r"\1", trimmed).strip()
+    if address_only and address_only not in candidates:
+        candidates.append(address_only)
+
+    no_tail = " ".join(trimmed.split()[:-1]).strip()
+    if no_tail and no_tail not in candidates:
+        candidates.append(no_tail)
+
+    return candidates
+
+
 def enrich_campaign_coordinates(
     source_slug: str,
     campaigns: list[CampaignRecord],
@@ -177,10 +203,14 @@ def enrich_campaign_coordinates(
             continue
         if campaign.campaign_type != "visit" or not campaign.exact_location:
             continue
-        try:
-            coordinates = _geocode_exact_location(campaign.exact_location)
-        except Exception:
-            coordinates = None
+        coordinates = None
+        for candidate in _normalize_exact_location_candidates(campaign.exact_location):
+            try:
+                coordinates = _geocode_exact_location(candidate)
+            except Exception:
+                coordinates = None
+            if coordinates:
+                break
         if not coordinates:
             continue
         campaign.latitude, campaign.longitude = coordinates

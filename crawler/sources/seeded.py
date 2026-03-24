@@ -726,7 +726,15 @@ class SeoulOppaSourceAdapter(PlaceholderSourceAdapter):
                         continue
                     seen_urls.add(item["original_url"])
                     listing_items.append(item)
-        detail_targets = listing_items if self.detail_limit is None else listing_items[: self.detail_limit]
+        prioritized_items = sorted(
+            listing_items,
+            key=lambda item: (
+                0 if item.get("campaign_type") == "visit" else 1,
+                0 if item.get("region_primary_name") else 1,
+                item.get("apply_deadline") or "9999-12-31",
+            ),
+        )
+        detail_targets = prioritized_items if self.detail_limit is None else prioritized_items[: self.detail_limit]
         detail_map = {item["original_url"]: index for index, item in enumerate(detail_targets)}
         items = [dict(item) for item in listing_items]
         for item in items:
@@ -1382,7 +1390,7 @@ def get_adapter(source_slug: str, source_file: str | None = None, report_mode: b
     if source_slug == "dinnerqueen":
         return DinnerQueenSourceAdapter(definition, page_limit=1 if report_mode else 20, detail_limit=12 if report_mode else None)
     if source_slug == "seouloppa":
-        return SeoulOppaSourceAdapter(definition, detail_limit=24 if report_mode else 40)
+        return SeoulOppaSourceAdapter(definition, detail_limit=12 if report_mode else 18)
     if source_slug == "gangnammatzip":
         return GangnamMatzipSourceAdapter(definition, detail_limit=10 if report_mode else 120)
     return PlaceholderSourceAdapter(definition)
