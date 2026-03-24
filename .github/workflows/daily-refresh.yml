@@ -15,7 +15,7 @@ jobs:
   preflight:
     runs-on: ubuntu-latest
     outputs:
-      enabled: ${{ steps.toggle.outputs.enabled }}
+      refresh_mode: ${{ steps.toggle.outputs.refresh_mode }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,18 +34,18 @@ jobs:
           ENABLE_SCHEDULED_REFRESH: ${{ secrets.ENABLE_SCHEDULED_REFRESH }}
         run: |
           if [ "${ENABLE_SCHEDULED_REFRESH}" = "true" ]; then
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "refresh_mode=run" >> "$GITHUB_OUTPUT"
           else
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "refresh_mode=skip" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Refresh skipped
-        if: steps.toggle.outputs.enabled != 'true'
+        if: steps.toggle.outputs.refresh_mode != 'run'
         run: echo "ENABLE_SCHEDULED_REFRESH is not true; skipping live refresh run."
 
   refresh:
     needs: preflight
-    if: needs.preflight.outputs.enabled == 'true'
+    if: needs.preflight.outputs.refresh_mode == 'run'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
