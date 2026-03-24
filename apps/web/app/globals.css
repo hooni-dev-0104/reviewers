@@ -283,10 +283,20 @@ input, select {
 }
 .campaign-card, .sponsor-slot { min-height: 0; }
 .campaign-card h3 { font-size: 1.15rem; line-height: 1.22; margin: 0; letter-spacing: -0.035em; }
-.card-link-block { display: grid; gap: 6px; }
+.card-link-block {
+  display: grid;
+  gap: 6px;
+  color: inherit;
+  text-decoration: none;
+}
 .card-link-block p { min-height: 0; font-size: 0.9rem; line-height: 1.55; color: var(--muted); }
-.card-visual-shell { position: relative; }
+.card-visual-shell {
+  position: relative;
+  display: block;
+}
 .card-visual {
+  display: block;
+  width: 100%;
   position: relative;
   aspect-ratio: 16 / 9;
   min-height: 118px;

@@ -32,7 +32,12 @@ jobs:
         id: toggle
         env:
           ENABLE_SCHEDULED_REFRESH: ${{ secrets.ENABLE_SCHEDULED_REFRESH }}
-        run: echo "enabled=${ENABLE_SCHEDULED_REFRESH}" >> "$GITHUB_OUTPUT"
+        run: |
+          if [ "${ENABLE_SCHEDULED_REFRESH}" = "true" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Refresh skipped
         if: steps.toggle.outputs.enabled != 'true'
