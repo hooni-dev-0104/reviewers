@@ -18,7 +18,7 @@ export async function GET(request) {
     return NextResponse.redirect(new URL('/', request.url), { status: 302 });
   }
 
-  const storedExactLocation = await getCampaignExactLocation(id);
+  const storedExactLocation = campaign.exact_location || await getCampaignExactLocation(id);
   const exactLocation = storedExactLocation || await resolveExactLocation(campaign);
   const query = normalizePreciseLocation(exactLocation);
   const target = query ? buildProviderSearchUrl(provider, query) : null;

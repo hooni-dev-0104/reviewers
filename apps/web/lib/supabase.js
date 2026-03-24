@@ -11,6 +11,9 @@ const CAMPAIGN_SELECT = [
   'subcategory_name',
   'region_primary_name',
   'region_secondary_name',
+  'exact_location',
+  'latitude',
+  'longitude',
   'benefit_text',
   'recruit_count',
   'apply_deadline',
@@ -311,12 +314,15 @@ async function attachLocationData(campaigns = []) {
   }
 
   try {
-    const locations = await getCampaignLocationDataByIds(campaigns.map((campaign) => campaign.id));
+    const missingIds = campaigns
+      .filter((campaign) => !campaign.exact_location || campaign.latitude == null || campaign.longitude == null)
+      .map((campaign) => campaign.id);
+    const locations = missingIds.length ? await getCampaignLocationDataByIds(missingIds) : new Map();
     return campaigns.map((campaign) => ({
       ...campaign,
-      exact_location: locations.get(campaign.id)?.exact_location || null,
-      latitude: locations.get(campaign.id)?.latitude ?? null,
-      longitude: locations.get(campaign.id)?.longitude ?? null
+      exact_location: campaign.exact_location || locations.get(campaign.id)?.exact_location || null,
+      latitude: campaign.latitude != null ? Number(campaign.latitude) : locations.get(campaign.id)?.latitude ?? null,
+      longitude: campaign.longitude != null ? Number(campaign.longitude) : locations.get(campaign.id)?.longitude ?? null
     }));
   } catch {
     return campaigns;
