@@ -91,7 +91,7 @@ export function MapExplorer({ campaigns = [] }) {
           <div>
             <span className="eyebrow">{selectedCampaign ? '선택한 장소' : '지도 둘러보기'}</span>
             <h2>{selectedCampaign ? formatText(selectedCampaign.title) : '캠페인을 눌러 상세 위치를 확인해보세요'}</h2>
-            <p>{selectedCampaign ? selectedCampaign.exact_location : '기본으로 하나를 강제 선택하지 않고 전체 위치를 먼저 보여드려요.'}</p>
+            {selectedCampaign ? <p>{selectedCampaign.exact_location}</p> : null}
           </div>
           {selectedCampaign ? (
             <div className="detail-map-links">
