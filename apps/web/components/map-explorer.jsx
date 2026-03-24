@@ -106,23 +106,21 @@ export function MapExplorer({ campaigns = [] }) {
   }
 
   const kakaoUrl = selectedCampaign ? getInternalMapLaunchUrl(selectedCampaign, 'kakao') : null;
-  const naverUrl = selectedCampaign ? getInternalMapLaunchUrl(selectedCampaign, 'naver') : null;
 
   return (
     <section className="map-layout">
       <div className="map-canvas-panel">
         {selectedCampaign ? (
-          <div className="map-canvas-head">
-            <div>
-              <span className="eyebrow">선택한 장소</span>
-              <h2>{formatText(selectedCampaign.title)}</h2>
-              <p>{selectedCampaign.exact_location}</p>
+            <div className="map-canvas-head">
+              <div>
+                <span className="eyebrow">선택한 장소</span>
+                <h2>{formatText(selectedCampaign.title)}</h2>
+                <p>{selectedCampaign.exact_location}</p>
+              </div>
+              <div className="detail-map-links">
+                <a href={kakaoUrl} target="_blank" rel="noreferrer">카카오맵</a>
+              </div>
             </div>
-            <div className="detail-map-links">
-              <a href={kakaoUrl} target="_blank" rel="noreferrer">카카오맵</a>
-              <a href={naverUrl} target="_blank" rel="noreferrer">네이버지도</a>
-            </div>
-          </div>
         ) : null}
 
         <div ref={mapRef} className="map-surface" />

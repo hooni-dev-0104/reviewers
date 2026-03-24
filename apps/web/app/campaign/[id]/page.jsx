@@ -35,7 +35,6 @@ export default async function CampaignDetailPage({ params }) {
   const confidence = getConfidence(campaign);
   const deadlineState = getDeadlineState(campaign.apply_deadline);
   const kakaoMapUrl = getInternalMapLaunchUrl(campaign, 'kakao');
-  const naverMapUrl = getInternalMapLaunchUrl(campaign, 'naver');
   const relatedCampaigns = await getRelatedCampaigns(campaign);
   const detailImage = getDetailImageSrc(campaign.thumbnail_url);
 
@@ -107,13 +106,10 @@ export default async function CampaignDetailPage({ params }) {
               <a href={campaign.original_url} target="_blank" rel="noreferrer" className="primary-action">
                 원문 보기
               </a>
-              {supportsExactMap(campaign) && campaign.exact_location && kakaoMapUrl && naverMapUrl ? (
+              {supportsExactMap(campaign) && campaign.exact_location && kakaoMapUrl ? (
                 <div className="detail-map-links">
                   <a href={kakaoMapUrl} target="_blank" rel="noreferrer">
                     카카오맵
-                  </a>
-                  <a href={naverMapUrl} target="_blank" rel="noreferrer">
-                    네이버지도
                   </a>
                 </div>
               ) : null}
