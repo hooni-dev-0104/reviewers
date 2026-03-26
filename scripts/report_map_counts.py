@@ -50,7 +50,7 @@ def count_campaigns(source_id: str, *, exact_only: bool = False, latlng_only: bo
 
 
 def main():
-    targets = ["seouloppa", "gangnammatzip"]
+    targets = ["seouloppa", "gangnammatzip", "chehumview", "reviewplace"]
     report = {}
     for slug in targets:
         source_id = get_source_id(slug)

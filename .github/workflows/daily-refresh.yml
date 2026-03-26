@@ -57,8 +57,12 @@ jobs:
             timeout_minutes: 25
           - source: reviewnote
             timeout_minutes: 15
+          - source: reviewplace
+            timeout_minutes: 20
           - source: revu
             timeout_minutes: 15
+          - source: chehumview
+            timeout_minutes: 20
           - source: seouloppa
             timeout_minutes: 45
           - source: gangnammatzip
