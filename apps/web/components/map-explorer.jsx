@@ -174,10 +174,6 @@ function createLeafletMapState(container, L, campaigns) {
   }).addTo(map);
 
   const layer = L.layerGroup().addTo(map);
-  const bounds = L.latLngBounds(campaigns.map((campaign) => [campaign.latitude, campaign.longitude]));
-  if (campaigns.length > 1 && bounds.isValid()) {
-    map.fitBounds(bounds.pad(0.08), { maxZoom: 11 });
-  }
 
   return {
     engine: 'leaflet',
