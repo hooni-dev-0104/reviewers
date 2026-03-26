@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 import json
+import os
 import re
 from typing import Any
 from urllib.parse import urlencode
@@ -24,8 +25,8 @@ class PipelineStats:
 
 
 GEOCODE_BUDGETS = {
-    "seouloppa": 60,
-    "gangnammatzip": 180,
+    "seouloppa": 120,
+    "gangnammatzip": 240,
     "4blog": 20,
 }
 
@@ -132,9 +133,62 @@ def _source_geocode_budget(slug: str) -> int:
     return GEOCODE_BUDGETS.get(slug, 0)
 
 
+def _vworld_api_key() -> str:
+    return (os.getenv("VWORLD_API_KEY") or os.getenv("NEXT_PUBLIC_VWORLD_API_KEY") or "").strip()
+
+
+def _geocode_exact_location_with_vworld(query: str, category: str = "road") -> tuple[float, float] | None:
+    key = _vworld_api_key()
+    if not key or not query:
+        return None
+
+    params = urlencode(
+        {
+            "service": "search",
+            "request": "search",
+            "version": "2.0",
+            "type": "address",
+            "category": category,
+            "format": "json",
+            "errorformat": "json",
+            "crs": "EPSG:4326",
+            "size": "1",
+            "query": query,
+            "key": key,
+        }
+    )
+    request = Request(
+        f"https://api.vworld.kr/req/search?{params}",
+        headers={
+            "User-Agent": "ReviewKokCrawlerGeocoder/1.0 (https://reviewkok.vercel.app)",
+            "Accept": "application/json",
+        },
+    )
+    with urlopen(request, timeout=12) as response:  # noqa: S310
+        payload = json.loads(response.read().decode("utf-8"))
+
+    body = payload.get("response") if isinstance(payload, dict) else None
+    if not isinstance(body, dict) or body.get("status") != "OK":
+        return None
+    result = body.get("result") or {}
+    items = result.get("items") or []
+    first = items[0] if items else None
+    point = first.get("point") if isinstance(first, dict) else None
+    if not isinstance(point, dict) or not point.get("x") or not point.get("y"):
+        return None
+    return float(point["y"]), float(point["x"])
+
+
 def _geocode_exact_location(query: str) -> tuple[float, float] | None:
     if not query:
         return None
+    for category in ("road", "parcel"):
+        try:
+            coordinates = _geocode_exact_location_with_vworld(query, category=category)
+        except Exception:
+            coordinates = None
+        if coordinates:
+            return coordinates
     params = urlencode(
         {
             "q": query,

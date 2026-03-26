@@ -6,7 +6,14 @@ from unittest import mock
 from pathlib import Path
 
 from crawler.config import AppConfig
-from crawler.pipeline import build_campaign_payload, build_campaign_snapshot_payloads, run_daily_refresh, run_source_pipeline
+from crawler.pipeline import (
+    _geocode_exact_location,
+    _normalize_exact_location_candidates,
+    build_campaign_payload,
+    build_campaign_snapshot_payloads,
+    run_daily_refresh,
+    run_source_pipeline,
+)
 from crawler.reporting import build_source_quality_report
 from crawler.normalization import normalize_campaign
 from crawler.sources.seeded import (
@@ -34,6 +41,19 @@ from crawler.sources.seeded import (
 
 
 class PipelineTests(unittest.TestCase):
+    class _MockHTTPResponse:
+        def __init__(self, payload):
+            self.payload = payload
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self):
+            return json.dumps(self.payload, ensure_ascii=False).encode("utf-8")
+
     def test_build_campaign_payload(self):
         campaign = normalize_campaign(
             "reviewnote",
@@ -74,6 +94,47 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(len(snapshots), 1)
         self.assertEqual(snapshots[0]["campaign_id"], "campaign-1")
         self.assertEqual(snapshots[0]["raw_payload"]["exact_location"], "서울 강남구 테헤란로 1")
+
+    def test_geocode_exact_location_prefers_vworld(self):
+        with mock.patch.dict("os.environ", {"VWORLD_API_KEY": "test-key"}, clear=False):
+            with mock.patch(
+                "crawler.pipeline.urlopen",
+                return_value=self._MockHTTPResponse(
+                    {
+                        "response": {
+                            "status": "OK",
+                            "result": {
+                                "items": [
+                                    {"point": {"x": "127.029194860", "y": "37.496419834"}}
+                                ]
+                            },
+                        }
+                    }
+                ),
+            ) as mocked:
+                coordinates = _geocode_exact_location("서울 강남구 강남대로84길 6")
+
+        self.assertEqual(coordinates, (37.496419834, 127.02919486))
+        self.assertIn("api.vworld.kr/req/search", mocked.call_args.args[0].full_url)
+
+    def test_geocode_exact_location_falls_back_to_nominatim(self):
+        responses = [
+            self._MockHTTPResponse({"response": {"status": "NOT_FOUND"}}),
+            self._MockHTTPResponse({"response": {"status": "NOT_FOUND"}}),
+            self._MockHTTPResponse([{"lat": "37.543218", "lon": "126.973928"}]),
+        ]
+        with mock.patch.dict("os.environ", {"VWORLD_API_KEY": "test-key"}, clear=False):
+            with mock.patch("crawler.pipeline.urlopen", side_effect=responses):
+                coordinates = _geocode_exact_location("서울 용산구 한강대로80길 11-47")
+
+        self.assertEqual(coordinates, (37.543218, 126.973928))
+
+    def test_normalize_exact_location_candidates_trims_room_floor_noise(self):
+        candidates = _normalize_exact_location_candidates("서울 강남구 테헤란로 1 3층 301호")
+        self.assertGreaterEqual(len(candidates), 2)
+        self.assertEqual(candidates[0], "서울 강남구 테헤란로 1 3층 301호")
+        self.assertIn("서울 강남구 테헤란로 1 3층", candidates)
+        self.assertIn("서울 강남구 테헤란로 1", candidates)
 
     def test_run_source_pipeline_with_file(self):
         sample = [

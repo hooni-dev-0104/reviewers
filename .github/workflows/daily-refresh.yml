@@ -78,6 +78,7 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          VWORLD_API_KEY: ${{ secrets.VWORLD_API_KEY }}
           REVU_ACCESS_TOKEN: ${{ secrets.REVU_ACCESS_TOKEN }}
           REVU_USERNAME: ${{ secrets.REVU_USERNAME }}
           REVU_PASSWORD: ${{ secrets.REVU_PASSWORD }}
