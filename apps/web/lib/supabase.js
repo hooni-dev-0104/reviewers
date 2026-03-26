@@ -26,7 +26,7 @@ const CAMPAIGN_SELECT = [
   'sources!inner(name,slug)'
 ].join(',');
 
-const ACTIVE_SOURCE_SLUGS = ['reviewnote', 'revu', 'dinnerqueen', '4blog', 'seouloppa', 'gangnammatzip'];
+const ACTIVE_SOURCE_SLUGS = ['reviewnote', 'reviewplace', 'revu', 'dinnerqueen', '4blog', 'seouloppa', 'gangnammatzip', 'chehumview'];
 
 const REGION_EQUIVALENTS = {
   서울: ['서울', '서울시', '강남', '강남구', '강동', '강동구', '강북', '강북구', '강서', '강서구', '관악', '관악구', '광진', '광진구', '구로', '구로구', '금천', '금천구', '노원', '노원구', '도봉', '도봉구', '동대문', '동대문구', '동작', '동작구', '마포', '마포구', '서대문', '서대문구', '서초', '서초구', '성동', '성동구', '성북', '성북구', '송파', '송파구', '양천', '양천구', '영등포', '영등포구', '용산', '용산구', '은평', '은평구', '종로', '종로구', '중', '중구', '중랑', '중랑구'],

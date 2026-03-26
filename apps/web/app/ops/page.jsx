@@ -45,9 +45,21 @@ export default async function OpsPage() {
                 <div className="ops-list">
                   {snapshot.recentJobs.map((job) => (
                     <div key={job.id} className="ops-row">
-                      <strong>{job.job_status}</strong>
+                      <strong>{job.source?.name || '미상 소스'} · {job.job_status}</strong>
                       <span>{new Date(job.created_at).toLocaleString('ko-KR')}</span>
                       <span>fetched {job.fetched_count} / inserted {job.inserted_count}</span>
+                    </div>
+                  ))}
+                </div>
+              </article>
+              <article className="info-panel">
+                <h2>소스별 수집 현황</h2>
+                <div className="ops-list">
+                  {snapshot.sourceStats.map((source) => (
+                    <div key={source.id} className="ops-row">
+                      <strong>{source.name}</strong>
+                      <span>{source.slug}</span>
+                      <span>active {source.activeCampaigns} / exact {source.exactLocationCount} / latlng {source.latLngCount}</span>
                     </div>
                   ))}
                 </div>

@@ -41,10 +41,42 @@ export async function getOpsSnapshot() {
     countRows('user_saved_campaigns'),
     countRows('reminder_subscriptions', { is_enabled: 'eq.true' }),
     countRows('crawl_errors'),
-    selectRows('crawl_jobs', { select: 'id,job_status,fetched_count,inserted_count,failed_count,created_at,source_id', order: 'created_at.desc', limit: '8' }),
-    selectRows('sources', { select: 'slug,name', is_active: 'eq.true', order: 'priority.asc' }),
+    selectRows('crawl_jobs', { select: 'id,job_status,fetched_count,inserted_count,failed_count,created_at,source_id', order: 'created_at.desc', limit: '12' }),
+    selectRows('sources', { select: 'id,slug,name', is_active: 'eq.true', order: 'priority.asc' }),
     selectRows('sponsor_slots', { select: 'id,slot_key,title,is_active,priority', order: 'priority.asc', limit: '10' })
   ]);
 
-  return { activeCampaigns, visitorsToday, visitorsTotal, userCount, savedCount, reminderCount, errorCount, recentJobs, sources, sponsors };
+  const sourceNameMap = new Map(sources.map((source) => [source.id, source]));
+  const sourceStats = await Promise.all(
+    sources.map(async (source) => ({
+      ...source,
+      activeCampaigns: await countRows('campaigns', { source_id: `eq.${source.id}`, status: 'eq.active' }),
+      exactLocationCount: await countRows('campaigns', { source_id: `eq.${source.id}`, status: 'eq.active', exact_location: 'not.is.null' }),
+      latLngCount: await countRows('campaigns', {
+        source_id: `eq.${source.id}`,
+        status: 'eq.active',
+        latitude: 'not.is.null',
+        longitude: 'not.is.null'
+      })
+    }))
+  );
+
+  const enrichedJobs = recentJobs.map((job) => ({
+    ...job,
+    source: sourceNameMap.get(job.source_id) || null
+  }));
+
+  return {
+    activeCampaigns,
+    visitorsToday,
+    visitorsTotal,
+    userCount,
+    savedCount,
+    reminderCount,
+    errorCount,
+    recentJobs: enrichedJobs,
+    sources,
+    sourceStats,
+    sponsors
+  };
 }
