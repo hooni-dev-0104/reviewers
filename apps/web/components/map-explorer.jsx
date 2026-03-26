@@ -143,14 +143,7 @@ async function createMapState(container, campaigns) {
   try {
     const kakao = await loadKakaoMap();
     if (kakao?.maps) {
-      const kakaoState = createKakaoMapState(container, kakao, campaigns);
-      const kakaoReady = await waitForKakaoTiles(kakaoState);
-      if (kakaoReady) {
-        return kakaoState;
-      }
-
-      destroyMapState(kakaoState);
-      console.warn('Kakao map tiles did not load in time, falling back to Leaflet.');
+      return createKakaoMapState(container, kakao, campaigns);
     }
   } catch (error) {
     console.error('Kakao map bootstrap failed, falling back to Leaflet.', error);
@@ -359,32 +352,9 @@ function relayoutKakaoMap(map, kakao, campaigns) {
   if (typeof window !== 'undefined') {
     window.requestAnimationFrame(rerender);
     window.setTimeout(rerender, 120);
+    window.setTimeout(rerender, 500);
+    window.setTimeout(rerender, 1200);
   }
-}
-
-function waitForKakaoTiles(state, timeoutMs = 2500) {
-  return new Promise((resolve) => {
-    if (!state?.map || !state?.lib?.maps) {
-      resolve(false);
-      return;
-    }
-
-    let settled = false;
-    const finish = (value) => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      state.lib.maps.event.removeListener(state.map, 'tilesloaded', onTilesLoaded);
-      window.clearTimeout(timer);
-      resolve(value);
-    };
-
-    const onTilesLoaded = () => finish(true);
-    const timer = window.setTimeout(() => finish(false), timeoutMs);
-
-    state.lib.maps.event.addListener(state.map, 'tilesloaded', onTilesLoaded);
-  });
 }
 
 async function loadLeaflet() {
