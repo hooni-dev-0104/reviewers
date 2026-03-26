@@ -341,7 +341,13 @@ def run_source_pipeline(
         if definition.source_id:
             expired_rows = client.delete_expired_campaigns_for_source(definition.source_id, today=today.isoformat()) or []
             deleted_count += len(expired_rows)
-        if delete_before_refresh and definition.source_id:
+        should_delete_before_refresh = delete_before_refresh and definition.source_id and stats.fetched > 0 and stats.normalized > 0
+        if delete_before_refresh and not should_delete_before_refresh:
+            errors.append(
+                "delete_before_refresh skipped because refreshed payload was empty or fully unnormalized; "
+                "existing source rows were preserved"
+            )
+        if should_delete_before_refresh and definition.source_id:
             deleted_rows = client.delete_campaigns_for_source(definition.source_id) or []
             deleted_count += len(deleted_rows)
         if normalized:

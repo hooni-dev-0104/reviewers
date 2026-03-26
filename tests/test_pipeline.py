@@ -244,6 +244,33 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(result["stats"].skipped, 1)
         self.assertEqual(len(result["payload"]), 1)
 
+    def test_run_source_pipeline_preserves_existing_rows_when_refresh_returns_zero(self):
+        fake_client = mock.Mock()
+        fake_client.get_source_by_slug.return_value = {"id": "source-1"}
+        fake_client.create_crawl_job.return_value = [{"id": "job-1"}]
+        fake_client.delete_expired_campaigns_for_source.return_value = []
+        fake_client.delete_campaigns_for_source.return_value = [{"id": "old-row"}]
+
+        fake_adapter = mock.Mock()
+        fake_adapter.fetch.return_value = []
+
+        with mock.patch("crawler.pipeline.SupabasePostgrestClient", return_value=fake_client):
+            with mock.patch("crawler.pipeline.get_adapter", return_value=fake_adapter):
+                result = run_source_pipeline(
+                    "seouloppa",
+                    AppConfig(
+                        supabase_url="https://example.supabase.co",
+                        supabase_service_role_key="service-key",
+                        dry_run=False,
+                    ),
+                    dry_run=False,
+                    delete_before_refresh=True,
+                )
+
+        fake_client.delete_campaigns_for_source.assert_not_called()
+        self.assertEqual(result["deleted_count"], 0)
+        self.assertTrue(any("delete_before_refresh skipped" in message for message in result["errors"]))
+
     def test_dinnerqueen_adapter_skips_failed_detail(self):
         response = {
             "layout": """

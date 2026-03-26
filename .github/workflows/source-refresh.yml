@@ -15,7 +15,7 @@ on:
       delete_before_refresh:
         description: "Delete existing rows before refresh"
         required: true
-        default: true
+        default: false
         type: boolean
 
 concurrency:
