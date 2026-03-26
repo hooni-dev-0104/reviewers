@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 import html as html_lib
+from html.parser import HTMLParser
 from pathlib import Path
 import re
 from urllib.parse import parse_qs, quote, urlencode, unquote, urljoin, urlsplit
@@ -1160,62 +1161,169 @@ def _format_source_exception(exc: Exception) -> str:
     return f"{type(exc).__name__}: {exc}"
 
 
-def parse_seouloppa_listing(html: str, source_id: str | None = None) -> list[dict]:
-    items = []
-    pattern = re.compile(
-        r'<li class="campaign_content">.*?'
-        r'<a href="(https://www\.seoulouba\.co\.kr/campaign/\?c=(\d+))"[^>]*class="tum_img">.*?'
-        r'<img src="([^"]+)".*?'
-        r'<div class="icon_tag">(.*?)</div>.*?'
-        r'<strong class="s_campaign_title">(.*?)</strong>.*?'
-        r'<div class="t_basic">\s*<span class="basic_blue">(.*?)</span>.*?'
-        r'<div class="d_day"><span>\s*(D(?:-\d+|\-day|day))\s*</span></div>.*?'
-        r'신청\s*([\d,]+)\s*<span class="span_gray">/ 모집\s*([\d,]+)</span>',
-        re.S | re.I,
-    )
-    for match in pattern.finditer(html):
-        original_url, campaign_id, image_url, icon_block, raw_title, basic_text, d_day, applied, recruit = match.groups()
+class SeoulOppaListingHTMLParser(HTMLParser):
+    def __init__(self, source_id: str | None = None):
+        super().__init__(convert_charrefs=True)
+        self.source_id = source_id
+        self.items: list[dict[str, Any]] = []
+        self.current: dict[str, Any] | None = None
+        self.tag_stack: list[tuple[str, set[str]]] = []
+        self.capture_key: str | None = None
+        self.capture_parts: list[str] = []
+        self.capture_depth = 0
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attr_map = {key: value or "" for key, value in attrs}
+        classes = set(attr_map.get("class", "").split())
+        self.tag_stack.append((tag, classes))
+
+        if tag == "li" and "campaign_content" in classes:
+            self.current = {
+                "source_id": self.source_id,
+                "tags": [],
+                "platform_markers": [],
+            }
+            return
+
+        if not self.current:
+            return
+
+        if tag == "a" and "tum_img" in classes and attr_map.get("href") and not self.current.get("original_url"):
+            self.current["original_url"] = urljoin("https://www.seoulouba.co.kr", attr_map["href"])
+
+        if tag == "img":
+            src = attr_map.get("src", "").strip()
+            alt = attr_map.get("alt", "").strip()
+            if src and "/data/campaign_list/" in src and not self.current.get("thumbnail_url"):
+                self.current["thumbnail_url"] = src
+            if src and "thum_ch_" in src:
+                self.current["platform_markers"].append(src)
+            if alt:
+                self.current["platform_markers"].append(alt)
+
+        if self.capture_key:
+            self.capture_depth += 1
+            return
+
+        if tag == "strong" and "s_campaign_title" in classes:
+            self._start_capture("title")
+        elif tag == "span" and "basic_blue" in classes:
+            self._start_capture("benefit_text")
+        elif tag == "span" and self._has_ancestor_class("icon_tag"):
+            self._start_capture("tag")
+        elif tag == "span" and self._has_ancestor_class("d_day"):
+            self._start_capture("d_day")
+        elif tag == "div" and "recruit" in classes:
+            self._start_capture("recruit_text")
+
+    def handle_endtag(self, tag: str) -> None:
+        if self.capture_key:
+            self.capture_depth -= 1
+            if self.capture_depth == 0:
+                self._finish_capture()
+
+        if self.current and tag == "li":
+            finalized = self._finalize_current()
+            if finalized:
+                self.items.append(finalized)
+            self.current = None
+
+        if self.tag_stack:
+            self.tag_stack.pop()
+
+    def handle_data(self, data: str) -> None:
+        if self.capture_key and self.current is not None:
+            self.capture_parts.append(data)
+
+    def _start_capture(self, key: str) -> None:
+        self.capture_key = key
+        self.capture_parts = []
+        self.capture_depth = 1
+
+    def _finish_capture(self) -> None:
+        if not self.current or not self.capture_key:
+            self.capture_key = None
+            self.capture_parts = []
+            self.capture_depth = 0
+            return
+
+        text = " ".join("".join(self.capture_parts).split()).strip()
+        if text:
+            if self.capture_key == "tag":
+                self.current["tags"].append(text)
+            else:
+                self.current[self.capture_key] = text
+
+        self.capture_key = None
+        self.capture_parts = []
+        self.capture_depth = 0
+
+    def _has_ancestor_class(self, target_class: str) -> bool:
+        return any(target_class in classes for _, classes in self.tag_stack)
+
+    def _finalize_current(self) -> dict[str, Any] | None:
+        if not self.current:
+            return None
+
+        raw_title = self.current.get("title")
+        original_url = self.current.get("original_url")
+        if not raw_title or not original_url:
+            return None
+
         title, region_primary, region_secondary = _clean_seouloppa_title(html_lib.unescape(_strip_tags(raw_title)))
-        platform_type = 'blog'
+        type_matches = [html_lib.unescape(tag).strip() for tag in self.current.get("tags", []) if str(tag).strip()]
+        benefit_text = html_lib.unescape(_strip_tags(self.current.get("benefit_text") or ""))
+
+        platform_type = "blog"
+        platform_markers = " ".join(self.current.get("platform_markers", []))
         for token, mapped in SEOULOUPPA_PLATFORM_MAP.items():
-            if token in icon_block:
+            if token in platform_markers:
                 platform_type = mapped
                 break
-        type_matches = re.findall(r'<span>([^<]+)</span>', icon_block)
-        campaign_type = 'visit'
-        benefit_text = html_lib.unescape(_strip_tags(basic_text))
+        if "인스타" in platform_markers:
+            platform_type = "instagram"
+        elif "유튜브" in platform_markers:
+            platform_type = "youtube"
+
+        campaign_type = "visit"
         for label in type_matches:
-            cleaned = html_lib.unescape(label).strip()
-            if cleaned in SEOULOUPPA_TYPE_MAP:
-                campaign_type = SEOULOUPPA_TYPE_MAP[cleaned]
-            elif cleaned.endswith('P') and not benefit_text:
-                benefit_text = cleaned
-        raw_status = 'active'
-        if d_day.lower() == 'd-day':
-            raw_status = 'active'
-        apply_deadline = _estimate_deadline_from_d_label(d_day)
-        items.append({
-            'source_id': source_id,
-            'campaign_id': campaign_id,
-            'title': title,
-            'original_url': original_url,
-            'platform_type': 'blog' if platform_type == 'purchase' else platform_type,
-            'campaign_type': campaign_type,
-            'category_name': None,
-            'subcategory_name': type_matches[0].strip() if type_matches else None,
-            'region_primary_name': region_primary,
-            'region_secondary_name': region_secondary,
-            'benefit_text': benefit_text,
-            'recruit_count': int(recruit.replace(',', '')) if recruit else None,
-            'apply_deadline': apply_deadline,
-            'published_at': None,
-            'thumbnail_url': image_url,
-            'snippet': benefit_text,
-            'raw_status': raw_status,
-            'status': 'active',
-            'requires_review': False,
-        })
-    return items
+            if label in SEOULOUPPA_TYPE_MAP:
+                campaign_type = SEOULOUPPA_TYPE_MAP[label]
+            elif label.endswith("P") and not benefit_text:
+                benefit_text = label
+
+        recruit_match = re.search(r"모집\s*([\d,]+)", self.current.get("recruit_text", ""))
+        recruit_count = int(recruit_match.group(1).replace(",", "")) if recruit_match else None
+        d_day = self.current.get("d_day")
+
+        return {
+            "source_id": self.source_id,
+            "campaign_id": _extract_query_params(original_url).get("c"),
+            "title": title,
+            "original_url": original_url,
+            "platform_type": "blog" if platform_type == "purchase" else platform_type,
+            "campaign_type": campaign_type,
+            "category_name": None,
+            "subcategory_name": type_matches[0] if type_matches else None,
+            "region_primary_name": region_primary,
+            "region_secondary_name": region_secondary,
+            "benefit_text": benefit_text or None,
+            "recruit_count": recruit_count,
+            "apply_deadline": _estimate_deadline_from_d_label(d_day),
+            "published_at": None,
+            "thumbnail_url": self.current.get("thumbnail_url"),
+            "snippet": benefit_text or None,
+            "raw_status": "active",
+            "status": "active",
+            "requires_review": False,
+        }
+
+
+def parse_seouloppa_listing(html: str, source_id: str | None = None) -> list[dict]:
+    parser = SeoulOppaListingHTMLParser(source_id=source_id)
+    parser.feed(html)
+    parser.close()
+    return parser.items
 
 
 def enrich_seouloppa_detail(item: dict, detail_html: str) -> dict:

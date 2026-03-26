@@ -360,6 +360,57 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(item["recruit_count"], 5)
         self.assertEqual(item["apply_deadline"], (date.today() + timedelta(days=1)).isoformat())
 
+    def test_parse_seouloppa_listing_live_markup_shape(self):
+        html = """
+        <li class="campaign_content">
+            <div class="load_campaign">
+                <a href="https://www.seoulouba.co.kr/campaign/?c=400975" target="_blank" class="tum_img">
+                    <img src="https://www.seoulouba.co.kr/data/campaign_list/327572/thumb-910e7b9c56f53c28f2f5672a73054feb_400975_260x260.jpg" width="90;" height="90;">
+                </a>
+                <a href="https://www.seoulouba.co.kr/campaign/?c=400975" target="_blank" class="load_blind_box">
+                    <div class="load_blind"><div class="load_blind_box"></div></div>
+                </a>
+                <div class="load_icon_box">
+                    <div class="ltop_icon">
+                        <div class="icon_box">
+                            <img src="https://www.seoulouba.co.kr/theme/souba3/img/thum_ch_blog.png" alt="네이버블로그">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="load_info">
+                <div class="com_icon">
+                    <div class="icon_tag">
+                        <span>방문형</span>
+                        <span>주말</span>
+                    </div>
+                </div>
+                <div class="t_ttl">
+                    <a href="https://www.seoulouba.co.kr/campaign/?c=400975" target="_blank"><strong class="s_campaign_title">[당산] 진안 생숯불구이 저녁</strong></a>
+                </div>
+                <div class="t_basic">
+                    <span class="basic_blue">메인메뉴 3가지 중 업체추천메뉴 1개</span>
+                </div>
+                <div class="campaign_day_people">
+                    <div class="d_day"><span>D-day</span></div>
+                    <div class="recruit"><span>신청 31 <span class="span_gray">/ 모집 5</span></span></div>
+                </div>
+            </div>
+        </li>
+        """
+        items = parse_seouloppa_listing(html)
+        self.assertEqual(len(items), 1)
+        item = items[0]
+        self.assertEqual(item["campaign_id"], "400975")
+        self.assertEqual(item["title"], "진안 생숯불구이 저녁")
+        self.assertEqual(item["platform_type"], "blog")
+        self.assertEqual(item["campaign_type"], "visit")
+        self.assertEqual(item["region_primary_name"], "당산")
+        self.assertIsNone(item["region_secondary_name"])
+        self.assertEqual(item["benefit_text"], "메인메뉴 3가지 중 업체추천메뉴 1개")
+        self.assertEqual(item["recruit_count"], 5)
+        self.assertEqual(item["apply_deadline"], date.today().isoformat())
+
     def test_enrich_seouloppa_detail(self):
         item = {
             "benefit_text": None,
