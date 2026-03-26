@@ -22,6 +22,7 @@ from crawler.sources.base import (
 
 SEEDED_SOURCES: dict[str, SourceDefinition] = {
     "reviewnote": SourceDefinition("reviewnote", "리뷰노트", "https://www.reviewnote.co.kr", "mixed", "dynamic"),
+    "reviewplace": SourceDefinition("reviewplace", "리뷰플레이스", "https://www.reviewplace.co.kr", "mixed", "dynamic"),
     "revu": SourceDefinition("revu", "레뷰", "https://www.revu.net", "mixed", "dynamic"),
     "dinnerqueen": SourceDefinition("dinnerqueen", "디너의여왕", "https://dinnerqueen.net", "mixed", "static"),
     "mrblog": SourceDefinition("mrblog", "미블", "https://www.mrblog.net", "mixed", "dynamic"),
@@ -173,6 +174,67 @@ GANGNAMMATZIP_TYPE_MAP = {
     "방문형": "visit",
     "구매평": "purchase",
     "클립": "instagram",
+}
+
+REVIEWPLACE_LISTING_URLS = (
+    "https://www.reviewplace.co.kr/pr/?ct1=제품",
+    "https://www.reviewplace.co.kr/pr/?ct1=지역",
+    "https://www.reviewplace.co.kr/pr/?ct1=기자단",
+    "https://www.reviewplace.co.kr/pr/?ct1=구매평",
+)
+
+REVIEWPLACE_BROWSER_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/137.0.0.0 Safari/537.36"
+    ),
+    "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Cache-Control": "no-cache",
+    "Pragma": "no-cache",
+}
+
+REVIEWPLACE_PLATFORM_MAP = {
+    "blog": "blog",
+    "블로그": "blog",
+    "인스타": "instagram",
+    "insta": "instagram",
+    "instagram": "instagram",
+    "릴스": "instagram",
+    "클립": "instagram",
+    "reels": "instagram",
+    "youtube": "youtube",
+    "유튜브": "youtube",
+    "쇼츠": "youtube",
+    "shorts": "youtube",
+    "더블리뷰": "mixed",
+    "멀티리뷰": "mixed",
+}
+
+REVIEWPLACE_NON_REGION_TOKENS = {
+    "기자단",
+    "방문형기자단",
+    "방문형",
+    "참여형",
+    "원고형",
+    "회수형",
+    "어플체험",
+    "구매평",
+    "구매평리뷰",
+    "쿠팡",
+    "로켓프레시",
+    "스마트스토어",
+    "마켓컬리",
+    "자사몰",
+    "스스",
+    *REVIEWPLACE_PLATFORM_MAP.keys(),
+}
+
+REVIEWPLACE_CAMPAIGN_TYPE_MAP = {
+    "제품": "delivery",
+    "지역": "visit",
+    "기자단": "content",
+    "구매평": "purchase",
 }
 
 SEOULOUPPA_TITLE_TAGS = {"배송형", "구매평", "기자단", "방문형", "클립"}
