@@ -11,6 +11,7 @@ const KAKAO_SDK_URL = 'https://dapi.kakao.com/v2/maps/sdk.js';
 const KAKAO_MAP_APP_KEY = process.env.NEXT_PUBLIC_KAKAO_MAP_APP_KEY;
 const VWORLD_API_KEY = process.env.NEXT_PUBLIC_VWORLD_API_KEY;
 const DEFAULT_CENTER = [37.4979, 127.0276];
+const DEFAULT_ZOOM = 12;
 const KAKAO_MAX_AUTO_ZOOM_LEVEL = 6;
 const KAKAO_CLUSTER_MIN_LEVEL = 8;
 const VWORLD_TILE_URL = 'https://cdn.vworld.kr/2d/Base/service/{z}/{x}/{y}.png';
@@ -163,7 +164,7 @@ function createLeafletMapState(container, L, campaigns) {
   const map = L.map(container, {
     zoomControl: true,
     attributionControl: true
-  }).setView(DEFAULT_CENTER, 7);
+  }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
 
   const tileConfig = getLeafletTileConfig();
   map.attributionControl.setPrefix('');
@@ -174,7 +175,7 @@ function createLeafletMapState(container, L, campaigns) {
 
   const layer = L.layerGroup().addTo(map);
   const bounds = L.latLngBounds(campaigns.map((campaign) => [campaign.latitude, campaign.longitude]));
-  if (bounds.isValid()) {
+  if (campaigns.length > 1 && bounds.isValid()) {
     map.fitBounds(bounds.pad(0.08), { maxZoom: 11 });
   }
 
