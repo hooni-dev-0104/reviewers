@@ -543,6 +543,19 @@ class PipelineTests(unittest.TestCase):
                 }
             ]
         }
+        misc_payload = {
+            "data": [
+                {
+                    "campaignId": 165524,
+                    "title": "리뷰가 맘에 들었다면 '좋아요' 지급",
+                    "subtitle": "리뷰가 맘에 들었다면 '좋아요' 지급",
+                    "channel": "misc",
+                    "activity": "misc",
+                    "reviewerLimit": 1,
+                    "mainImg": "/userAssets/campaign/151388/img0/좋아요 지급기능.jpg",
+                }
+            ]
+        }
         detail_payload = [
             {
                 "campaign_id": 177719,
@@ -561,7 +574,7 @@ class PipelineTests(unittest.TestCase):
         ]
         with mock.patch(
             "crawler.sources.seeded.fetch_json_with_headers",
-            side_effect=[list_payload, detail_payload, {"data": []}, list_payload, detail_payload, {"data": []}],
+            side_effect=[list_payload, detail_payload, {"data": []}, misc_payload, {"data": []}],
         ):
             items = ChehumviewSourceAdapter(SEEDED_SOURCES["chehumview"], page_limit=2).fetch()
         self.assertEqual(len(items), 1)

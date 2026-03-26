@@ -189,8 +189,8 @@ CHEHUMVIEW_BROWSER_HEADERS = {
 }
 
 CHEHUMVIEW_CATEGORY_URLS = (
-    ("newly", "https://chvu.co.kr/campaign?sort=latest"),
-    ("popular", "https://chvu.co.kr/campaign?sort=popular"),
+    ("search", "https://chvu.co.kr/campaign?sort=latest"),
+    ("ad", "https://chvu.co.kr/campaign?sort=latest"),
 )
 
 CHEHUMVIEW_CHANNEL_MAP = {
@@ -1108,7 +1108,12 @@ class ChehumviewSourceAdapter(PlaceholderSourceAdapter):
                     break
                 for row in rows:
                     campaign_id = row.get("campaignId")
-                    if not campaign_id or campaign_id in seen_ids:
+                    if (
+                        not campaign_id
+                        or campaign_id in seen_ids
+                        or str(row.get("activity") or "").lower() == "misc"
+                        or str(row.get("channel") or "").lower() == "misc"
+                    ):
                         continue
                     seen_ids.add(campaign_id)
                     try:
