@@ -21,6 +21,7 @@ from crawler.sources.base import (
 
 
 SEEDED_SOURCES: dict[str, SourceDefinition] = {
+    "chehumview": SourceDefinition("chehumview", "체험뷰", "https://chvu.co.kr", "mixed", "dynamic"),
     "reviewnote": SourceDefinition("reviewnote", "리뷰노트", "https://www.reviewnote.co.kr", "mixed", "dynamic"),
     "reviewplace": SourceDefinition("reviewplace", "리뷰플레이스", "https://www.reviewplace.co.kr", "mixed", "dynamic"),
     "revu": SourceDefinition("revu", "레뷰", "https://www.revu.net", "mixed", "dynamic"),
@@ -176,6 +177,42 @@ GANGNAMMATZIP_TYPE_MAP = {
     "클립": "instagram",
 }
 
+CHEHUMVIEW_BROWSER_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/137.0.0.0 Safari/537.36"
+    ),
+    "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Accept": "application/json, text/plain, */*",
+    "Referer": "https://chvu.co.kr/campaign?sort=latest",
+}
+
+CHEHUMVIEW_CATEGORY_URLS = (
+    ("newly", "https://chvu.co.kr/campaign?sort=latest"),
+    ("popular", "https://chvu.co.kr/campaign?sort=popular"),
+)
+
+CHEHUMVIEW_CHANNEL_MAP = {
+    "blog": "blog",
+    "insta": "instagram",
+    "instagram": "instagram",
+    "youtube": "youtube",
+    "clip": "instagram",
+}
+
+CHEHUMVIEW_SERVICE_MAP = {
+    "hotplaces": "맛집",
+    "beauty": "뷰티/건강",
+    "life": "생활",
+    "food": "식품",
+    "fashion": "패션/잡화",
+    "kids": "유아동",
+    "digital": "디지털",
+    "sports": "운동/건강",
+    "travel": "숙박",
+}
+
 REVIEWPLACE_LISTING_URLS = (
     "https://www.reviewplace.co.kr/pr/?ct1=제품",
     "https://www.reviewplace.co.kr/pr/?ct1=지역",
@@ -236,6 +273,8 @@ REVIEWPLACE_CAMPAIGN_TYPE_MAP = {
     "기자단": "content",
     "구매평": "purchase",
 }
+
+REVIEWPLACE_FETCH_TIMEOUT = 20
 
 SEOULOUPPA_TITLE_TAGS = {"배송형", "구매평", "기자단", "방문형", "클립"}
 
@@ -504,6 +543,231 @@ def transform_reviewnote_api_item(item: dict, source_id: str | None = None) -> d
     }
 
 
+def _parse_iso_date(value: str | None) -> str | None:
+    if not value:
+        return None
+    try:
+        return date.fromisoformat(str(value).replace("Z", "+00:00").split("T")[0]).isoformat()
+    except Exception:
+        try:
+            return date.fromisoformat(str(value)[:10]).isoformat()
+        except Exception:
+            return None
+
+
+def _parse_reviewplace_mmdd_range(value: str | None) -> tuple[str | None, str | None]:
+    if not value:
+        return None, None
+    match = re.search(r"(\d{2})\.(\d{2})\s*[~\-]\s*(\d{2})\.(\d{2})", value)
+    if not match:
+        return None, None
+    sm, sd, em, ed = [int(part) for part in match.groups()]
+    today = date.today()
+    start_year = today.year
+    end_year = today.year
+    if sm < today.month - 6:
+        start_year += 1
+    if em < today.month - 6:
+        end_year += 1
+    return date(start_year, sm, sd).isoformat(), date(end_year, em, ed).isoformat()
+
+
+def _normalize_prefixed_image_url(base_url: str, value: str | None) -> str | None:
+    if not value:
+        return None
+    raw = str(value).strip()
+    if not raw:
+        return None
+    return urljoin(base_url, raw)
+
+
+def _parse_region_tokens_from_title(title: str) -> tuple[str | None, str | None, list[str]]:
+    annotations, cleaned = _split_4blog_title_annotations(title)
+    parts: list[str] = []
+    for annotation in annotations:
+        parts.extend(part.strip() for part in annotation.split("/") if part.strip())
+
+    region_tokens = [part for part in parts if part not in REVIEWPLACE_NON_REGION_TOKENS]
+    primary = region_tokens[0] if region_tokens else None
+    secondary = region_tokens[1] if len(region_tokens) > 1 else None
+    return primary, secondary, parts
+
+
+def transform_chehumview_campaign(item: dict, source_id: str | None = None, detail: dict | None = None) -> dict:
+    detail = detail or {}
+    raw_title = str(detail.get("title") or item.get("title") or "").strip()
+    cleaned_title = _split_4blog_title_annotations(raw_title)[1]
+    region_primary, region_secondary, title_tokens = _parse_region_tokens_from_title(raw_title)
+
+    exact_location = None
+    address_1 = str(detail.get("address_1") or "").strip()
+    address_2 = str(detail.get("address_2") or "").strip()
+    if address_1:
+        exact_location = " ".join(part for part in [address_1, address_2] if part).strip()
+        address_parts = address_1.split()
+        if not region_primary and address_parts:
+            region_primary = address_parts[0]
+        if address_parts and len(address_parts) > 1:
+            region_secondary = address_parts[1]
+
+    channel = str(detail.get("channel") or item.get("channel") or "").lower()
+    platform_type = CHEHUMVIEW_CHANNEL_MAP.get(channel, "etc")
+    activity = str(detail.get("activity") or item.get("activity") or "").lower()
+    campaign_type = activity if activity in {"visit", "delivery", "purchase", "content"} else "etc"
+
+    category_name = CHEHUMVIEW_SERVICE_MAP.get(str(detail.get("service") or item.get("service") or "").lower())
+    if campaign_type == "visit" and not category_name:
+        category_name = "지역"
+
+    raw_status = str(detail.get("status") or item.get("status") or "active").lower()
+    published_at = _parse_iso_date(detail.get("appl_start_date"))
+    apply_deadline = _parse_iso_date(detail.get("appl_end_date")) or _parse_iso_date(item.get("closeAt"))
+    snippet = str(detail.get("subtitle") or item.get("subtitle") or "").strip() or None
+
+    return {
+        "source_id": source_id,
+        "title": cleaned_title,
+        "original_url": f"https://chvu.co.kr/campaign/{detail.get('campaign_id') or item.get('campaignId')}",
+        "platform_type": platform_type,
+        "campaign_type": campaign_type,
+        "category_name": category_name,
+        "subcategory_name": str(detail.get("content_type") or item.get("contentType") or "").strip() or None,
+        "region_primary_name": region_primary,
+        "region_secondary_name": region_secondary,
+        "exact_location": exact_location,
+        "benefit_text": snippet,
+        "recruit_count": detail.get("reviewer_limit") or item.get("reviewerLimit"),
+        "apply_deadline": apply_deadline,
+        "published_at": published_at,
+        "thumbnail_url": _normalize_prefixed_image_url("https://chvu.co.kr", detail.get("main_img") or item.get("mainImg")),
+        "snippet": snippet,
+        "raw_status": raw_status,
+        "status": "expired" if raw_status in {"closed", "expired"} else "active",
+        "requires_review": False,
+        "raw_payload": {
+            "product_link": detail.get("product_link"),
+            "hashtags": detail.get("hashtags"),
+            "search_keyword": detail.get("search_keyword"),
+            "title_tokens": title_tokens,
+        },
+    }
+
+
+def _reviewplace_ct1_from_url(listing_url: str) -> str | None:
+    return _extract_query_params(listing_url).get("ct1")
+
+
+def _reviewplace_platform_from_tokens(tokens: list[str], fallback: str | None = None) -> str:
+    for token in tokens:
+        mapped = REVIEWPLACE_PLATFORM_MAP.get(token.lower()) or REVIEWPLACE_PLATFORM_MAP.get(token)
+        if mapped:
+            return mapped
+    if fallback:
+        mapped = REVIEWPLACE_PLATFORM_MAP.get(fallback.lower()) or REVIEWPLACE_PLATFORM_MAP.get(fallback)
+        if mapped:
+            return mapped
+    return "blog"
+
+
+def parse_reviewplace_listing(html: str, listing_url: str, source_id: str | None = None) -> list[dict]:
+    ct1 = _reviewplace_ct1_from_url(listing_url)
+    pattern = re.compile(
+        r"<div class='item'>\s*<a href='(/pr/\?id=(\d+))'>.*?"
+        r'<img src="([^"]+)" class="thumbimg".*?'
+        r"<p class='tit'>(.*?)</p>.*?"
+        r"<p class='txt'>(.*?)</p>.*?"
+        r"<p class='date'><em class='d_ico'>D</em>\s*-\s*([0-9]+)</p>.*?"
+        r"<p>신청\s*([0-9]+)<span>\s*/\s*([0-9]+)명</span></p>.*?"
+        r"<div class='tag_wrap'>(.*?)</div>",
+        re.S,
+    )
+    items: list[dict] = []
+    for match in pattern.finditer(html):
+        relative_url, campaign_id, thumbnail_url, raw_title, raw_desc, remaining_days, applied, recruit, tag_wrap = match.groups()
+        title = _strip_tags(raw_title)
+        primary, secondary, tokens = _parse_region_tokens_from_title(title)
+        benefit_text = _strip_tags(raw_desc)
+        tag_text = _strip_tags(tag_wrap)
+        platform_type = _reviewplace_platform_from_tokens(tokens, fallback=tag_text)
+        items.append(
+            {
+                "source_id": source_id,
+                "campaign_id": campaign_id,
+                "title": _split_4blog_title_annotations(title)[1],
+                "original_url": urljoin("https://www.reviewplace.co.kr", relative_url),
+                "platform_type": platform_type,
+                "campaign_type": REVIEWPLACE_CAMPAIGN_TYPE_MAP.get(ct1 or "", "etc"),
+                "category_name": ct1 if ct1 in {"제품", "지역"} else None,
+                "subcategory_name": ct1 if ct1 in {"기자단", "구매평"} else tag_text or None,
+                "region_primary_name": primary,
+                "region_secondary_name": secondary,
+                "benefit_text": benefit_text,
+                "recruit_count": int(recruit) if recruit else None,
+                "apply_deadline": (date.today() + timedelta(days=int(remaining_days))).isoformat() if remaining_days else None,
+                "published_at": None,
+                "thumbnail_url": thumbnail_url,
+                "snippet": benefit_text,
+                "raw_status": "active",
+                "status": "active",
+                "requires_review": False,
+            }
+        )
+    return items
+
+
+def enrich_reviewplace_detail(item: dict, detail_html: str) -> dict:
+    enriched = dict(item)
+    detail_title = _extract_first(r'<div class="cmp_title"[^>]*>.*?</div>([^<]+)</div>', detail_html, re.S)
+    if detail_title:
+        title = _strip_tags(detail_title)
+        enriched["title"] = _split_4blog_title_annotations(title)[1]
+        primary, secondary, tokens = _parse_region_tokens_from_title(title)
+        if not enriched.get("region_primary_name"):
+            enriched["region_primary_name"] = primary
+        if not enriched.get("region_secondary_name"):
+            enriched["region_secondary_name"] = secondary
+        enriched["platform_type"] = _reviewplace_platform_from_tokens(tokens, fallback=enriched.get("platform_type"))
+
+    benefit_text = _extract_first(r"<dt>제공내역</dt>\s*<dd[^>]*class=\"bstyle\"[^>]*>(.*?)</dd>", detail_html, re.S)
+    if benefit_text:
+        cleaned = _strip_tags(benefit_text)
+        enriched["benefit_text"] = cleaned
+        enriched["snippet"] = cleaned
+
+    address_text = _extract_first(r"<dt>방문주소</dt>\s*<dd[^>]*class=\"bstyle\"[^>]*>(.*?)<div id=\"map\"></div>", detail_html, re.S)
+    if address_text:
+        cleaned_address = _strip_tags(address_text)
+        enriched["exact_location"] = cleaned_address
+        address_parts = cleaned_address.split()
+        if not enriched.get("region_primary_name") and address_parts:
+            enriched["region_primary_name"] = address_parts[0]
+        if not enriched.get("region_secondary_name") and len(address_parts) > 1:
+            enriched["region_secondary_name"] = address_parts[1]
+
+    period_text = _extract_first(r"<span class=\"tlabel\">모집기간</span>\s*<span class=\"fm_num\">([^<]+)</span>", detail_html, re.S)
+    published_at, apply_deadline = _parse_reviewplace_mmdd_range(period_text)
+    if published_at:
+        enriched["published_at"] = published_at
+    if apply_deadline:
+        enriched["apply_deadline"] = apply_deadline
+
+    channel = _extract_first(r'<input type="hidden" name="rchannel" id="rchannel" value="([^"]+)"', detail_html)
+    if channel:
+        enriched["platform_type"] = _reviewplace_platform_from_tokens([], fallback=channel)
+
+    recruit_match = re.search(r"신청한 리뷰어 <em id='cmp_curr_num'>\s*([0-9]+)\s*/\s*([0-9]+)\s*</em>", detail_html)
+    if recruit_match:
+        enriched["recruit_count"] = int(recruit_match.group(2))
+
+    product_link = _extract_first(r'<input type="hidden" id="wr_link1" value="([^"]+)"', detail_html)
+    if product_link:
+        payload = dict(enriched.get("raw_payload") or {})
+        payload["product_link"] = product_link
+        enriched["raw_payload"] = payload
+
+    return enriched
+
+
 def parse_mrblog_listing(html: str, source_id: str | None = None) -> list[dict]:
     pattern = re.compile(
         r'<a href="(https://www\.mrblog\.net/campaigns/\d+)" class="campaign_item">.*?'
@@ -765,6 +1029,101 @@ class ReviewNoteSourceAdapter(PlaceholderSourceAdapter):
 
         listing_html = fetch_text_url(self.listing_url)
         return parse_reviewnote_listing(listing_html, source_id=self.definition.source_id)
+
+
+class ReviewPlaceSourceAdapter(PlaceholderSourceAdapter):
+    def __init__(self, definition: SourceDefinition, page_limit: int = 8):
+        super().__init__(definition)
+        self.page_limit = page_limit
+
+    def fetch(self) -> list[dict]:
+        items: list[dict] = []
+        seen_urls: set[str] = set()
+        for listing_url in REVIEWPLACE_LISTING_URLS:
+            try:
+                listing_html = fetch_text_url(listing_url, headers=REVIEWPLACE_BROWSER_HEADERS, timeout=REVIEWPLACE_FETCH_TIMEOUT)
+            except Exception:
+                continue
+
+            for item in parse_reviewplace_listing(listing_html, listing_url, source_id=self.definition.source_id):
+                if item["original_url"] in seen_urls:
+                    continue
+                seen_urls.add(item["original_url"])
+                items.append(item)
+
+            for page in range(2, self.page_limit + 1):
+                params = urlencode({"rpage": page, "device": "pc", **{k: v for k, v in _extract_query_params(listing_url).items() if v}})
+                try:
+                    fragment = fetch_text_url(
+                        f"https://www.reviewplace.co.kr/theme/rp/_ajax_cmp_list_tpl.php?{params}",
+                        headers=REVIEWPLACE_BROWSER_HEADERS,
+                        timeout=REVIEWPLACE_FETCH_TIMEOUT,
+                    )
+                except Exception:
+                    break
+                batch = parse_reviewplace_listing(fragment, listing_url, source_id=self.definition.source_id)
+                if not batch:
+                    break
+                new_count = 0
+                for item in batch:
+                    if item["original_url"] in seen_urls:
+                        continue
+                    seen_urls.add(item["original_url"])
+                    items.append(item)
+                    new_count += 1
+                if new_count == 0:
+                    break
+
+        enriched: list[dict] = []
+        for item in items:
+            try:
+                detail_html = fetch_text_url(item["original_url"], headers=REVIEWPLACE_BROWSER_HEADERS, timeout=REVIEWPLACE_FETCH_TIMEOUT)
+            except Exception:
+                detail_html = None
+            enriched.append(enrich_reviewplace_detail(item, detail_html) if detail_html else item)
+        return enriched
+
+
+class ChehumviewSourceAdapter(PlaceholderSourceAdapter):
+    listing_api = "https://chvu.co.kr/v2/campaigns?{query}"
+    detail_api = "https://chvu.co.kr/api/campaign/getCampaignById?campaign_id={campaign_id}"
+
+    def __init__(self, definition: SourceDefinition, page_limit: int = 20):
+        super().__init__(definition)
+        self.page_limit = page_limit
+
+    def fetch(self) -> list[dict]:
+        items: list[dict] = []
+        seen_ids: set[int] = set()
+
+        for category, _page_url in CHEHUMVIEW_CATEGORY_URLS:
+            for page in range(1, self.page_limit + 1):
+                query = urlencode({"category": category, "page": page})
+                try:
+                    payload = fetch_json_with_headers(self.listing_api.format(query=query), headers=CHEHUMVIEW_BROWSER_HEADERS)
+                except Exception:
+                    break
+                rows = payload.get("data", []) if isinstance(payload, dict) else []
+                if not rows:
+                    break
+                for row in rows:
+                    campaign_id = row.get("campaignId")
+                    if not campaign_id or campaign_id in seen_ids:
+                        continue
+                    seen_ids.add(campaign_id)
+                    try:
+                        detail_rows = fetch_json_with_headers(
+                            self.detail_api.format(campaign_id=campaign_id),
+                            headers=CHEHUMVIEW_BROWSER_HEADERS,
+                        )
+                    except Exception:
+                        detail_rows = []
+                    detail = detail_rows[0] if isinstance(detail_rows, list) and detail_rows else {}
+                    items.append(transform_chehumview_campaign(row, source_id=self.definition.source_id, detail=detail))
+                if len(rows) < 14:
+                    break
+
+        return items
 
 
 class MrBlogSourceAdapter(PlaceholderSourceAdapter):
@@ -1624,6 +1983,10 @@ def get_adapter(source_slug: str, source_file: str | None = None, report_mode: b
     definition = SEEDED_SOURCES[source_slug]
     if source_file:
         return FileSourceAdapter(definition, Path(source_file))
+    if source_slug == "chehumview":
+        return ChehumviewSourceAdapter(definition, page_limit=2 if report_mode else 20)
+    if source_slug == "reviewplace":
+        return ReviewPlaceSourceAdapter(definition, page_limit=2 if report_mode else 8)
     if source_slug == "revu":
         return RevuSourceAdapter(definition, page_limit=2 if report_mode else 100, page_size=35)
     if source_slug == "mrblog":

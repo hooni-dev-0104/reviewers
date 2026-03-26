@@ -17,10 +17,12 @@ from crawler.pipeline import (
 from crawler.reporting import build_source_quality_report
 from crawler.normalization import normalize_campaign
 from crawler.sources.seeded import (
+    ChehumviewSourceAdapter,
     DinnerQueenSourceAdapter,
     GangnamMatzipSourceAdapter,
     SEEDED_SOURCES,
     SeoulOppaSourceAdapter,
+    ReviewPlaceSourceAdapter,
     _build_gangnammatzip_ajax_url,
     _build_seouloppa_ajax_payload,
     _estimate_deadline_from_d_label,
@@ -28,11 +30,14 @@ from crawler.sources.seeded import (
     _extract_seouloppa_listing_urls,
     enrich_4blog_item_from_detail,
     enrich_gangnammatzip_detail,
+    enrich_reviewplace_detail,
     enrich_seouloppa_detail,
+    parse_reviewplace_listing,
     parse_mrblog_listing,
     parse_gangnammatzip_listing,
     parse_reviewnote_listing,
     parse_seouloppa_listing,
+    transform_chehumview_campaign,
     transform_revu_item,
     transform_reviewnote_api_item,
     transform_4blog_item,
@@ -381,6 +386,159 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(item["recruit_count"], 35)
         self.assertEqual(item["thumbnail_url"], "https://example.com/image.webp")
         self.assertIn("페이백 100,000 P", item["snippet"])
+
+    def test_transform_chehumview_campaign(self):
+        transformed = transform_chehumview_campaign(
+            {
+                "campaignId": 177719,
+                "title": "[서울/강서]제일에스테틱 화곡점",
+                "subtitle": "피부관리,윤곽관리,다이어트슬리밍 중 택1",
+                "channel": "blog",
+                "activity": "visit",
+                "reviewerLimit": 10,
+                "closeAt": "2026-04-01T15:00:00.000Z",
+                "mainImg": "/userAssets/campaign/164180/img0/main.jpg",
+            },
+            source_id="source-1",
+            detail={
+                "campaign_id": 177719,
+                "title": "[서울/강서]제일에스테틱 화곡점",
+                "subtitle": "피부관리,윤곽관리,다이어트슬리밍 중 택1",
+                "channel": "blog",
+                "activity": "visit",
+                "service": "beauty",
+                "appl_start_date": "2026-03-25T15:00:00.000Z",
+                "appl_end_date": "2026-04-01T15:00:00.000Z",
+                "reviewer_limit": 10,
+                "address_1": "서울 강서구 강서로 160",
+                "address_2": "5층 제일에스테틱 화곡점",
+                "main_img": "/userAssets/campaign/164180/img0/main.jpg",
+            },
+        )
+        self.assertEqual(transformed["original_url"], "https://chvu.co.kr/campaign/177719")
+        self.assertEqual(transformed["platform_type"], "blog")
+        self.assertEqual(transformed["campaign_type"], "visit")
+        self.assertEqual(transformed["category_name"], "뷰티/건강")
+        self.assertEqual(transformed["region_primary_name"], "서울")
+        self.assertEqual(transformed["region_secondary_name"], "강서구")
+        self.assertEqual(transformed["exact_location"], "서울 강서구 강서로 160 5층 제일에스테틱 화곡점")
+        self.assertEqual(transformed["recruit_count"], 10)
+        self.assertEqual(transformed["apply_deadline"], "2026-04-01")
+        self.assertEqual(transformed["published_at"], "2026-03-25")
+
+    def test_parse_reviewplace_listing(self):
+        html = """
+        <div class='item'><a href='/pr/?id=277719'>
+          <div class='img'><img src="https://cdn.example.com/thumb.jpg" class="thumbimg" ></div>
+          <div class='item_info'>
+            <div class='txt_wrap'>
+              <p class='tit'>[경기/광주/블로그] MAZZA에서 우즈벡음식 체험하세요!</p>
+              <p class='txt'>3만원 이용권</p>
+            </div>
+            <div class='date_wrap'><p class='date'><em class='d_ico'>D</em> - 6</p><div class='num'><p>신청 0<span> / 5명</span></p></div></div>
+            <div class='tag_wrap'><div class='txt_tag'>주말</div></div>
+          </div>
+        </a></div>
+        """
+        items = parse_reviewplace_listing(html, "https://www.reviewplace.co.kr/pr/?ct1=지역")
+        self.assertEqual(len(items), 1)
+        item = items[0]
+        self.assertEqual(item["original_url"], "https://www.reviewplace.co.kr/pr/?id=277719")
+        self.assertEqual(item["title"], "MAZZA에서 우즈벡음식 체험하세요!")
+        self.assertEqual(item["platform_type"], "blog")
+        self.assertEqual(item["campaign_type"], "visit")
+        self.assertEqual(item["region_primary_name"], "경기")
+        self.assertEqual(item["region_secondary_name"], "광주")
+        self.assertEqual(item["recruit_count"], 5)
+        self.assertEqual(item["benefit_text"], "3만원 이용권")
+
+    def test_enrich_reviewplace_detail(self):
+        item = {
+            "title": "MAZZA에서 우즈벡음식 체험하세요!",
+            "platform_type": "blog",
+            "campaign_type": "visit",
+            "region_primary_name": "경기",
+            "region_secondary_name": "광주",
+            "benefit_text": None,
+            "snippet": None,
+            "recruit_count": None,
+        }
+        detail_html = """
+        <input type="hidden" name="rchannel" id="rchannel" value="blog" readonly />
+        <div class="cmp_title"><div class="icon"></div>[경기/광주/블로그] MAZZA에서 우즈벡음식 체험하세요!</div>
+        <li><dl><dt>제공내역</dt><dd class="bstyle">3만원 이용권</dd></dl></li>
+        <li id="visit_sec"><dl><dt>방문주소</dt><dd class="bstyle">경기 광주시 곤지암읍 경충대로 617 1층 <div id="map"></div></dd></dl></li>
+        <div class="on"><span class="tlabel">모집기간</span> <span class="fm_num">03.26 ~ 03.31</span></div>
+        <li data-tab="cmp_reviewer" id="cmp_reviewer"><span>신청한 리뷰어 <em id='cmp_curr_num'>0/5</em></span></li>
+        <input type="hidden" id="wr_link1" value="https://naver.me/FAPZK5Sk" readonly />
+        """
+        enriched = enrich_reviewplace_detail(item, detail_html)
+        self.assertEqual(enriched["benefit_text"], "3만원 이용권")
+        self.assertEqual(enriched["snippet"], "3만원 이용권")
+        self.assertEqual(enriched["exact_location"], "경기 광주시 곤지암읍 경충대로 617 1층")
+        self.assertEqual(enriched["recruit_count"], 5)
+        self.assertEqual(enriched["apply_deadline"], "2026-03-31")
+        self.assertEqual(enriched["published_at"], "2026-03-26")
+        self.assertEqual(enriched["raw_payload"]["product_link"], "https://naver.me/FAPZK5Sk")
+
+    def test_reviewplace_adapter_collects_ajax_pages(self):
+        page1 = """
+        <div class='item'><a href='/pr/?id=1'><div class='img'><img src="https://cdn.example.com/1.jpg" class="thumbimg"></div><div class='item_info'><div class='txt_wrap'><p class='tit'>[서울/강남/블로그] 첫 캠페인</p><p class='txt'>혜택 1</p></div><div class='date_wrap'><p class='date'><em class='d_ico'>D</em> - 3</p><div class='num'><p>신청 0<span> / 5명</span></p></div></div><div class='tag_wrap'></div></div></a></div>
+        """
+        page2 = """
+        <div class='item'><a href='/pr/?id=2'><div class='img'><img src="https://cdn.example.com/2.jpg" class="thumbimg"></div><div class='item_info'><div class='txt_wrap'><p class='tit'>[서울/서초/블로그] 둘째 캠페인</p><p class='txt'>혜택 2</p></div><div class='date_wrap'><p class='date'><em class='d_ico'>D</em> - 2</p><div class='num'><p>신청 0<span> / 4명</span></p></div></div><div class='tag_wrap'></div></div></a></div>
+        """
+        detail_html = """
+        <div class="cmp_title"><div class="icon"></div>[서울/강남/블로그] 첫 캠페인</div>
+        <li><dl><dt>제공내역</dt><dd class="bstyle">혜택</dd></dl></li>
+        <li id="visit_sec"><dl><dt>방문주소</dt><dd class="bstyle">서울 강남구 테헤란로 1<div id="map"></div></dd></dl></li>
+        <div class="on"><span class="tlabel">모집기간</span> <span class="fm_num">03.26 ~ 03.31</span></div>
+        <li data-tab="cmp_reviewer" id="cmp_reviewer"><span>신청한 리뷰어 <em id='cmp_curr_num'>0/5</em></span></li>
+        """
+        with mock.patch(
+            "crawler.sources.seeded.fetch_text_url",
+            side_effect=[page1, page2, "", detail_html, detail_html],
+        ):
+            items = ReviewPlaceSourceAdapter(SEEDED_SOURCES["reviewplace"], page_limit=2).fetch()
+        self.assertEqual(len(items), 2)
+
+    def test_chehumview_adapter_uses_list_and_detail_api(self):
+        list_payload = {
+            "data": [
+                {
+                    "campaignId": 177719,
+                    "title": "[서울/강서]제일에스테틱 화곡점",
+                    "subtitle": "피부관리",
+                    "channel": "blog",
+                    "activity": "visit",
+                    "reviewerLimit": 10,
+                    "mainImg": "/userAssets/campaign/164180/img0/main.jpg",
+                }
+            ]
+        }
+        detail_payload = [
+            {
+                "campaign_id": 177719,
+                "title": "[서울/강서]제일에스테틱 화곡점",
+                "subtitle": "피부관리",
+                "channel": "blog",
+                "activity": "visit",
+                "service": "beauty",
+                "appl_start_date": "2026-03-25T15:00:00.000Z",
+                "appl_end_date": "2026-04-01T15:00:00.000Z",
+                "reviewer_limit": 10,
+                "address_1": "서울 강서구 강서로 160",
+                "address_2": "5층",
+                "main_img": "/userAssets/campaign/164180/img0/main.jpg",
+            }
+        ]
+        with mock.patch(
+            "crawler.sources.seeded.fetch_json_with_headers",
+            side_effect=[list_payload, detail_payload, {"data": []}, list_payload, detail_payload, {"data": []}],
+        ):
+            items = ChehumviewSourceAdapter(SEEDED_SOURCES["chehumview"], page_limit=2).fetch()
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["title"], "제일에스테틱 화곡점")
 
     def test_parse_seouloppa_listing(self):
         html = """
