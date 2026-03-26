@@ -13,7 +13,7 @@ const VWORLD_API_KEY = process.env.NEXT_PUBLIC_VWORLD_API_KEY;
 const DEFAULT_CENTER = [37.5665, 126.978];
 const KAKAO_MAX_AUTO_ZOOM_LEVEL = 6;
 const KAKAO_CLUSTER_MIN_LEVEL = 8;
-const VWORLD_MIN_ZOOM_LEVEL = 6;
+const VWORLD_TILE_URL = 'https://cdn.vworld.kr/2d/Base/service/{z}/{x}/{y}.png';
 
 export function MapExplorer({ campaigns = [] }) {
   const mapContainerRef = useRef(null);
@@ -142,11 +142,6 @@ export function MapExplorer({ campaigns = [] }) {
 }
 
 async function createMapState(container, campaigns) {
-  const vworld = await loadVWorldRuntime();
-  if (vworld?.vw?.ol3?.Map && vworld?.ol) {
-    return createVWorldMapState(container, vworld, campaigns);
-  }
-
   try {
     const kakao = await loadKakaoMap();
     if (kakao?.maps) {
@@ -164,69 +159,17 @@ async function createMapState(container, campaigns) {
   return createLeafletMapState(container, L, campaigns);
 }
 
-async function loadVWorldRuntime(timeoutMs = 2000) {
-  if (typeof window === 'undefined' || !VWORLD_API_KEY) {
-    return null;
-  }
-
-  const startedAt = Date.now();
-  while (Date.now() - startedAt < timeoutMs) {
-    if (window.vw?.ol3?.Map && window.ol) {
-      return {
-        vw: window.vw,
-        ol: window.ol
-      };
-    }
-    await new Promise((resolve) => window.setTimeout(resolve, 40));
-  }
-
-  return null;
-}
-
-function createVWorldMapState(container, runtime, campaigns) {
-  const { vw, ol } = runtime;
-  const mapId = container.id || `reviewkok-vworld-map-${Math.random().toString(36).slice(2, 10)}`;
-  container.id = mapId;
-  container.innerHTML = '';
-
-  const map = new vw.ol3.Map(mapId, {
-    basemapType: vw.ol3.BasemapType.GRAPHIC,
-    controlDensity: vw.ol3.DensityType?.BASIC,
-    interactionDensity: vw.ol3.DensityType?.BASIC
-  });
-
-  map.updateSize?.();
-
-  const vectorSource = new ol.source.Vector({ wrapX: false });
-  const vectorLayer = new ol.layer.Vector({
-    source: vectorSource,
-    style: (feature) => createVWorldMarkerStyle(ol, feature.get('selected'))
-  });
-  map.addLayer(vectorLayer);
-
-  fitVWorldBounds(map, ol, campaigns);
-
-  return {
-    engine: 'vworld',
-    container,
-    map,
-    lib: vw,
-    ol,
-    vectorSource,
-    vectorLayer,
-    viewportCleanup: null,
-    clickCleanup: null
-  };
-}
-
 function createLeafletMapState(container, L, campaigns) {
   const map = L.map(container, {
     zoomControl: true,
     attributionControl: true
   }).setView(DEFAULT_CENTER, 7);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap'
+  const tileConfig = getLeafletTileConfig();
+  map.attributionControl.setPrefix('');
+  L.tileLayer(tileConfig.url, {
+    attribution: tileConfig.attribution,
+    maxZoom: tileConfig.maxZoom
   }).addTo(map);
 
   const layer = L.layerGroup().addTo(map);
@@ -272,12 +215,6 @@ function createKakaoMapState(container, kakao, campaigns) {
 }
 
 function attachViewportListener(state, campaigns, setVisibleIds) {
-  if (state.engine === 'vworld') {
-    const moveKey = state.map.on('moveend', () => updateVisibleIdsForState(state, campaigns, setVisibleIds));
-    state.viewportCleanup = () => state.ol.Observable.unByKey(moveKey);
-    return;
-  }
-
   if (state.engine === 'kakao') {
     const handler = () => updateVisibleIdsForState(state, campaigns, setVisibleIds);
     state.lib.maps.event.addListener(state.map, 'idle', handler);
@@ -306,30 +243,10 @@ function destroyMapState(state) {
     return;
   }
 
-  if (state.engine === 'vworld') {
-    state.clickCleanup?.();
-    state.map?.removeLayer(state.vectorLayer);
-    state.vectorSource?.clear();
-    state.map?.setTarget?.(null);
-    if (state.container) {
-      state.container.innerHTML = '';
-    }
-    return;
-  }
-
   state.map?.remove();
 }
 
 function updateVisibleIdsForState(state, campaigns, setVisibleIds) {
-  if (state.engine === 'vworld') {
-    const extent = state.map.getView().calculateExtent(state.map.getSize());
-    const ids = campaigns
-      .filter((campaign) => state.ol.extent.containsCoordinate(extent, toVWorldCoordinate(state.ol, campaign)))
-      .map((campaign) => campaign.id);
-    setVisibleIds(ids);
-    return;
-  }
-
   if (state.engine === 'kakao') {
     const bounds = state.map.getBounds();
     const ids = campaigns
@@ -347,51 +264,12 @@ function updateVisibleIdsForState(state, campaigns, setVisibleIds) {
 }
 
 function renderMarkersForState(state, campaigns, selectedId, setSelectedId) {
-  if (state.engine === 'vworld') {
-    renderVWorldMarkers(state, campaigns, selectedId, setSelectedId);
-    return;
-  }
-
   if (state.engine === 'kakao') {
     renderKakaoMarkers(state, campaigns, selectedId, setSelectedId);
     return;
   }
 
   renderLeafletMarkers(state, campaigns, selectedId, setSelectedId);
-}
-
-function renderVWorldMarkers(state, campaigns, selectedId, setSelectedId) {
-  const { map, ol, vectorSource } = state;
-  if (!map || !ol || !vectorSource) {
-    return;
-  }
-
-  vectorSource.clear();
-  vectorSource.addFeatures(
-    campaigns.map((campaign) => {
-      const feature = new ol.Feature({
-        geometry: new ol.geom.Point(toVWorldCoordinate(ol, campaign)),
-        campaignId: campaign.id,
-        selected: campaign.id === selectedId
-      });
-      return feature;
-    })
-  );
-
-  if (!state.clickCleanup) {
-    const clickKey = map.on('singleclick', (event) => {
-      let found = null;
-      map.forEachFeatureAtPixel(event.pixel, (feature) => {
-        found = feature;
-        return true;
-      });
-      if (found) {
-        setSelectedId(found.get('campaignId'));
-      }
-    });
-
-    state.clickCleanup = () => ol.Observable.unByKey(clickKey);
-  }
 }
 
 function renderLeafletMarkers(state, campaigns, selectedId, setSelectedId) {
@@ -477,47 +355,6 @@ function fitKakaoBounds(map, kakao, campaigns) {
   }
 }
 
-function fitVWorldBounds(map, ol, campaigns) {
-  if (!campaigns.length) {
-    return;
-  }
-
-  const extent = ol.extent.createEmpty();
-  for (const campaign of campaigns) {
-    const [x, y] = toVWorldCoordinate(ol, campaign);
-    ol.extent.extend(extent, [x, y, x, y]);
-  }
-
-  map.updateSize?.();
-  map.getView().fit(extent, {
-    padding: [40, 40, 40, 40],
-    maxZoom: 11,
-    duration: 0
-  });
-  if (map.getView().getZoom() < VWORLD_MIN_ZOOM_LEVEL) {
-    map.getView().setZoom(VWORLD_MIN_ZOOM_LEVEL);
-  }
-}
-
-function toVWorldCoordinate(ol, campaign) {
-  return ol.proj.transform([campaign.longitude, campaign.latitude], 'EPSG:4326', 'EPSG:900913');
-}
-
-function createVWorldMarkerStyle(ol, selected) {
-  return new ol.style.Style({
-    image: new ol.style.Circle({
-      radius: selected ? 10 : 8,
-      fill: new ol.style.Fill({
-        color: selected ? '#8b5cf6' : '#ff7a00'
-      }),
-      stroke: new ol.style.Stroke({
-        color: '#ffffff',
-        width: 3
-      })
-    })
-  });
-}
-
 function relayoutKakaoMap(map, kakao, campaigns) {
   const rerender = () => {
     map.relayout();
@@ -561,6 +398,22 @@ async function loadKakaoMap() {
   await ensureScript(src, 'reviewkok-kakao-map-js');
   await new Promise((resolve) => window.kakao.maps.load(resolve));
   return window.kakao;
+}
+
+function getLeafletTileConfig() {
+  if (VWORLD_API_KEY) {
+    return {
+      url: VWORLD_TILE_URL,
+      attribution: '&copy; VWorld',
+      maxZoom: 18
+    };
+  }
+
+  return {
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; OpenStreetMap',
+    maxZoom: 19
+  };
 }
 
 function ensureStylesheet(href, id) {
