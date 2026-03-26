@@ -213,11 +213,9 @@ CHEHUMVIEW_SERVICE_MAP = {
     "travel": "숙박",
 }
 
-REVIEWPLACE_LISTING_URLS = (
-    "https://www.reviewplace.co.kr/pr/?ct1=제품",
-    "https://www.reviewplace.co.kr/pr/?ct1=지역",
-    "https://www.reviewplace.co.kr/pr/?ct1=기자단",
-    "https://www.reviewplace.co.kr/pr/?ct1=구매평",
+REVIEWPLACE_LISTING_URLS = tuple(
+    f"https://www.reviewplace.co.kr/pr/?ct1={quote(value)}"
+    for value in ("제품", "지역", "기자단", "구매평")
 )
 
 REVIEWPLACE_BROWSER_HEADERS = {
