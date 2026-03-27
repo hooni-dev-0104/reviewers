@@ -1030,7 +1030,7 @@ class ReviewNoteSourceAdapter(PlaceholderSourceAdapter):
 
 
 class ReviewPlaceSourceAdapter(PlaceholderSourceAdapter):
-    def __init__(self, definition: SourceDefinition, page_limit: int = 8):
+    def __init__(self, definition: SourceDefinition, page_limit: int = 20):
         super().__init__(definition)
         self.page_limit = page_limit
 
@@ -1989,7 +1989,7 @@ def get_adapter(source_slug: str, source_file: str | None = None, report_mode: b
     if source_slug == "chehumview":
         return ChehumviewSourceAdapter(definition, page_limit=2 if report_mode else 20)
     if source_slug == "reviewplace":
-        return ReviewPlaceSourceAdapter(definition, page_limit=2 if report_mode else 8)
+        return ReviewPlaceSourceAdapter(definition, page_limit=2 if report_mode else 20)
     if source_slug == "revu":
         return RevuSourceAdapter(definition, page_limit=2 if report_mode else 100, page_size=35)
     if source_slug == "mrblog":
