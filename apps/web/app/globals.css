@@ -1122,7 +1122,11 @@ input, select {
   .footer-bar { flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; }
   .topbar nav, .hero-actions, .stats-strip, .account-group, .reminder-options { flex-wrap: wrap; }
   .topbar nav.top-tabs {
-    flex-wrap: nowrap;
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    flex-wrap: nowrap !important;
+    width: 100% !important;
+    align-items: stretch;
   }
   .brand-mark { font-size: 1.28rem; }
   .topbar-brand-group {
@@ -1139,19 +1143,17 @@ input, select {
   }
   .top-tabs {
     width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     flex-wrap: nowrap;
     gap: 6px;
     padding: 4px;
     overflow: visible;
   }
-  .topbar nav.top-tabs {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    flex-wrap: nowrap;
-    width: 100%;
-  }
   .topbar nav.top-tabs a {
+    display: inline-flex !important;
     min-width: 0;
+    width: 100%;
     min-height: 40px;
     padding: 0 8px;
     font-size: 0.78rem;
