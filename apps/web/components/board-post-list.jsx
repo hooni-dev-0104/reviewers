@@ -7,7 +7,7 @@ export function BoardPostList({ posts = [], basePath = '/board', showDelete = fa
     return (
       <section className="empty-state">
         <p>아직 게시글이 없어요.</p>
-        <span>첫 번째 글을 남겨보세요.</span>
+        <span>첫 번째 요구사항이나 문의를 남겨주세요. 작은 응원 한마디도 개발자에게 큰 힘이 돼요.</span>
       </section>
     );
   }

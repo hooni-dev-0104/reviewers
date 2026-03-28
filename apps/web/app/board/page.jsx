@@ -23,8 +23,8 @@ export default async function BoardPage({ searchParams }) {
         <div className="section-headline">
           <div>
             <span className="eyebrow">게시판</span>
-            <h1>공개 글과 비공개 글을 모두 남길 수 있어요.</h1>
-            <p>비공개 글도 제목은 공개되고, 본문은 작성한 닉네임과 비밀번호로만 확인할 수 있어요.</p>
+            <h1>편하게 의견을 남겨주세요.</h1>
+            <p>요구사항, 문의사항, 사용 중 느낀 점은 물론이고 작은 응원 한마디도 좋아요. 비공개 글도 제목은 공개되고, 본문은 작성한 닉네임과 비밀번호로만 확인할 수 있어요.</p>
           </div>
           <Link href="/board/new">글쓰기</Link>
         </div>
