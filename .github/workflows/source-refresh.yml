@@ -25,8 +25,39 @@ concurrency:
 
 jobs:
   refresh:
+    if: inputs.source != 'modan'
     runs-on: ubuntu-latest
     timeout-minutes: ${{ inputs.source == 'seouloppa' && 60 || 35 }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Refresh source
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          VWORLD_API_KEY: ${{ secrets.VWORLD_API_KEY }}
+          REVU_ACCESS_TOKEN: ${{ secrets.REVU_ACCESS_TOKEN }}
+          REVU_USERNAME: ${{ secrets.REVU_USERNAME }}
+          REVU_PASSWORD: ${{ secrets.REVU_PASSWORD }}
+          CRAWLER_DRY_RUN: "false"
+        run: |
+          python -m crawler.cli run-source "${{ inputs.source }}" \
+            --write \
+            ${{ inputs.delete_before_refresh && '--delete-before-refresh' || '' }}
+
+  refresh-modan:
+    if: inputs.source == 'modan'
+    runs-on: macos-14
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4

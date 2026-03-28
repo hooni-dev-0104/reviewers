@@ -52,25 +52,35 @@ jobs:
       matrix:
         include:
           - source: 4blog
+            runner: ubuntu-latest
             timeout_minutes: 20
           - source: dinnerqueen
+            runner: ubuntu-latest
             timeout_minutes: 25
           - source: reviewnote
+            runner: ubuntu-latest
             timeout_minutes: 15
           - source: modan
+            runner: macos-14
             timeout_minutes: 30
           - source: reviewplace
+            runner: ubuntu-latest
             timeout_minutes: 20
           - source: revu
+            runner: ubuntu-latest
             timeout_minutes: 15
           - source: chehumview
+            runner: ubuntu-latest
             timeout_minutes: 20
           - source: seouloppa
+            runner: ubuntu-latest
             timeout_minutes: 45
           - source: gangnammatzip
+            runner: ubuntu-latest
             timeout_minutes: 25
     name: refresh-${{ matrix.source }}
     timeout-minutes: ${{ matrix.timeout_minutes }}
+    runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
