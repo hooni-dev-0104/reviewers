@@ -123,7 +123,7 @@ export default async function CampaignDetailPage({ params }) {
 
         <section className="detail-grid">
           <article className="info-panel">
-            <h2>핵심 정보</h2>
+            <h2>상세정보</h2>
             <dl>
               <div>
                 <dt>출처</dt>
@@ -146,6 +146,16 @@ export default async function CampaignDetailPage({ params }) {
                 <dd className="break-anywhere">{campaign.original_url}</dd>
               </div>
             </dl>
+            {sourceInsights ? (
+              <div className="board-locked-meta detail-inline-notes">
+                <strong>{sourceInsights.title}</strong>
+                <ul>
+                  {sourceInsights.items.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
           </article>
 
           <article className="info-panel">
@@ -157,19 +167,6 @@ export default async function CampaignDetailPage({ params }) {
             </ul>
           </article>
         </section>
-
-        {sourceInsights ? (
-          <section className="detail-grid">
-            <article className="info-panel">
-              <h2>{sourceInsights.title}</h2>
-              <ul>
-                {sourceInsights.items.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </article>
-          </section>
-        ) : null}
 
         <section className="decision-checklist">
           <div className="guidance-card">
