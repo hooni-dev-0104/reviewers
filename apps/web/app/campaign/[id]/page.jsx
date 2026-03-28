@@ -13,7 +13,8 @@ import {
   getConfidence,
   getDeadlineState
 } from '@/lib/format';
-import { getCampaignById, getCampaignCount, getRelatedCampaigns, getVisitorCounts } from '@/lib/supabase';
+import { buildSourceInsights } from '@/lib/source-insights';
+import { getCampaignById, getCampaignCount, getCampaignSnapshotRawPayload, getRelatedCampaigns, getVisitorCounts } from '@/lib/supabase';
 import { SiteShell } from '@/components/site-shell';
 import { VisitorWidget } from '@/components/visitor-widget';
 
@@ -21,10 +22,11 @@ export const dynamic = 'force-dynamic';
 
 export default async function CampaignDetailPage({ params }) {
   const { id } = await params;
-  const [campaign, counts, campaignCount] = await Promise.all([
+  const [campaign, counts, campaignCount, rawPayload] = await Promise.all([
     getCampaignById(id),
     getVisitorCounts(),
-    getCampaignCount()
+    getCampaignCount(),
+    getCampaignSnapshotRawPayload(id)
   ]);
 
   if (!campaign) {
@@ -37,6 +39,7 @@ export default async function CampaignDetailPage({ params }) {
   const kakaoMapUrl = getInternalMapLaunchUrl(campaign, 'kakao');
   const relatedCampaigns = await getRelatedCampaigns(campaign);
   const detailImage = getDetailImageSrc(campaign.thumbnail_url);
+  const sourceInsights = buildSourceInsights(campaign, rawPayload);
 
   return (
     <SiteShell campaignCount={campaignCount} visitorWidget={<VisitorWidget initialCounts={counts} />}>
@@ -154,6 +157,19 @@ export default async function CampaignDetailPage({ params }) {
             </ul>
           </article>
         </section>
+
+        {sourceInsights ? (
+          <section className="detail-grid">
+            <article className="info-panel">
+              <h2>{sourceInsights.title}</h2>
+              <ul>
+                {sourceInsights.items.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </article>
+          </section>
+        ) : null}
 
         <section className="decision-checklist">
           <div className="guidance-card">
