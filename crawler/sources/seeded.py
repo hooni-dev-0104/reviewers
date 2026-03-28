@@ -13,6 +13,7 @@ from crawler.sources.base import (
     FileSourceAdapter,
     PlaceholderSourceAdapter,
     fetch_json_url,
+    fetch_session_text,
     fetch_json_with_headers,
     fetch_session_json,
     fetch_text_url,
@@ -1499,11 +1500,19 @@ class ModanSourceAdapter(PlaceholderSourceAdapter):
                 last_error: Exception | None = None
                 for candidate_url in dict.fromkeys(listing_candidates):
                     try:
-                        listing_html = fetch_text_url(
-                            candidate_url,
-                            headers={**MODAN_BROWSER_HEADERS, "Referer": "https://www.modan.kr/"},
-                            timeout=MODAN_FETCH_TIMEOUT,
-                        )
+                        try:
+                            listing_html = fetch_session_text(
+                                "https://www.modan.kr/",
+                                candidate_url,
+                                headers={**MODAN_BROWSER_HEADERS, "Referer": "https://www.modan.kr/"},
+                                timeout=MODAN_FETCH_TIMEOUT,
+                            )
+                        except Exception:
+                            listing_html = fetch_text_url(
+                                candidate_url,
+                                headers={**MODAN_BROWSER_HEADERS, "Referer": "https://www.modan.kr/"},
+                                timeout=MODAN_FETCH_TIMEOUT,
+                            )
                         break
                     except Exception as exc:
                         last_error = exc

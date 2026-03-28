@@ -109,6 +109,27 @@ def fetch_session_json(seed_url: str, url: str, timeout: int = 30, headers: dict
         return json.loads(response.read().decode("utf-8", errors="ignore"))
 
 
+def fetch_session_text(seed_url: str, url: str, timeout: int = 30, headers: dict[str, str] | None = None) -> str:
+    cookie_jar = http.cookiejar.CookieJar()
+    context = ssl._create_unverified_context()
+    opener = urllib.request.build_opener(
+        urllib.request.HTTPCookieProcessor(cookie_jar),
+        urllib.request.HTTPSHandler(context=context),
+    )
+    opener.addheaders = [("User-Agent", "Mozilla/5.0 (compatible; ReviewersCrawler/0.1; +https://reviewers.local)")]
+    opener.open(seed_url, timeout=timeout).read()
+    request = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": "Mozilla/5.0 (compatible; ReviewersCrawler/0.1; +https://reviewers.local)",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            **(headers or {}),
+        },
+    )
+    with opener.open(request, timeout=timeout) as response:
+        return response.read().decode("utf-8", errors="ignore")
+
+
 def fetch_json_with_headers(url: str, headers: dict[str, str], timeout: int = 30) -> Any:
     request = urllib.request.Request(url, headers=headers)
     context = ssl._create_unverified_context()
