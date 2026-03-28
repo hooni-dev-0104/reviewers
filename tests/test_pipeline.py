@@ -389,6 +389,38 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(transformed["published_at"], "2026-03-16")
         self.assertEqual(transformed["apply_deadline"], "2026-04-12")
 
+    def test_transform_dinnerqueen_detail_prefers_primary_benefit_over_notice_box(self):
+        html = """
+        <html>
+          <head>
+            <meta property="og:title" content="맛집 식사권 | 디너의여왕" />
+            <meta property="og:image" content="https://example.com/meal.jpg" />
+          </head>
+          <body>
+            <a href="/taste?ct=맛집">맛집</a>
+            <a href="/taste?area1=서울&amp;area2=마포">지역</a>
+            <div class="qz-collapse">
+              <strong class="qz-h6-kr mb-qz-body-kr dis-inline-block ver-m mr-l05 pd-l05">제공 내역</strong>
+              <div class="qz-collapse__content tb-pd-l4">
+                <p class="qz-body-kr mb-qz-body2-kr">
+                  <strong class="w-600">4만원 식사권</strong>
+                </p>
+                <div class="qz-wrap__line dashed mr-t2 mr-b025"></div>
+                <div class="qz-wrap qz-container layer-primary-dq-o">
+                  <p class="qz-body-kr"><strong>참여 전 필수 확인사항</strong></p>
+                  <p class="qz-body-kr mb-qz-body2-kr color-title">★추가금액 본인부담, 2인 기준 1팀</p>
+                </div>
+              </div>
+            </div>
+            <div>기간: 26.03.20 – 26.04.12</div>
+          </body>
+        </html>
+        """
+        transformed = transform_dinnerqueen_detail(html, "1273693")
+        self.assertEqual(transformed["benefit_text"], "4만원 식사권")
+        self.assertEqual(transformed["snippet"], "4만원 식사권")
+        self.assertEqual(transformed["campaign_type"], "visit")
+
     def test_parse_reviewnote_listing(self):
         html = """
         <div class="relative pl-[2.5px]">

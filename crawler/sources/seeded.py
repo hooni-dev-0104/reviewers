@@ -75,7 +75,14 @@ FOUR_BLOG_LOCATION_PREFIXES = (
 
 DINNERQUEEN_CATEGORY_MAP = {
     "배달": "delivery",
+    "배송": "delivery",
     "방문": "visit",
+    "맛집": "visit",
+    "지역": "visit",
+    "여가": "visit",
+    "뷰티": "visit",
+    "페이백": "purchase",
+    "기자단": "content",
 }
 
 DINNERQUEEN_PLATFORM_MAP = {
@@ -2847,6 +2854,12 @@ def transform_dinnerqueen_detail(detail_html: str, campaign_id: str, source_id: 
     title = html_lib.unescape((title or "").replace(" | 디너의여왕", "").replace("디너의여왕 - ", "").strip())
 
     benefit_block = _extract_first(
+        r"제공\s*내역.*?<div class=\"qz-collapse__content[^\"]*\">.*?<p class=\"qz-body-kr(?:\s+mb-qz-body2-kr)?\">\s*(.*?)\s*</p>",
+        detail_html,
+        re.S,
+    )
+    if not benefit_block:
+        benefit_block = _extract_first(
         r"제공내역.*?<p[^>]*class=\"[^\"]*color-title[^\"]*\"[^>]*>(.*?)</p>",
         detail_html,
         re.S,
