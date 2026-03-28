@@ -3,11 +3,24 @@ import Link from 'next/link';
 import { formatBoardDate } from '@/lib/board';
 
 export function BoardPostList({ posts = [], basePath = '/board', showDelete = false }) {
+  const showWriteCta = basePath === '/board' && !showDelete;
+
   if (!posts.length) {
     return (
-      <section className="empty-state">
-        <p>아직 게시글이 없어요.</p>
-        <span>첫 번째 요구사항이나 문의를 남겨주세요. 작은 응원 한마디도 개발자에게 큰 힘이 돼요.</span>
+      <section className="empty-state board-empty-state">
+        <div className="board-empty-badge" aria-hidden="true">✍️</div>
+        <div className="board-empty-copy">
+          <p className="board-empty-title">아직 게시글이 없어요.</p>
+          <span>첫 번째 문의나 의견을 남겨주세요. 짧은 응원 한마디도 큰 힘이 돼요.</span>
+        </div>
+        {showWriteCta ? (
+          <div className="board-empty-actions">
+            <Link href="/board/new" className="board-empty-link">
+              첫 글 남기기
+            </Link>
+            <small>원하는 공개 범위로 바로 작성할 수 있어요.</small>
+          </div>
+        ) : null}
       </section>
     );
   }
@@ -18,11 +31,11 @@ export function BoardPostList({ posts = [], basePath = '/board', showDelete = fa
         <article key={post.id} className="board-row">
           <div className="board-row-head">
             <div className="board-row-head-main">
-              <span className={`badge ${post.visibility === 'private' ? 'badge-warn' : 'badge-ok'}`}>
+            <span className={`badge ${post.visibility === 'private' ? 'badge-warn' : 'badge-ok'}`}>
                 {post.visibility === 'private' ? '비공개' : '공개'}
               </span>
               <h3>
-                <Link href={`${basePath}/${post.id}`}>{post.title}</Link>
+                <Link href={`${basePath}/${post.id}`} className="board-row-title-link">{post.title}</Link>
               </h3>
             </div>
             {showDelete ? (
