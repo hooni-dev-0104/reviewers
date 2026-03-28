@@ -471,6 +471,41 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(item["thumbnail_url"], "https://example.com/image.webp")
         self.assertIn("페이백 100,000 P", item["snippet"])
 
+    def test_parse_reviewnote_listing_keeps_image_with_matching_card(self):
+        html = """
+        <div class="relative pl-[2.5px]">
+          <div class="transform overflow-hidden rounded border transition-all duration-300 ease-in-out hover:shadow-lg">
+            <a href="/campaigns/1111346"><noscript><img src="/_next/image?url=https%3A%2F%2Fexample.com%2Fimage-1.webp&amp;w=640&amp;q=60"/></noscript></a>
+            <div class="z-50 flex flex-col items-center border-gray-200 bg-white py-2 text-14m md:max-h-[34px] md:min-h-[38px] md:flex-row md:justify-center md:divide-x">
+              <div class="text-gray-600 md:pr-3"><div><span class="text-secondary-600 text-14b">10</span> <!-- -->일 남음</div></div>
+              <div class="flex items-center gap-1 text-gray-600 md:pl-3"><div>신청<!-- --> <span class="text-secondary-600 text-14b">38</span> <!-- -->/ <!-- -->35</div></div>
+            </div>
+          </div>
+          <div class="mt-4 flex flex-col gap-2">
+            <div class="flex items-center gap-2"><div class="flex items-center"><img alt="" src="/svgIcon/blog.svg"/></div><span class="flex items-center whitespace-nowrap font-semibold text-gray-600 text-14m">배송형</span></div>
+            <div class="flex min-w-0 flex-col"><a class="truncate text-16m" href="/campaigns/1111346">첫 번째 캠페인</a><div class="mt-1 truncate text-gray-600 text-14r">첫 번째 혜택</div></div>
+          </div>
+        </div>
+        <div class="relative pl-[2.5px]">
+          <div class="transform overflow-hidden rounded border transition-all duration-300 ease-in-out hover:shadow-lg">
+            <a href="/campaigns/1152028"><noscript><img src="/_next/image?url=https%3A%2F%2Fexample.com%2Fimage-2.webp&amp;w=640&amp;q=60"/></noscript></a>
+            <div class="z-50 flex flex-col items-center border-gray-200 bg-white py-2 text-14m md:max-h-[34px] md:min-h-[38px] md:flex-row md:justify-center md:divide-x">
+              <div class="text-gray-600 md:pr-3"><div><span class="text-secondary-600 text-14b">9</span> <!-- -->일 남음</div></div>
+              <div class="flex items-center gap-1 text-gray-600 md:pl-3"><div>신청<!-- --> <span class="text-secondary-600 text-14b">12</span> <!-- -->/ <!-- -->6</div></div>
+            </div>
+          </div>
+          <div class="mt-4 flex flex-col gap-2">
+            <div class="flex items-center gap-2"><div class="flex items-center"><img alt="" src="/svgIcon/blog.svg"/></div><span class="flex items-center whitespace-nowrap font-semibold text-gray-600 text-14m">배송형</span></div>
+            <div class="flex min-w-0 flex-col"><a class="truncate text-16m" href="/campaigns/1152028">두 번째 캠페인</a><div class="mt-1 truncate text-gray-600 text-14r">두 번째 혜택</div></div>
+          </div>
+        </div>
+        """
+        items = parse_reviewnote_listing(html)
+        self.assertEqual(len(items), 2)
+        self.assertEqual(items[0]["thumbnail_url"], "https://example.com/image-1.webp")
+        self.assertEqual(items[1]["thumbnail_url"], "https://example.com/image-2.webp")
+        self.assertEqual(items[1]["title"], "두 번째 캠페인")
+
     def test_transform_chehumview_campaign(self):
         transformed = transform_chehumview_campaign(
             {

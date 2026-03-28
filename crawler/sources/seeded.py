@@ -530,12 +530,11 @@ def _clean_reviewnote_title(title: str) -> tuple[str, str | None, str | None]:
 
 def parse_reviewnote_listing(html: str, source_id: str | None = None, page_limit: int = 1) -> list[dict]:
     items: list[dict] = []
-    href_matches = list(re.finditer(r'<a href="(/campaigns/\d+)">', html))
-    for idx, match in enumerate(href_matches):
-        start = max(0, match.start() - 800)
-        end = href_matches[idx + 1].start() if idx + 1 < len(href_matches) else min(len(html), match.end() + 5000)
-        block = html[start:end]
-        href = match.group(1)
+    card_blocks = re.split(r'<div class="relative pl-\[2\.5px\]">', html)
+    for block in card_blocks[1:]:
+        href = _extract_first(r'<a href="(/campaigns/\d+)">', block)
+        if not href:
+            continue
         title = _extract_first(r'<a class="truncate text-16m" href="/campaigns/\d+">([^<]+)</a>', block)
         benefit = _extract_first(r'<div class="mt-1 truncate text-gray-600 text-14r">([^<]+)</div>', block)
         type_label = _extract_first(r'<span class="flex items-center whitespace-nowrap font-semibold text-gray-600 text-14m">([^<]+)</span>', block)
