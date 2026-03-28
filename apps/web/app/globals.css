@@ -1121,6 +1121,9 @@ input, select {
   }
   .footer-bar { flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; }
   .topbar nav, .hero-actions, .stats-strip, .account-group, .reminder-options { flex-wrap: wrap; }
+  .topbar nav.top-tabs {
+    flex-wrap: nowrap;
+  }
   .brand-mark { font-size: 1.28rem; }
   .topbar-brand-group {
     display: grid;
@@ -1145,6 +1148,10 @@ input, select {
     scrollbar-width: none;
     gap: 8px;
     padding: 4px;
+  }
+  .topbar nav.top-tabs {
+    display: flex;
+    flex-wrap: nowrap;
   }
   .top-tabs::-webkit-scrollbar { display: none; }
   .top-tabs a {
