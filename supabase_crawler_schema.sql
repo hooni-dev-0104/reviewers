@@ -192,6 +192,22 @@ create table if not exists public.reminder_subscriptions (
   constraint reminder_subscriptions_user_campaign_key unique (user_id, campaign_id)
 );
 
+create table if not exists public.board_posts (
+  id uuid primary key default gen_random_uuid(),
+  visibility text not null default 'public' check (visibility in ('public', 'private')),
+  nickname text not null,
+  title text not null,
+  body text not null,
+  password_hash text,
+  is_deleted boolean not null default false,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+  constraint board_posts_private_requires_password check (
+    (visibility = 'public' and password_hash is null)
+    or (visibility = 'private' and password_hash is not null)
+  )
+);
+
 create table if not exists public.sponsor_slots (
   id uuid primary key default gen_random_uuid(),
   slot_key text not null,
@@ -235,6 +251,8 @@ create index if not exists idx_user_sessions_user_id on public.user_sessions (us
 create index if not exists idx_user_sessions_expires_at on public.user_sessions (expires_at);
 create index if not exists idx_user_saved_campaigns_user_id on public.user_saved_campaigns (user_id, created_at desc);
 create index if not exists idx_reminder_subscriptions_user_id on public.reminder_subscriptions (user_id, created_at desc);
+create index if not exists idx_board_posts_visibility_created_at on public.board_posts (visibility, created_at desc);
+create index if not exists idx_board_posts_is_deleted_created_at on public.board_posts (is_deleted, created_at desc);
 create index if not exists idx_sponsor_slots_slot_key on public.sponsor_slots (slot_key, is_active, priority);
 
 create or replace trigger trg_sources_updated_at
@@ -261,6 +279,10 @@ create or replace trigger trg_reminder_subscriptions_updated_at
 before update on public.reminder_subscriptions
 for each row execute function public.set_updated_at();
 
+create or replace trigger trg_board_posts_updated_at
+before update on public.board_posts
+for each row execute function public.set_updated_at();
+
 create or replace trigger trg_sponsor_slots_updated_at
 before update on public.sponsor_slots
 for each row execute function public.set_updated_at();
@@ -278,6 +300,7 @@ alter table public.app_users enable row level security;
 alter table public.user_sessions enable row level security;
 alter table public.user_saved_campaigns enable row level security;
 alter table public.reminder_subscriptions enable row level security;
+alter table public.board_posts enable row level security;
 alter table public.sponsor_slots enable row level security;
 
 do $$
@@ -326,6 +349,11 @@ begin
     select 1 from pg_policies where schemaname='public' and tablename='reminder_subscriptions' and policyname='Service role only reminders'
   ) then
     create policy "Service role only reminders" on public.reminder_subscriptions for all using (false) with check (false);
+  end if;
+  if not exists (
+    select 1 from pg_policies where schemaname='public' and tablename='board_posts' and policyname='Service role only board posts'
+  ) then
+    create policy "Service role only board posts" on public.board_posts for all using (false) with check (false);
   end if;
   if not exists (
     select 1 from pg_policies where schemaname='public' and tablename='sponsor_slots' and policyname='Public read active sponsor slots'

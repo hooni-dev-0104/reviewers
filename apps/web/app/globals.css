@@ -834,6 +834,90 @@ input, select {
 .divider { width: 1px; height: 12px; background: #ffd5aa; }
 .saved-page { display: grid; gap: 22px; }
 .account-page { max-width: 760px; }
+.board-form-shell {
+  border-radius: 24px;
+  border: 1px solid var(--line);
+  background: #ffffff;
+  padding: 20px;
+  display: grid;
+  gap: 14px;
+}
+.board-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.board-textarea {
+  min-height: 220px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  font: inherit;
+  color: var(--text);
+  resize: vertical;
+  background: #fff;
+}
+.board-honeypot {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.board-list {
+  display: grid;
+  gap: 14px;
+}
+.board-row {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  border-radius: 22px;
+  border: 1px solid var(--line);
+  background: #ffffff;
+}
+.board-row-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.board-row-head h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+.board-row-meta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+.board-row-preview {
+  margin: 0;
+  color: var(--text);
+  line-height: 1.55;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.board-row-preview-muted {
+  color: var(--muted);
+}
+.board-body {
+  white-space: pre-wrap;
+  line-height: 1.7;
+}
+.board-locked-meta {
+  display: grid;
+  gap: 6px;
+  border-radius: 18px;
+  border: 1px solid #f0deab;
+  background: #fffaf0;
+  padding: 14px 16px;
+}
 .account-form-shell {
   border-radius: 24px;
   border: 1px solid var(--line);
@@ -1096,6 +1180,9 @@ input, select {
   .detail-map-links { grid-template-columns: 1fr; }
   .detail-media, .detail-image, .detail-image-fallback { min-height: 220px; }
   .saved-row, .related-card { flex-direction: column; align-items: start; }
+  .board-form-grid {
+    grid-template-columns: 1fr;
+  }
   .map-canvas-panel,
   .map-list-panel,
   .map-empty-state {
