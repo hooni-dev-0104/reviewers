@@ -1122,19 +1122,26 @@ input, select {
   }
   .top-tabs {
     width: 100%;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 6px;
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 8px;
     padding: 4px;
   }
+  .top-tabs::-webkit-scrollbar { display: none; }
   .top-tabs a {
-    min-height: 46px;
-    padding: 8px 6px;
-    font-size: 0.76rem;
-    line-height: 1.15;
+    flex: 0 0 auto;
+    min-height: 40px;
+    padding: 0 14px;
+    font-size: 0.82rem;
+    line-height: 1;
     text-align: center;
-    white-space: normal;
-    word-break: keep-all;
+    white-space: nowrap;
+    word-break: normal;
   }
   .visitor-widget {
     font-size: 0.74rem;
