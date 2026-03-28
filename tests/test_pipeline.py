@@ -550,8 +550,11 @@ class PipelineTests(unittest.TestCase):
         </template>
         """
         with mock.patch(
+            "crawler.sources.seeded.fetch_session_text",
+            side_effect=[page1, page2],
+        ), mock.patch(
             "crawler.sources.seeded.fetch_text_url",
-            side_effect=[page1, page2, detail_html, detail_html],
+            side_effect=[detail_html, detail_html],
         ):
             items = ModanSourceAdapter(
                 SEEDED_SOURCES["modan"],
