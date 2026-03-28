@@ -8,10 +8,14 @@ on:
         required: true
         type: choice
         options:
+          - 4blog
           - chehumview
           - dinnerqueen
           - modan
+          - mrblog
+          - reviewnote
           - reviewplace
+          - revu
           - seouloppa
           - ringble
           - gangnammatzip

@@ -619,7 +619,8 @@ def transform_reviewnote_api_item(item: dict, source_id: str | None = None) -> d
         reward_bits.append(f"구매가 {int(item['productPurchasePoint']):,}원")
     if item.get("additionalRewardPoint"):
         reward_bits.append(f"페이백 {int(item['additionalRewardPoint']):,}P")
-    snippet = " ".join(part for part in [item.get("offer")] + reward_bits if part)
+    combined_offer = _combine_benefit_parts(item.get("offer"), " / ".join(reward_bits))
+    snippet = combined_offer or " ".join(part for part in [item.get("offer")] + reward_bits if part)
 
     city = item.get("city")
     sido = None
@@ -642,7 +643,7 @@ def transform_reviewnote_api_item(item: dict, source_id: str | None = None) -> d
         "subcategory_name": sort or None,
         "region_primary_name": region_primary,
         "region_secondary_name": region_secondary,
-        "benefit_text": item.get("offer"),
+        "benefit_text": combined_offer,
         "recruit_count": item.get("infNum"),
         "apply_deadline": item.get("applyEndAt"),
         "published_at": None,
@@ -651,6 +652,11 @@ def transform_reviewnote_api_item(item: dict, source_id: str | None = None) -> d
         "raw_status": str(item.get("status") or "").lower() or "active",
         "status": "active",
         "requires_review": False,
+        "raw_payload": {
+            "offer": item.get("offer"),
+            "product_purchase_point": item.get("productPurchasePoint"),
+            "additional_reward_point": item.get("additionalRewardPoint"),
+        },
     }
 
 
@@ -910,7 +916,8 @@ def transform_chehumview_campaign(item: dict, source_id: str | None = None, deta
     raw_status = str(detail.get("status") or item.get("status") or "active").lower()
     published_at = _parse_iso_date(detail.get("appl_start_date"))
     apply_deadline = _parse_iso_date(detail.get("appl_end_date")) or _parse_iso_date(item.get("closeAt"))
-    snippet = str(detail.get("subtitle") or item.get("subtitle") or "").strip() or None
+    benefit_text = _extract_chehumview_benefit(detail, item)
+    snippet = str(detail.get("subtitle") or item.get("subtitle") or "").strip() or benefit_text or None
 
     return {
         "source_id": source_id,
@@ -923,7 +930,7 @@ def transform_chehumview_campaign(item: dict, source_id: str | None = None, deta
         "region_primary_name": region_primary,
         "region_secondary_name": region_secondary,
         "exact_location": exact_location,
-        "benefit_text": snippet,
+        "benefit_text": benefit_text,
         "recruit_count": detail.get("reviewer_limit") or item.get("reviewerLimit"),
         "apply_deadline": apply_deadline,
         "published_at": published_at,
@@ -937,6 +944,8 @@ def transform_chehumview_campaign(item: dict, source_id: str | None = None, deta
             "hashtags": detail.get("hashtags"),
             "search_keyword": detail.get("search_keyword"),
             "title_tokens": title_tokens,
+            "review_guideline": detail.get("review_guideline"),
+            "visitor_guideline": detail.get("visitor_guideline"),
         },
     }
 
@@ -974,7 +983,7 @@ def parse_reviewplace_listing(html: str, listing_url: str, source_id: str | None
         relative_url, campaign_id, thumbnail_url, raw_title, raw_desc, remaining_days, applied, recruit, tag_wrap = match.groups()
         title = _strip_tags(raw_title)
         primary, secondary, tokens = _parse_region_tokens_from_title(title)
-        benefit_text = _strip_tags(raw_desc)
+        benefit_text = _extract_primary_desc(raw_desc) or _normalize_benefit_text(raw_desc)
         tag_text = _strip_tags(tag_wrap)
         platform_type = _reviewplace_platform_from_tokens(tokens, fallback=tag_text)
         items.append(
@@ -994,10 +1003,14 @@ def parse_reviewplace_listing(html: str, listing_url: str, source_id: str | None
                 "apply_deadline": (date.today() + timedelta(days=int(remaining_days))).isoformat() if remaining_days else None,
                 "published_at": None,
                 "thumbnail_url": thumbnail_url,
-                "snippet": benefit_text,
+                "snippet": _normalize_benefit_text(raw_desc) or benefit_text,
                 "raw_status": "active",
                 "status": "active",
                 "requires_review": False,
+                "raw_payload": {
+                    "listing_desc": _normalize_benefit_text(raw_desc),
+                    "listing_tags": tokens,
+                },
             }
         )
     return items
@@ -1511,13 +1524,13 @@ def enrich_modan_detail(item: dict, detail_html: str) -> dict:
         re.S,
     )
     summary_text = _strip_tags(summary_html) if summary_html else None
-    if summary_text:
-        enriched["benefit_text"] = summary_text
-        enriched["snippet"] = summary_text
-
     template_text = _extract_modan_template_text(detail_html)
     meta_description = _extract_first(r"<meta name='description' content='([^']+)'", detail_html)
     detail_text = " ".join(part for part in (template_text, meta_description) if part)
+    benefit_text = _extract_modan_benefit_text(summary_text, template_text)
+    if benefit_text:
+        enriched["benefit_text"] = benefit_text
+        enriched["snippet"] = benefit_text
 
     exact_location = _extract_modan_labeled_value(detail_text, "주소") or _extract_modan_labeled_value(detail_text, "방문주소")
     if exact_location:
@@ -1623,15 +1636,18 @@ def parse_mrblog_listing(html: str, source_id: str | None = None) -> list[dict]:
                 "subcategory_name": None,
                 "region_primary_name": region_primary,
                 "region_secondary_name": region_secondary,
-                "benefit_text": _strip_tags(desc),
+                "benefit_text": _extract_primary_desc(desc) or _normalize_benefit_text(desc),
                 "recruit_count": int(recruit),
                 "apply_deadline": None,
                 "published_at": None,
                 "thumbnail_url": image_url,
-                "snippet": _strip_tags(desc),
+                "snippet": _normalize_benefit_text(desc),
                 "raw_status": "active" if int(d_day) >= 0 else "expired",
                 "status": "active" if int(d_day) >= 0 else "expired",
                 "requires_review": True,
+                "raw_payload": {
+                    "listing_desc": _normalize_benefit_text(desc),
+                },
             }
         )
     return items
@@ -1678,7 +1694,13 @@ def transform_revu_item(item: dict, source_id: str | None = None) -> dict:
         reward_bits.append(f"리뷰포인트 {int(campaign_data['point']):,}P")
     if item.get("label"):
         reward_bits.append(str(item["label"]))
-    benefit_text = " / ".join(reward_bits) if reward_bits else None
+    coupon_data = item.get("campaignCouponData") or {}
+    if isinstance(coupon_data, dict):
+        if coupon_data.get("customerPrice"):
+            reward_bits.append(f"{int(coupon_data['customerPrice']):,}원 상당")
+        if coupon_data.get("supplyPrice"):
+            reward_bits.append(f"제공가 {int(coupon_data['supplyPrice']):,}원")
+    benefit_text = _combine_benefit_parts(item.get("brief"), campaign_data.get("reward"), " / ".join(reward_bits))
 
     raw_media = str(item.get("media") or "").lower()
     title = (item.get("title") or item.get("item") or "").strip()
@@ -1702,6 +1724,13 @@ def transform_revu_item(item: dict, source_id: str | None = None) -> dict:
         "raw_status": str(item.get("status") or "").lower(),
         "status": "active" if item.get("active", True) else "expired",
         "requires_review": True,
+        "raw_payload": {
+            "brief": item.get("brief"),
+            "campaign_data": campaign_data,
+            "campaign_coupon_data": coupon_data,
+            "required_post_count": item.get("requiredPostCount"),
+            "campaign_options": item.get("campaignOptions"),
+        },
     }
 
 
@@ -1721,6 +1750,8 @@ def transform_4blog_item(item: dict, source_id: str | None = None) -> dict:
     snippet_parts = [item.get("REVIEWER_BENEFIT"), item.get("KEYWORD")]
     snippet = " ".join(part.strip() for part in snippet_parts if isinstance(part, str) and part.strip()) or None
 
+    benefit_text = _extract_primary_desc(item.get("REVIEWER_BENEFIT")) or _normalize_benefit_text(item.get("REVIEWER_BENEFIT"))
+
     return {
         "source_id": source_id,
         "title": cleaned_title,
@@ -1731,7 +1762,7 @@ def transform_4blog_item(item: dict, source_id: str | None = None) -> dict:
         "subcategory_name": item.get("CATEGORY1") or (annotations[0] if annotations else None),
         "region_primary_name": region_primary,
         "region_secondary_name": region_secondary,
-        "benefit_text": item.get("REVIEWER_BENEFIT"),
+        "benefit_text": benefit_text,
         "recruit_count": item.get("REVIEWER_CNT"),
         "apply_deadline": _normalize_4blog_date(item.get("REQ_CLOSE_DT")),
         "published_at": _normalize_4blog_date(item.get("REQ_OPEN_DT")),
@@ -1740,6 +1771,10 @@ def transform_4blog_item(item: dict, source_id: str | None = None) -> dict:
         "raw_status": raw_status,
         "status": raw_status,
         "requires_review": False,
+        "raw_payload": {
+            "keyword": item.get("KEYWORD"),
+            "reviewer_benefit": item.get("REVIEWER_BENEFIT"),
+        },
     }
 
 
@@ -2847,6 +2882,93 @@ def _extract_first(pattern: str, text: str, flags: int = 0) -> str | None:
     return match.group(1).strip() if match else None
 
 
+def _normalize_benefit_text(value: str | None) -> str | None:
+    text = _strip_tags(value or "")
+    if not text:
+        return None
+    text = re.sub(r"\s+", " ", text).strip(" -/|")
+    return text or None
+
+
+def _combine_benefit_parts(*parts: str | None) -> str | None:
+    values: list[str] = []
+    for part in parts:
+        normalized = _normalize_benefit_text(part)
+        if normalized and normalized not in values:
+            values.append(normalized)
+    return " / ".join(values) if values else None
+
+
+def _extract_primary_desc(desc: str | None) -> str | None:
+    text = _normalize_benefit_text(desc)
+    if not text:
+        return None
+    text = re.split(r"\s+\*\*|\s+-\s+(?=[가-힣A-Za-z(])|(?<=상당)\s+", text, maxsplit=1)[0].strip()
+    return text or None
+
+
+def _extract_chehumview_benefit(detail: dict | None = None, item: dict | None = None) -> str | None:
+    detail = detail or {}
+    item = item or {}
+    guideline = "\n".join(
+        str(part or "")
+        for part in (
+            detail.get("review_guideline"),
+            detail.get("visitor_guideline"),
+        )
+        if part
+    )
+
+    benefit_lines: list[str] = []
+    match = re.search(r"제공서비스[^\n]*\n(.*?)(?:\n\s*(?:중\s*택1|얼굴노출|💛|👉|[-]{2,}|사진\d+장|⭐|✔️)|$)", guideline, re.S)
+    if match:
+        block = match.group(1)
+        for line in block.splitlines():
+            cleaned = _normalize_benefit_text(line.lstrip("-•0123456789. ").strip())
+            if cleaned:
+                benefit_lines.append(cleaned)
+
+    subtitle = detail.get("subtitle") or item.get("subtitle")
+    if subtitle:
+        benefit_lines.insert(0, _normalize_benefit_text(subtitle) or "")
+
+    values = [line for line in benefit_lines if line]
+    deduped: list[str] = []
+    for value in values:
+        if value not in deduped:
+            deduped.append(value)
+    return " / ".join(deduped) if deduped else _normalize_benefit_text(subtitle)
+
+
+def _extract_modan_benefit_text(summary_text: str | None, template_text: str | None) -> str | None:
+    section = None
+    if template_text:
+        boundaries = [
+            "모집 대상 및 인원",
+            "리뷰 미션 안내",
+            "모집 및 진행 일정",
+            "배송 및 체험 안내",
+            "이런 분께 추천합니다",
+            "매장 정보",
+            "✅ 체크사항",
+            "⚠️ 주의사항",
+            *MODAN_INLINE_FIELD_LABELS,
+        ]
+        boundary_pattern = "|".join(re.escape(name) for name in boundaries)
+        section = _extract_first(
+            rf"체험 제공 혜택\s*[:：]?\s*(.*?)(?=\s*(?:{boundary_pattern})\s*[:：]?|$)",
+            template_text,
+            re.S,
+        )
+        if not section:
+            section = _extract_first(
+                rf"제공 혜택\s*[:：]?\s*(.*?)(?=\s*(?:{boundary_pattern})\s*[:：]?|$)",
+                template_text,
+                re.S,
+            )
+    return _combine_benefit_parts(section, summary_text)
+
+
 def transform_dinnerqueen_detail(detail_html: str, campaign_id: str, source_id: str | None = None) -> dict:
     title = _extract_first(r'<meta property="og:title" content="([^"]+)"', detail_html)
     if not title:
@@ -2918,6 +3040,9 @@ def transform_dinnerqueen_detail(detail_html: str, campaign_id: str, source_id: 
         "raw_status": "active",
         "status": "active",
         "requires_review": True,
+        "raw_payload": {
+            "category_token": category_token,
+        },
     }
 
 

@@ -491,6 +491,30 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(transformed["apply_deadline"], "2026-04-01")
         self.assertEqual(transformed["published_at"], "2026-03-25")
 
+    def test_transform_chehumview_campaign_extracts_guideline_benefit(self):
+        transformed = transform_chehumview_campaign(
+            {
+                "campaignId": 177719,
+                "title": "[서울/강서]제일에스테틱 화곡점",
+                "subtitle": "피부관리,윤곽관리,다이어트슬리밍 중 택1",
+                "channel": "blog",
+                "activity": "visit",
+            },
+            source_id="source-1",
+            detail={
+                "campaign_id": 177719,
+                "title": "[서울/강서]제일에스테틱 화곡점",
+                "subtitle": "피부관리,윤곽관리,다이어트슬리밍 중 택1",
+                "channel": "blog",
+                "activity": "visit",
+                "service": "beauty",
+                "review_guideline": "제공서비스(택1)-신청시 꼭 적어주세요\n1.피부관리\n2.윤곽관리\n3.다이어트슬리밍(상체or하체)\n중 택1\n💛방문자수 300명이상 분들로만 지원해주세요!",
+            },
+        )
+        self.assertIn("피부관리,윤곽관리,다이어트슬리밍 중 택1", transformed["benefit_text"])
+        self.assertIn("피부관리", transformed["benefit_text"])
+        self.assertIn("윤곽관리", transformed["benefit_text"])
+
     def test_parse_modan_listing(self):
         html = """
         <div class="shop-item _shop_item"
@@ -556,6 +580,26 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(enriched["exact_location"], "전북 전주시 덕진구 건산로 259 2층")
         self.assertEqual(enriched["platform_type"], "mixed")
         self.assertEqual(enriched["campaign_type"], "visit")
+
+    def test_enrich_modan_detail_prefers_benefit_section_when_present(self):
+        item = {
+            "title": "테스트",
+            "platform_type": "mixed",
+            "campaign_type": "visit",
+            "benefit_text": None,
+            "snippet": None,
+            "raw_payload": {"board_path": "matzip"},
+            "original_url": "https://www.modan.kr/matzip/?idx=1",
+        }
+        detail_html = """
+        <div class="goods_summary body_font_color_70"><div class="fr-view"><p>요약 문구</p></div></div>
+        <template id="prodDetailPC">
+          <p>체험 제공 혜택 : 4만원 식사권 + 음료 2잔</p>
+          <p>방문일 : 평일</p>
+        </template>
+        """
+        enriched = enrich_modan_detail(item, detail_html)
+        self.assertEqual(enriched["benefit_text"], "4만원 식사권 + 음료 2잔 / 요약 문구")
 
     def test_modan_adapter_fetches_listing_pages(self):
         page1 = """
@@ -1151,6 +1195,8 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(item["campaign_type"], "delivery")
         self.assertEqual(item["region_primary_name"], None)
         self.assertEqual(item["category_name"], "디지털")
+        self.assertIn("구매가 199,000원", item["benefit_text"])
+        self.assertIn("페이백 100,000P", item["benefit_text"])
         self.assertIn("페이백 100,000P", item["snippet"])
 
     def test_transform_revu_item(self):
@@ -1178,6 +1224,7 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(item["recruit_count"], 3)
         self.assertEqual(item["region_primary_name"], "경기")
         self.assertEqual(item["region_secondary_name"], "하남시")
+        self.assertEqual(item["benefit_text"], "사진 중 택1")
 
     def test_parse_mrblog_listing(self):
         html = """
@@ -1205,6 +1252,7 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(item["region_primary_name"], "대구")
         self.assertEqual(item["region_secondary_name"], "칠성동")
         self.assertEqual(item["recruit_count"], 5)
+        self.assertEqual(item["benefit_text"], "3만원식사권 (반반치킨 양념/후라이드 필수 주문)")
 
     def test_build_source_quality_report(self):
         sample = [
