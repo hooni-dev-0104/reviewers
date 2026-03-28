@@ -344,6 +344,7 @@ values
   ('미블', 'mrblog', 'https://www.mrblog.net', 'https://www.mrblog.net', 'mixed', 'dynamic', 40, 'https://www.mrblog.net/robots.txt', null, 'pending', 'MVP 1차 핵심 타겟'),
   ('포블로그', '4blog', 'https://4blog.net', 'https://4blog.net', 'blog', 'static', 50, 'https://4blog.net/robots.txt', null, 'pending', 'MVP 1차 핵심 타겟'),
   ('서울오빠', 'seouloppa', 'https://www.seoulouba.co.kr', 'https://www.seoulouba.co.kr/campaign/?qq=popular', 'mixed', 'static', 60, 'https://www.seoulouba.co.kr/robots.txt', null, 'pending', '후보 소스 1차 파서 구현'),
+  ('링블', 'ringble', 'https://www.ringble.co.kr', 'https://www.ringble.co.kr/category.php?category=829', 'mixed', 'static', 65, null, null, 'pending', '후보 소스 1차 파서 구현'),
   ('강남맛집', 'gangnammatzip', 'https://xn--939au0g4vj8sq.net', 'https://강남맛집.net', 'mixed', 'static', 70, null, null, 'pending', '후보 소스 1차 파서 구현')
 on conflict (slug) do update set
   name = excluded.name,

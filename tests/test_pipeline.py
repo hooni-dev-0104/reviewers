@@ -21,6 +21,7 @@ from crawler.sources.seeded import (
     DinnerQueenSourceAdapter,
     GangnamMatzipSourceAdapter,
     ModanSourceAdapter,
+    RingbleSourceAdapter,
     SEEDED_SOURCES,
     SeoulOppaSourceAdapter,
     ReviewPlaceSourceAdapter,
@@ -32,9 +33,11 @@ from crawler.sources.seeded import (
     enrich_4blog_item_from_detail,
     enrich_gangnammatzip_detail,
     enrich_modan_detail,
+    enrich_ringble_detail,
     enrich_reviewplace_detail,
     enrich_seouloppa_detail,
     parse_modan_listing,
+    parse_ringble_listing,
     parse_reviewplace_listing,
     parse_mrblog_listing,
     parse_gangnammatzip_listing,
@@ -643,6 +646,157 @@ class PipelineTests(unittest.TestCase):
         ):
             items = ReviewPlaceSourceAdapter(SEEDED_SOURCES["reviewplace"], page_limit=2).fetch()
         self.assertEqual(len(items), 2)
+
+    def test_parse_ringble_listing_extracts_product_card(self):
+        html = """
+        <table cellspacing="0" class="box_st_out">
+          <tr>
+            <td align="left" valign="top">
+              <div style="position:relative;z-index:100;" class="box_sticker_wrap">
+                <div class="box_sticker"><strong class="ico_comm ico_today_open ">2일 남음</strong></div>
+                <div style="position:absolute; z-index:100; top: 3px; right: 3px;">
+                  <img src='upload/happy_config/IconBuy.png' style='position:relative; width:50px; height:50px;'>
+                </div>
+              </div>
+              <a href='detail.php?number=270961&category=829'><img src="./mallimg/2026/03/26/1774514321-1699_N_7_262x262_100_2_.jpg"></a>
+              <table cellpadding="0" cellspacing="0" width="100%">
+                <tr style="height:45px;" valign="top">
+                  <td><a href='detail.php?number=270961&category=829' class="list_title" style="font-size:14px;">[구매평] 강아지 방석 옐로레이스 뽀숑쿠션 양면사용 (쿠팡)</a></td>
+                </tr>
+                <tr><td style="padding-top:5px;font-size: 11px;color:#aaaaaa; line-height:15px;">강아지 방석 옐로레이스 뽀숑쿠션 양면사용...</td></tr>
+              </table>
+              <table cellspacing="0" class="list_stats_wrap">
+                <tr><td class="font11"><div class="ico_today_open">+21,900 원</div></td></tr>
+                <tr><td style="color:#262626; padding:5px 0 14px 0;"><div class="graph_percent"><strong><font color="orange">28 명</font> / <font color="#000">2 명</font></div></td></tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+        """
+        items = parse_ringble_listing(
+            html,
+            default_category_name="제품",
+            default_platform_type="mixed",
+        )
+        self.assertEqual(len(items), 1)
+        item = items[0]
+        self.assertEqual(item["campaign_id"], "270961")
+        self.assertEqual(item["title"], "강아지 방석 옐로레이스 뽀숑쿠션 양면사용 (쿠팡)")
+        self.assertEqual(item["platform_type"], "mixed")
+        self.assertEqual(item["campaign_type"], "purchase")
+        self.assertEqual(item["recruit_count"], 2)
+        self.assertEqual(item["benefit_text"], "강아지 방석 옐로레이스 뽀숑쿠션 양면사용... +21,900 원")
+        self.assertEqual(item["thumbnail_url"], "https://www.ringble.co.kr/mallimg/2026/03/26/1774514321-1699_N_7_262x262_100_2_.jpg")
+        self.assertEqual(item["apply_deadline"], (date.today() + timedelta(days=2)).isoformat())
+
+    def test_enrich_ringble_detail_extracts_product_fields(self):
+        item = {
+            "title": "강아지 방석 옐로레이스 뽀숑쿠션 양면사용 (쿠팡)",
+            "platform_type": "mixed",
+            "campaign_type": "purchase",
+            "benefit_text": None,
+            "snippet": None,
+            "recruit_count": None,
+            "raw_payload": {"listing_category_id": "829", "icon_src": "upload/happy_config/IconBuy.png"},
+            "original_url": "https://www.ringble.co.kr/detail.php?number=270961&category=829",
+        }
+        detail_html = """
+        <meta property="og:title" content="[구매평] 강아지 방석 옐로레이스 뽀숑쿠션 양면사용 (쿠팡)">
+        <meta property="og:image" content="https://www.ringble.co.kr/./mallimg/2026/03/26/1774514321-1699_N_7_300x300_100_2_.jpg">
+        <td class="detail_page_title">[구매평] 강아지 방석 옐로레이스 뽀숑쿠션 양면사용 (쿠팡)</td>
+        <table><tr><td class="bloger_process_title">모집 기간</td><td id='10' class="bloger_process_title">26년 03월 26일(목) ~ 26년 03월 30일(월)</td></tr></table>
+        <div><span style="color:#000000;">신청 28</span> / <span style="color:#797979;">모집 2 </span></div>
+        <table><tr><td class="supply_title">제공내역</td><td class="font11">강아지 방석 옐로레이스 뽀숑쿠션 양면사용 M 사이즈 노란색 1개<br><font style='color:#000000;'>+ 현금포인트 21,900원</font></td></tr></table>
+        <td style="padding:20px;font-size:14px; line-height: 1.6" class="font11">
+          1. 위 구매 링크에서 옵션에 맞는 제품을 구매해주세요.<br>
+          2. 배송 메모에 [링블체험단]을 표기해주세요.
+        </td>
+        <table><tr><td>상세 URL</td><td><a href='https://www.coupang.com/vp/products/9454833817?vendorItemId=95085981125' target='_blank'>https://www.coupang.com/vp/products/9454833817?vendorItemId=95085981125</a></td></tr></table>
+        """
+        enriched = enrich_ringble_detail(item, detail_html)
+        self.assertEqual(enriched["benefit_text"], "강아지 방석 옐로레이스 뽀숑쿠션 양면사용 M 사이즈 노란색 1개 + 현금포인트 21,900원")
+        self.assertEqual(enriched["snippet"], "강아지 방석 옐로레이스 뽀숑쿠션 양면사용 M 사이즈 노란색 1개 + 현금포인트 21,900원")
+        self.assertEqual(enriched["recruit_count"], 2)
+        self.assertEqual(enriched["published_at"], "2026-03-26")
+        self.assertEqual(enriched["apply_deadline"], "2026-03-30")
+        self.assertEqual(enriched["raw_payload"]["site_url"], "https://www.coupang.com/vp/products/9454833817?vendorItemId=95085981125")
+
+    def test_enrich_ringble_detail_extracts_visit_location(self):
+        item = {
+            "title": "부산향수공방 닷노트 해운대",
+            "platform_type": "blog",
+            "campaign_type": "visit",
+            "region_primary_name": "부산",
+            "region_secondary_name": "해운대구",
+            "benefit_text": None,
+            "snippet": None,
+            "raw_payload": {"listing_category_id": "832", "icon_src": "upload/happy_config/IconBlog.png"},
+            "original_url": "https://www.ringble.co.kr/detail.php?number=270807&category=832",
+        }
+        detail_html = """
+        <meta property="og:title" content="[부산/해운대구] 부산향수공방 닷노트 해운대">
+        <td class="detail_page_title">[부산/해운대구] 부산향수공방 닷노트 해운대</td>
+        <table><tr><td class="bloger_process_title">모집 기간</td><td id='10' class="bloger_process_title">26년 03월 27일(목) ~ 26년 03월 31일(월)</td></tr></table>
+        <table><tr><td class="supply_title">제공내역</td><td class="font11">.NOTE 원데이 클래스 50ml (10만원 상당)</td></tr></table>
+        <td style="padding:20px;font-size:14px; line-height: 1.6" class="font11">
+          - 위치 : 부산 해운대구 해운대해변로298번길 24 2층 2-13호<br>
+          ★당첨일로부터 1~2일 안에 업체와 예약 조율 필수★
+        </td>
+        """
+        enriched = enrich_ringble_detail(item, detail_html)
+        self.assertEqual(enriched["benefit_text"], ".NOTE 원데이 클래스 50ml (10만원 상당)")
+        self.assertEqual(enriched["exact_location"], "부산 해운대구 해운대해변로298번길 24 2층 2-13호")
+        self.assertEqual(enriched["published_at"], "2026-03-27")
+        self.assertEqual(enriched["apply_deadline"], "2026-03-31")
+        self.assertEqual(enriched["region_primary_name"], "부산")
+        self.assertEqual(enriched["region_secondary_name"], "해운대구")
+
+    def test_ringble_adapter_does_not_truncate_list_to_detail_limit(self):
+        listing_html = """
+        <table>
+          <tr>
+            <td><a href='detail.php?number=1&category=829' class="list_title" style="padding-left: 5px;font-size:12px;">2일 남음</a></td>
+          </tr>
+          <tr>
+            <td><a href='detail.php?number=1&category=829' class="list_title" style="font-size:14px;">[구매평] A</a></td>
+          </tr>
+          <tr><td style="padding-top:5px;font-size: 11px;color:#aaaaaa; line-height:15px;">A 혜택</td></tr>
+          <tr><td><a href='detail.php?number=1&category=829'><img src="./mallimg/a.jpg"></a></td></tr>
+          <tr><td><div class="graph_percent"><strong><font color="orange">1 명</font> / <font color="#000">1 명</font></div></td></tr>
+          <tr>
+            <td><a href='detail.php?number=2&category=829' class="list_title" style="padding-left: 5px;font-size:12px;">3일 남음</a></td>
+          </tr>
+          <tr>
+            <td><a href='detail.php?number=2&category=829' class="list_title" style="font-size:14px;">[구매평] B</a></td>
+          </tr>
+          <tr><td style="padding-top:5px;font-size: 11px;color:#aaaaaa; line-height:15px;">B 혜택</td></tr>
+          <tr><td><a href='detail.php?number=2&category=829'><img src="./mallimg/b.jpg"></a></td></tr>
+          <tr><td><div class="graph_percent"><strong><font color="orange">1 명</font> / <font color="#000">1 명</font></div></td></tr>
+        </table>
+        """
+        detail_html = """
+        <td class="detail_page_title">[구매평] A</td>
+        <table><tr><td class="supply_title">제공내역</td><td class="font11">상세 혜택 A</td></tr></table>
+        """
+
+        def fake_fetch_text_url(url, *args, **kwargs):
+            if "category.php?category=829" in url:
+                return listing_html
+            if url == "https://www.ringble.co.kr/detail.php?number=1&category=829":
+                return detail_html
+            raise RuntimeError("unexpected url")
+
+        with mock.patch("crawler.sources.seeded.fetch_text_url", side_effect=fake_fetch_text_url):
+            items = RingbleSourceAdapter(
+                SEEDED_SOURCES["ringble"],
+                page_limit=1,
+                detail_limit=1,
+                category_configs=(("829", "제품", "mixed", None),),
+            ).fetch()
+
+        self.assertEqual(len(items), 2)
+        self.assertEqual(items[0]["benefit_text"], "상세 혜택 A")
+        self.assertEqual(items[1]["title"], "B")
 
     def test_chehumview_adapter_uses_list_and_detail_api(self):
         list_payload = {

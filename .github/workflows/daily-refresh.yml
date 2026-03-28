@@ -75,6 +75,9 @@ jobs:
           - source: seouloppa
             runner: ubuntu-latest
             timeout_minutes: 45
+          - source: ringble
+            runner: ubuntu-latest
+            timeout_minutes: 30
           - source: gangnammatzip
             runner: ubuntu-latest
             timeout_minutes: 25

@@ -32,6 +32,7 @@ SEEDED_SOURCES: dict[str, SourceDefinition] = {
     "mrblog": SourceDefinition("mrblog", "미블", "https://www.mrblog.net", "mixed", "dynamic"),
     "4blog": SourceDefinition("4blog", "포블로그", "https://4blog.net", "blog", "static"),
     "seouloppa": SourceDefinition("seouloppa", "서울오빠", "https://www.seoulouba.co.kr", "mixed", "static"),
+    "ringble": SourceDefinition("ringble", "링블", "https://www.ringble.co.kr", "mixed", "static"),
     "gangnammatzip": SourceDefinition("gangnammatzip", "강남맛집", "https://xn--939au0g4vj8sq.net", "mixed", "static"),
 }
 
@@ -328,6 +329,56 @@ MODAN_INLINE_FIELD_LABELS = (
     "방문 여부",
     "제품 수령",
 )
+
+RINGBLE_BROWSER_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/137.0.0.0 Safari/537.36"
+    ),
+    "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Cache-Control": "no-cache",
+    "Pragma": "no-cache",
+}
+
+RINGBLE_FETCH_TIMEOUT = 20
+
+RINGBLE_LISTING_CATEGORIES = (
+    ("829", "제품", "mixed", None),
+    ("832", "방문", "blog", "visit"),
+    ("1015", "인스타", "instagram", None),
+    ("833", "유튜브", "youtube", None),
+    ("834", "기자단", "blog", "content"),
+)
+
+RINGBLE_NON_REGION_TOKENS = {
+    *REVIEWPLACE_NON_REGION_TOKENS,
+    "인스타",
+    "릴스",
+    "릴스&피드",
+    "릴스피드",
+    "피드",
+    "유튜브",
+    "쇼츠",
+    "기자단",
+    "구매평+포스팅",
+    "구매평-포스팅",
+    "프리미엄",
+    "도서",
+    "사진 촬영 체험단",
+    "사진촬영체험단",
+    "원고료 포함",
+    "포인트 추가지급",
+}
+
+RINGBLE_TITLE_PLATFORM_MAP = {
+    "인스타": "instagram",
+    "릴스": "instagram",
+    "릴스&피드": "instagram",
+    "피드": "instagram",
+    "유튜브": "youtube",
+    "쇼츠": "youtube",
+}
 
 SEOULOUPPA_TITLE_TAGS = {"배송형", "구매평", "기자단", "방문형", "클립"}
 
@@ -634,6 +685,183 @@ def _normalize_prefixed_image_url(base_url: str, value: str | None) -> str | Non
     return urljoin(base_url, raw)
 
 
+def _build_ringble_listing_url(category_id: str, page: int) -> str:
+    if page <= 1:
+        return f"https://www.ringble.co.kr/category.php?category={category_id}"
+    return f"https://www.ringble.co.kr/category.php?start={page}&category={category_id}"
+
+
+def _extract_ringble_listing_page_count(html: str, category_id: str) -> int:
+    matches = [
+        int(value)
+        for value in re.findall(
+            rf"/category\.php\?start=(\d+)&category={category_id}",
+            html,
+        )
+    ]
+    return max(matches) if matches else 1
+
+
+def _is_ringble_region_token(token: str) -> bool:
+    compact = token.strip().replace(" ", "")
+    if not compact or compact in RINGBLE_NON_REGION_TOKENS:
+        return False
+    if compact in FOUR_BLOG_LOCATION_PREFIXES:
+        return True
+    if compact.endswith(("시", "군", "구", "도", "읍", "면", "동")):
+        return True
+    return bool(re.fullmatch(r"[가-힣]{2,4}", compact))
+
+
+def _clean_ringble_title(title: str) -> tuple[str, str | None, str | None, list[str]]:
+    annotations, cleaned = _split_4blog_title_annotations(title)
+    region_primary = None
+    region_secondary = None
+    tags: list[str] = []
+
+    for token in annotations:
+        normalized = token.strip()
+        if not normalized:
+            continue
+        if "/" in normalized:
+            left, right = [part.strip() for part in normalized.split("/", 1)]
+            if _is_ringble_region_token(left):
+                if not region_primary:
+                    region_primary = left
+                if not region_secondary:
+                    region_secondary = right or None
+                continue
+        if _is_ringble_region_token(normalized):
+            if not region_primary:
+                region_primary = normalized
+            continue
+        tags.append(normalized)
+
+    return cleaned or title.strip(), region_primary, region_secondary, tags
+
+
+def _infer_ringble_platform_type(
+    raw_title: str,
+    icon_src: str | None,
+    default_platform_type: str | None,
+) -> str:
+    annotations, _cleaned = _split_4blog_title_annotations(raw_title)
+    for token in annotations:
+        mapped = RINGBLE_TITLE_PLATFORM_MAP.get(token.strip())
+        if mapped:
+            return mapped
+
+    if default_platform_type and default_platform_type != "mixed":
+        return default_platform_type
+
+    icon_text = (icon_src or "").lower()
+    if "iconinsta" in icon_text:
+        return "instagram"
+    if "iconyoutube" in icon_text:
+        return "youtube"
+    if "iconbuy" in icon_text:
+        return default_platform_type or "mixed"
+    if "iconblog" in icon_text:
+        return "blog"
+    return default_platform_type or "blog"
+
+
+def _infer_ringble_campaign_type(
+    raw_title: str,
+    category_id: str,
+    region_primary: str | None,
+    region_secondary: str | None,
+    platform_type: str,
+    default_campaign_type: str | None,
+) -> str:
+    if category_id == "834" or "기자단" in raw_title:
+        return "content"
+    if "구매평" in raw_title:
+        return "purchase"
+    if category_id == "832" or region_primary or region_secondary or "방문" in raw_title:
+        return "visit"
+    if category_id == "829":
+        return "delivery"
+    if platform_type in {"instagram", "youtube"}:
+        return "content"
+    return default_campaign_type or "visit"
+
+
+def _extract_ringble_reward_text(block: str) -> str | None:
+    value = _extract_first(r">(\+[0-9,\s]+(?:원|P))</div>", block, re.S)
+    if not value:
+        return None
+    return " ".join(value.split())
+
+
+def _parse_ringble_recruit_count(block: str) -> int | None:
+    patterns = (
+        re.compile(
+            r"graph_percent.*?<font[^>]*>\s*[0-9,]+\s*명\s*</font>\s*/\s*<font[^>]*>\s*([0-9,]+)\s*명\s*</font>",
+            re.S,
+        ),
+        re.compile(r"신청\s*[0-9,]+\s*(?:명)?\s*/\s*모집\s*([0-9,]+)\s*(?:명)?"),
+        re.compile(r"모집\s*([0-9,]+)\s*</font>", re.S),
+        re.compile(r"모집\s*([0-9,]+)\s*(?:명)?"),
+    )
+    plain_text = _strip_tags(block)
+    for pattern in patterns:
+        target = block if pattern.flags & re.S else plain_text
+        match = pattern.search(target)
+        if not match:
+            continue
+        try:
+            return int(match.group(1).replace(",", ""))
+        except Exception:
+            continue
+    return None
+
+
+def _parse_ringble_date_range(value: str | None) -> tuple[str | None, str | None]:
+    if not value:
+        return None, None
+    normalized = " ".join(html_lib.unescape(value).split())
+    match = re.search(
+        r"(\d{2})년\s*(\d{2})월\s*(\d{2})일.*?[~–-]\s*(\d{2})년\s*(\d{2})월\s*(\d{2})일",
+        normalized,
+    )
+    if not match:
+        return None, None
+    try:
+        sy, sm, sd, ey, em, ed = [int(part) for part in match.groups()]
+        return date(2000 + sy, sm, sd).isoformat(), date(2000 + ey, em, ed).isoformat()
+    except Exception:
+        return None, None
+
+
+def _extract_ringble_mission_html(detail_html: str) -> str | None:
+    patterns = (
+        r"리뷰어 미션.*?<td[^>]*class=\"font11\">(.*?)</td>",
+        r"구매 안내사항.*?<td[^>]*class=\"font11\">(.*?)</td>",
+    )
+    for pattern in patterns:
+        block = _extract_first(pattern, detail_html, re.S)
+        if block:
+            return block
+    return None
+
+
+def _extract_ringble_exact_location(detail_html: str) -> str | None:
+    decoded = html_lib.unescape(detail_html)
+    patterns = (
+        r"(?:위치|주소|방문주소|매장주소)\s*[:：]\s*([^<]{6,140})",
+        r"(?:위치|주소|방문주소|매장주소)\s*[:：]\s*([^\n]{6,140})",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, decoded, re.S)
+        if not match:
+            continue
+        value = " ".join(_strip_tags(match.group(1)).replace(" - ", " ").split())
+        if value:
+            return value
+    return None
+
+
 def _parse_region_tokens_from_title(title: str) -> tuple[str | None, str | None, list[str]]:
     annotations, cleaned = _split_4blog_title_annotations(title)
     parts: list[str] = []
@@ -818,6 +1046,175 @@ def enrich_reviewplace_detail(item: dict, detail_html: str) -> dict:
         payload["product_link"] = product_link
         enriched["raw_payload"] = payload
 
+    return enriched
+
+
+def parse_ringble_listing(
+    html: str,
+    default_category_name: str | None = None,
+    default_platform_type: str | None = None,
+    default_campaign_type: str | None = None,
+    source_id: str | None = None,
+) -> list[dict]:
+    pattern = re.compile(
+        r"<td><a href='(detail\.php\?number=(\d+)&category=(\d+))' class=\"list_title\"[^>]*font-size:14px;[^>]*>(.*?)</a>",
+        re.S,
+    )
+    matches = list(pattern.finditer(html))
+    items: list[dict] = []
+
+    for index, match in enumerate(matches):
+        relative_url, campaign_id, category_id, raw_title_html = match.groups()
+        block_start = max(0, match.start() - 1400)
+        block_end = matches[index + 1].start() if index + 1 < len(matches) else min(len(html), match.end() + 1400)
+        block = html[block_start:block_end]
+
+        raw_title = html_lib.unescape(_strip_tags(raw_title_html))
+        title, region_primary, region_secondary, tags = _clean_ringble_title(raw_title)
+        icon_src = _extract_first(r"(upload/happy_config/Icon[^\"']+\.png)", block)
+        platform_type = _infer_ringble_platform_type(raw_title, icon_src, default_platform_type)
+        campaign_type = _infer_ringble_campaign_type(
+            raw_title,
+            category_id,
+            region_primary,
+            region_secondary,
+            platform_type,
+            default_campaign_type,
+        )
+        d_day = _extract_first(
+            rf"<a href='{re.escape(relative_url)}' class=\"list_title\"[^>]*font-size:12px;[^>]*>([^<]+)</a>",
+            block,
+            re.S,
+        ) or _extract_first(r'<strong class="ico_comm ico_today_open ">([^<]+)</strong>', block, re.S)
+        snippet_text = _extract_first(
+            r'<tr><td style="padding-top:5px;font-size:\s*11px;color:#aaaaaa; line-height:15px;">(.*?)</td></tr>',
+            block,
+            re.S,
+        )
+        reward_text = _extract_ringble_reward_text(block)
+        benefit_bits = []
+        if snippet_text:
+            benefit_bits.append(_strip_tags(snippet_text))
+        if reward_text:
+            benefit_bits.append(reward_text)
+        benefit_text = " ".join(dict.fromkeys(part for part in benefit_bits if part)).strip() or None
+        thumbnail_url = _normalize_prefixed_image_url(
+            "https://www.ringble.co.kr/",
+            _extract_first(rf"<a href='{re.escape(relative_url)}'><img src=\"([^\"]+)\"", block, re.S),
+        )
+        recruit_count = _parse_ringble_recruit_count(block)
+
+        items.append(
+            {
+                "source_id": source_id,
+                "campaign_id": campaign_id,
+                "title": title,
+                "original_url": urljoin("https://www.ringble.co.kr/", relative_url),
+                "platform_type": platform_type,
+                "campaign_type": campaign_type,
+                "category_name": default_category_name,
+                "subcategory_name": tags[0] if tags else None,
+                "region_primary_name": region_primary,
+                "region_secondary_name": region_secondary,
+                "benefit_text": benefit_text,
+                "recruit_count": recruit_count,
+                "apply_deadline": _estimate_deadline_from_d_label(d_day),
+                "published_at": None,
+                "thumbnail_url": thumbnail_url,
+                "snippet": benefit_text,
+                "raw_status": "active",
+                "status": "active",
+                "requires_review": False,
+                "raw_payload": {
+                    "listing_category_id": category_id,
+                    "icon_src": icon_src,
+                    "reward_text": reward_text,
+                    "title_tags": tags,
+                },
+            }
+        )
+
+    return items
+
+
+def enrich_ringble_detail(item: dict, detail_html: str) -> dict:
+    enriched = dict(item)
+    detail_title = _extract_first(r'<td class="detail_page_title">\s*(.*?)\s*</td>', detail_html, re.S)
+    if not detail_title:
+        detail_title = _extract_first(r'<meta property="og:title"\s+content="([^"]+)"', detail_html)
+    if detail_title:
+        raw_title = html_lib.unescape(_strip_tags(detail_title))
+        title, region_primary, region_secondary, tags = _clean_ringble_title(raw_title)
+        enriched["title"] = title
+        if not enriched.get("region_primary_name"):
+            enriched["region_primary_name"] = region_primary
+        if not enriched.get("region_secondary_name"):
+            enriched["region_secondary_name"] = region_secondary
+        if tags and not enriched.get("subcategory_name"):
+            enriched["subcategory_name"] = tags[0]
+
+    thumbnail_url = _extract_first(r'<meta property="og:image"\s+content="([^"]+)"', detail_html)
+    if not thumbnail_url:
+        thumbnail_url = _extract_first(r"<img src='([^']+)' id='image_large_0'", detail_html, re.S)
+    if thumbnail_url:
+        enriched["thumbnail_url"] = _normalize_prefixed_image_url("https://www.ringble.co.kr/", thumbnail_url)
+
+    recruit_count = _parse_ringble_recruit_count(detail_html)
+    if recruit_count is not None:
+        enriched["recruit_count"] = recruit_count
+
+    period_text = _extract_first(r"모집 기간</td>\s*<td[^>]*>(.*?)</td>", detail_html, re.S)
+    published_at, apply_deadline = _parse_ringble_date_range(period_text)
+    if published_at:
+        enriched["published_at"] = published_at
+    if apply_deadline:
+        enriched["apply_deadline"] = apply_deadline
+
+    benefit_block = _extract_first(r"제공내역.*?<td[^>]*class=\"font11\">(.*?)</td>", detail_html, re.S)
+    benefit_text = _strip_tags(benefit_block) if benefit_block else None
+
+    mission_html = _extract_ringble_mission_html(detail_html)
+    mission_text = _strip_tags(mission_html) if mission_html else None
+    if benefit_text:
+        enriched["benefit_text"] = benefit_text
+        enriched["snippet"] = benefit_text
+    elif mission_text:
+        enriched["snippet"] = mission_text
+
+    exact_location = _extract_ringble_exact_location(mission_html or detail_html)
+    if exact_location:
+        enriched["exact_location"] = exact_location
+        region_primary, region_secondary = _infer_region_from_address_text(exact_location)
+        if region_primary and not enriched.get("region_primary_name"):
+            enriched["region_primary_name"] = region_primary
+        if region_secondary and not enriched.get("region_secondary_name"):
+            enriched["region_secondary_name"] = region_secondary
+
+    site_url = _extract_first(r"상세 URL.*?<a href='([^']+)'", detail_html, re.S)
+    if not site_url:
+        site_url = _extract_first(r'상세 URL.*?<a href="([^"]+)"', detail_html, re.S)
+    payload = dict(enriched.get("raw_payload") or {})
+    if site_url:
+        payload["site_url"] = site_url
+    if mission_text:
+        payload["mission_excerpt"] = mission_text[:400]
+    if payload:
+        enriched["raw_payload"] = payload
+
+    category_id = str(payload.get("listing_category_id") or _extract_query_params(enriched["original_url"]).get("category") or "")
+    enriched["platform_type"] = _infer_ringble_platform_type(
+        enriched["title"],
+        str(payload.get("icon_src") or ""),
+        enriched.get("platform_type"),
+    )
+    enriched["campaign_type"] = _infer_ringble_campaign_type(
+        enriched["title"],
+        category_id,
+        enriched.get("region_primary_name"),
+        enriched.get("region_secondary_name"),
+        enriched.get("platform_type") or "blog",
+        enriched.get("campaign_type"),
+    )
     return enriched
 
 
@@ -1620,6 +2017,101 @@ class ChehumviewSourceAdapter(PlaceholderSourceAdapter):
                 if len(rows) < 14:
                     break
 
+        return items
+
+
+class RingbleSourceAdapter(PlaceholderSourceAdapter):
+    def __init__(
+        self,
+        definition: SourceDefinition,
+        page_limit: int = 8,
+        detail_limit: int | None = 120,
+        category_configs: tuple[tuple[str, str, str | None, str | None], ...] = RINGBLE_LISTING_CATEGORIES,
+    ):
+        super().__init__(definition)
+        self.page_limit = page_limit
+        self.detail_limit = detail_limit
+        self.category_configs = category_configs
+
+    def fetch(self) -> list[dict]:
+        listing_items: list[dict] = []
+        seen_urls: set[str] = set()
+        fetch_errors: list[str] = []
+
+        for category_id, category_name, default_platform_type, default_campaign_type in self.category_configs:
+            max_page = self.page_limit
+            for page in range(1, self.page_limit + 1):
+                listing_url = _build_ringble_listing_url(category_id, page)
+                try:
+                    listing_html = fetch_text_url(
+                        listing_url,
+                        headers=RINGBLE_BROWSER_HEADERS,
+                        timeout=RINGBLE_FETCH_TIMEOUT,
+                    )
+                except Exception as exc:
+                    fetch_errors.append(f"listing fetch failed: {listing_url} :: {_format_source_exception(exc)}")
+                    break
+
+                if page == 1:
+                    max_page = min(self.page_limit, _extract_ringble_listing_page_count(listing_html, category_id))
+
+                batch = parse_ringble_listing(
+                    listing_html,
+                    default_category_name=category_name,
+                    default_platform_type=default_platform_type,
+                    default_campaign_type=default_campaign_type,
+                    source_id=self.definition.source_id,
+                )
+                if not batch:
+                    break
+
+                new_count = 0
+                for item in batch:
+                    if item["original_url"] in seen_urls:
+                        continue
+                    seen_urls.add(item["original_url"])
+                    listing_items.append(item)
+                    new_count += 1
+                if new_count == 0 or page >= max_page:
+                    break
+
+        prioritized_items = sorted(
+            listing_items,
+            key=lambda item: (
+                0 if item.get("campaign_type") == "visit" else 1,
+                0 if item.get("platform_type") in {"instagram", "youtube"} else 1,
+                item.get("apply_deadline") or "9999-12-31",
+                item.get("original_url") or "",
+            ),
+        )
+        detail_targets = prioritized_items if self.detail_limit is None else prioritized_items[: self.detail_limit]
+        detail_urls = {item["original_url"] for item in detail_targets}
+
+        items: list[dict] = []
+        for item in listing_items:
+            if item["original_url"] not in detail_urls:
+                items.append(item)
+                continue
+            try:
+                detail_html = fetch_text_url(
+                    item["original_url"],
+                    headers={
+                        **RINGBLE_BROWSER_HEADERS,
+                        "Referer": item["original_url"],
+                    },
+                    timeout=RINGBLE_FETCH_TIMEOUT,
+                )
+            except Exception as exc:
+                fetch_errors.append(f"detail fetch failed: {item['original_url']} :: {_format_source_exception(exc)}")
+                detail_html = None
+            items.append(enrich_ringble_detail(item, detail_html) if detail_html else item)
+
+        print(
+            f"[ringble] fetched listing_items={len(listing_items)} "
+            f"detail_targets={len(detail_urls)} errors={len(fetch_errors)}"
+        )
+        for message in fetch_errors[:12]:
+            print(f"[ringble] {message}")
         return items
 
 
@@ -2498,6 +2990,8 @@ def get_adapter(source_slug: str, source_file: str | None = None, report_mode: b
         return DinnerQueenSourceAdapter(definition, page_limit=1 if report_mode else 20, detail_limit=12 if report_mode else None)
     if source_slug == "seouloppa":
         return SeoulOppaSourceAdapter(definition, detail_limit=12 if report_mode else 80)
+    if source_slug == "ringble":
+        return RingbleSourceAdapter(definition, page_limit=2 if report_mode else 8, detail_limit=16 if report_mode else 120)
     if source_slug == "gangnammatzip":
         return GangnamMatzipSourceAdapter(definition, detail_limit=10 if report_mode else 120)
     return PlaceholderSourceAdapter(definition)
