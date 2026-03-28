@@ -23,6 +23,10 @@ function addKeywordNote(items, text, pattern, formatter = (value) => value) {
 
 function buildGenericNotes(campaign, rawPayload) {
   const notes = [];
+  const payloadInsights = Array.isArray(rawPayload?.source_insights) ? rawPayload.source_insights : [];
+  for (const insight of payloadInsights) {
+    uniquePush(notes, insight);
+  }
   if (campaign.campaign_type === 'visit' && campaign.exact_location) {
     uniquePush(notes, `방문 위치: ${campaign.exact_location}`);
   }
@@ -49,6 +53,9 @@ function buildRingbleNotes(campaign, rawPayload) {
     uniquePush(notes, '추가금액/초과비용은 본인 부담일 수 있어요.');
   }
   addKeywordNote(notes, missionText, /(필수 키워드[^.]*|키워드[^.]*넣어주세요[^.]*)/, (value) => value);
+  if (!notes.length) {
+    uniquePush(notes, '링블은 키워드, 미션, 추가비용 여부를 원문에서 함께 확인하는 편이 좋아요.');
+  }
   return notes;
 }
 
@@ -59,6 +66,9 @@ function buildModanNotes(campaign, rawPayload) {
   addKeywordNote(notes, detailText, /신청조건\s*[:：]?\s*([^:：]+?)(?=\s+(?:주소|키워드|방문일|모집))/);
   addKeywordNote(notes, detailText, /방문일\s*[:：]?\s*([^:：]+?)(?=\s+(?:주소|키워드|모집|체험))/);
   addKeywordNote(notes, detailText, /체험 방식\s*[:：]?\s*([^:：]+?)(?=\s+(?:주소|키워드|모집))/);
+  if (!notes.length) {
+    uniquePush(notes, '모두의체험단은 신청조건·방문일·체험 방식 문구를 원문에서 확인하는 편이 좋아요.');
+  }
   return notes;
 }
 
@@ -70,6 +80,9 @@ function buildChehumviewNotes(campaign, rawPayload) {
   if (rawPayload?.hashtags) {
     uniquePush(notes, `해시태그: ${formatText(String(rawPayload.hashtags).replaceAll(',', ', '))}`);
   }
+  if (!notes.length) {
+    uniquePush(notes, '체험뷰는 검색 키워드·해시태그·포인트 조건을 원문에서 같이 보는 편이 좋아요.');
+  }
   return notes;
 }
 
@@ -78,6 +91,9 @@ function buildReviewplaceNotes(campaign, rawPayload) {
   if (campaign.exact_location) {
     uniquePush(notes, `방문 주소: ${campaign.exact_location}`);
   }
+  if (!notes.length) {
+    uniquePush(notes, '리뷰플레이스는 방문주소, 키워드, 리뷰어 미션을 함께 확인하는 편이 좋아요.');
+  }
   return notes;
 }
 
@@ -85,6 +101,9 @@ function buildSeoulOppaNotes(campaign, rawPayload) {
   const notes = buildGenericNotes(campaign, rawPayload);
   if (rawPayload?.site_url) {
     uniquePush(notes, '원문에서 별도 사이트 URL이 제공돼요.');
+  }
+  if (!notes.length) {
+    uniquePush(notes, '서울오빠는 캠페인별 원문 링크와 일정 확인이 중요해요.');
   }
   return notes;
 }
