@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 import html as html_lib
 from html.parser import HTMLParser
+import json
 from pathlib import Path
 import re
 from urllib.parse import parse_qs, quote, urlencode, unquote, urljoin, urlsplit
@@ -22,6 +23,7 @@ from crawler.sources.base import (
 
 SEEDED_SOURCES: dict[str, SourceDefinition] = {
     "chehumview": SourceDefinition("chehumview", "체험뷰", "https://chvu.co.kr", "mixed", "dynamic"),
+    "modan": SourceDefinition("modan", "모두의체험단", "https://www.modan.kr", "mixed", "static"),
     "reviewnote": SourceDefinition("reviewnote", "리뷰노트", "https://www.reviewnote.co.kr", "mixed", "dynamic"),
     "reviewplace": SourceDefinition("reviewplace", "리뷰플레이스", "https://www.reviewplace.co.kr", "mixed", "dynamic"),
     "revu": SourceDefinition("revu", "레뷰", "https://www.revu.net", "mixed", "dynamic"),
@@ -273,6 +275,58 @@ REVIEWPLACE_CAMPAIGN_TYPE_MAP = {
 }
 
 REVIEWPLACE_FETCH_TIMEOUT = 20
+
+MODAN_FETCH_TIMEOUT = 20
+
+MODAN_BROWSER_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/137.0.0.0 Safari/537.36"
+    ),
+    "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Cache-Control": "no-cache",
+    "Pragma": "no-cache",
+}
+
+MODAN_BOARD_CONFIGS = (
+    ("matzip", "맛집", "visit"),
+    ("beauty", "뷰티/건강", "visit"),
+    ("lodging", "숙박", "visit"),
+    ("product", "제품/서비스", None),
+    ("delivery", "배송", "delivery"),
+    ("culture", "문화/스포츠", "visit"),
+    ("various", "기타", None),
+    ("reporters", "기자단", "content"),
+)
+
+MODAN_SECTION_MARKERS = (
+    "체험 제공 혜택",
+    "모집 대상 및 인원",
+    "리뷰 미션 안내",
+    "모집 및 진행 일정",
+    "배송 및 체험 안내",
+    "이런 분께 추천합니다",
+    "매장 정보",
+    "✅ 체크사항",
+    "⚠️ 주의사항",
+)
+
+MODAN_INLINE_FIELD_LABELS = (
+    "신청조건",
+    "주소",
+    "상세주소",
+    "방문주소",
+    "키워드",
+    "방문일",
+    "기타/특이사항",
+    "참고 사항",
+    "모집 인원",
+    "모집기간",
+    "체험 방식",
+    "방문 여부",
+    "제품 수령",
+)
 
 SEOULOUPPA_TITLE_TAGS = {"배송형", "구매평", "기자단", "방문형", "클립"}
 
@@ -766,6 +820,341 @@ def enrich_reviewplace_detail(item: dict, detail_html: str) -> dict:
     return enriched
 
 
+def _build_modan_listing_url(board_path: str, page: int) -> str:
+    return f"https://www.modan.kr/{board_path.strip('/')}/?&page={page}&sort=recent"
+
+
+def _parse_modan_date_range(value: str | None) -> tuple[str | None, str | None]:
+    if not value:
+        return None, None
+    match = re.search(
+        r"(\d{4})[.-](\d{1,2})[.-](\d{1,2})\s*[~–]\s*(\d{4})[.-](\d{1,2})[.-](\d{1,2})",
+        value,
+    )
+    if not match:
+        return None, None
+    sy, sm, sd, ey, em, ed = [int(part) for part in match.groups()]
+    return date(sy, sm, sd).isoformat(), date(ey, em, ed).isoformat()
+
+
+def _extract_modan_labeled_value(text: str | None, label: str) -> str | None:
+    if not text:
+        return None
+    boundaries = [f"{name} :" for name in MODAN_INLINE_FIELD_LABELS if name != label]
+    boundaries.extend(f"{name}:" for name in MODAN_INLINE_FIELD_LABELS if name != label)
+    boundaries.extend(MODAN_SECTION_MARKERS)
+    boundary_pattern = "|".join(re.escape(boundary) for boundary in boundaries)
+    match = re.search(
+        rf"{re.escape(label)}\s*[:：]\s*(.+?)(?=(?:{boundary_pattern})|$)",
+        text,
+        re.S,
+    )
+    if not match:
+        return None
+    return " ".join(match.group(1).split()).strip() or None
+
+
+def _extract_modan_platform_type(text: str | None) -> str | None:
+    if not text:
+        return None
+    platforms: list[str] = []
+    if re.search(r"네이버\s*블로그|블로그", text, re.I):
+        platforms.append("blog")
+    if re.search(r"인스타그램|인스타|릴스|클립", text, re.I):
+        platforms.append("instagram")
+    if re.search(r"유튜브|쇼츠", text, re.I):
+        platforms.append("youtube")
+    if re.search(r"페이스북|스레드|threads", text, re.I):
+        platforms.append("etc")
+    unique = list(dict.fromkeys(platforms))
+    if not unique:
+        return None
+    if len(unique) > 1:
+        return "mixed"
+    return unique[0]
+
+
+def _extract_modan_template_text(detail_html: str) -> str | None:
+    for template_id in ("prodDetailPC", "prodDetailMobile"):
+        raw_template = _extract_first(rf'<template id="{template_id}">(.*?)</template>', detail_html, re.S)
+        if not raw_template:
+            continue
+        compact = raw_template.split("<!-- ================================================")[0]
+        text = _strip_tags(compact)
+        if text:
+            return text
+    return None
+
+
+def _infer_modan_campaign_type(
+    board_path: str,
+    title: str,
+    detail_text: str | None,
+    exact_location: str | None,
+    default_campaign_type: str | None,
+) -> str:
+    text = " ".join(part for part in (title, detail_text or "") if part)
+    if board_path == "reporters" or "기자단" in text:
+        return "content"
+    if "구매평" in text:
+        return "purchase"
+    if (
+        board_path == "delivery"
+        or "택배/배송" in text
+        or "배송 제품 체험" in text
+        or "방문 불필요" in text
+        or "택배 발송" in text
+    ):
+        return "delivery"
+    if exact_location or board_path in {"matzip", "beauty", "lodging", "culture"} or "방문일" in text:
+        return "visit"
+    return default_campaign_type or "delivery"
+
+
+def _normalize_modan_regions(primary: str | None, secondary: str | None) -> tuple[str | None, str | None]:
+    if primary and not secondary and " " in primary:
+        first, second = primary.split(None, 1)
+        if first in FOUR_BLOG_LOCATION_PREFIXES:
+            return first, second or None
+    return primary, secondary
+
+
+class ModanListingHTMLParser(HTMLParser):
+    def __init__(
+        self,
+        listing_url: str,
+        category_name: str | None,
+        default_campaign_type: str | None,
+        source_id: str | None = None,
+    ):
+        super().__init__(convert_charrefs=True)
+        self.listing_url = listing_url
+        self.category_name = category_name
+        self.default_campaign_type = default_campaign_type
+        self.source_id = source_id
+        self.items: list[dict[str, Any]] = []
+        self.current: dict[str, Any] | None = None
+        self.item_div_depth = 0
+        self.capture_key: str | None = None
+        self.capture_parts: list[str] = []
+        self.capture_depth = 0
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attr_map = {key: value or "" for key, value in attrs}
+        classes = set(attr_map.get("class", "").split())
+
+        if tag == "div" and {"shop-item", "_shop_item"} <= classes:
+            self.current = {
+                "source_id": self.source_id,
+                "listing_url": self.listing_url,
+                "category_name": self.category_name,
+                "default_campaign_type": self.default_campaign_type,
+            }
+            self.item_div_depth = 1
+            properties_raw = attr_map.get("data-product-properties", "").strip()
+            if properties_raw:
+                try:
+                    self.current["product_properties"] = json.loads(html_lib.unescape(properties_raw))
+                except Exception:
+                    self.current["product_properties"] = {}
+            return
+
+        if not self.current:
+            return
+
+        if tag == "div":
+            self.item_div_depth += 1
+
+        if tag == "a" and "?idx=" in attr_map.get("href", "") and not self.current.get("original_url"):
+            self.current["original_url"] = urljoin("https://www.modan.kr", attr_map["href"])
+        elif tag == "img" and "org_img" in classes and attr_map.get("src") and not self.current.get("thumbnail_url"):
+            self.current["thumbnail_url"] = attr_map["src"].strip()
+
+        if self.capture_key:
+            self.capture_depth += 1
+            return
+
+        if tag == "h2" and "shop-title" in classes:
+            self._start_capture("title")
+        elif tag == "div" and "item-summary" in classes:
+            self._start_capture("summary")
+
+    def handle_endtag(self, tag: str) -> None:
+        if self.capture_key:
+            self.capture_depth -= 1
+            if self.capture_depth == 0:
+                self._finish_capture()
+
+        if self.current and tag == "div":
+            self.item_div_depth -= 1
+            if self.item_div_depth == 0:
+                finalized = self._finalize_current()
+                if finalized:
+                    self.items.append(finalized)
+                self.current = None
+
+    def handle_data(self, data: str) -> None:
+        if self.capture_key and self.current is not None:
+            self.capture_parts.append(data)
+
+    def _start_capture(self, key: str) -> None:
+        self.capture_key = key
+        self.capture_parts = []
+        self.capture_depth = 1
+
+    def _finish_capture(self) -> None:
+        if not self.current or not self.capture_key:
+            self.capture_key = None
+            self.capture_parts = []
+            self.capture_depth = 0
+            return
+        text = " ".join("".join(self.capture_parts).split()).strip()
+        if text:
+            self.current[self.capture_key] = text
+        self.capture_key = None
+        self.capture_parts = []
+        self.capture_depth = 0
+
+    def _finalize_current(self) -> dict[str, Any] | None:
+        if not self.current:
+            return None
+        product_properties = self.current.get("product_properties") or {}
+        raw_title = str(self.current.get("title") or product_properties.get("name") or "").strip()
+        original_url = str(self.current.get("original_url") or "").strip()
+        if not raw_title or not original_url:
+            return None
+        title = _split_4blog_title_annotations(raw_title)[1]
+        region_primary, region_secondary, _tokens = _parse_region_tokens_from_title(raw_title)
+        region_primary, region_secondary = _normalize_modan_regions(region_primary, region_secondary)
+        summary = _strip_tags(self.current.get("summary") or "").replace("상품 요약설명", "").strip()
+        product_code = str(product_properties.get("code") or "").strip() or None
+        thumbnail_url = self.current.get("thumbnail_url") or product_properties.get("image_url")
+
+        return {
+            "source_id": self.source_id,
+            "campaign_id": str(product_properties.get("idx") or _extract_query_params(original_url).get("idx") or ""),
+            "title": title,
+            "original_url": original_url,
+            "platform_type": "mixed",
+            "campaign_type": _infer_modan_campaign_type(
+                urlsplit(original_url).path.strip("/"),
+                raw_title,
+                summary,
+                None,
+                self.default_campaign_type,
+            ),
+            "category_name": self.category_name,
+            "subcategory_name": None,
+            "region_primary_name": region_primary,
+            "region_secondary_name": region_secondary,
+            "benefit_text": summary or None,
+            "recruit_count": None,
+            "apply_deadline": None,
+            "published_at": None,
+            "thumbnail_url": thumbnail_url,
+            "snippet": summary or None,
+            "raw_status": "active",
+            "status": "active",
+            "requires_review": False,
+            "raw_payload": {
+                "board_path": urlsplit(original_url).path.strip("/"),
+                "product_code": product_code,
+            },
+        }
+
+
+def parse_modan_listing(
+    html: str,
+    listing_url: str,
+    category_name: str | None,
+    default_campaign_type: str | None,
+    source_id: str | None = None,
+) -> list[dict]:
+    parser = ModanListingHTMLParser(
+        listing_url=listing_url,
+        category_name=category_name,
+        default_campaign_type=default_campaign_type,
+        source_id=source_id,
+    )
+    parser.feed(html)
+    parser.close()
+    return parser.items
+
+
+def enrich_modan_detail(item: dict, detail_html: str) -> dict:
+    enriched = dict(item)
+    canonical_url = _extract_first(r'<link rel="canonical" href="([^"]+)"', detail_html)
+    if canonical_url:
+        enriched["original_url"] = canonical_url
+
+    detail_title = _extract_first(r'<h1 class="view_tit[^"]*"[^>]*>(.*?)<div class="ns-icon', detail_html, re.S)
+    if not detail_title:
+        detail_title = _extract_first(r'<meta id=\'meta_og_title\' property=\'og:title\' content=\'([^\']+)\'', detail_html)
+    raw_title = _strip_tags(detail_title) if detail_title else item.get("title", "")
+    if raw_title:
+        enriched["title"] = _split_4blog_title_annotations(raw_title)[1]
+        primary, secondary, _tokens = _parse_region_tokens_from_title(raw_title)
+        primary, secondary = _normalize_modan_regions(primary, secondary)
+        if not enriched.get("region_primary_name"):
+            enriched["region_primary_name"] = primary
+        if not enriched.get("region_secondary_name"):
+            enriched["region_secondary_name"] = secondary
+
+    summary_html = _extract_first(
+        r'<div class="goods_summary[^"]*">\s*<div class="fr-view">\s*(.*?)\s*</div>\s*</div>',
+        detail_html,
+        re.S,
+    )
+    summary_text = _strip_tags(summary_html) if summary_html else None
+    if summary_text:
+        enriched["benefit_text"] = summary_text
+        enriched["snippet"] = summary_text
+
+    template_text = _extract_modan_template_text(detail_html)
+    meta_description = _extract_first(r"<meta name='description' content='([^']+)'", detail_html)
+    detail_text = " ".join(part for part in (template_text, meta_description) if part)
+
+    exact_location = _extract_modan_labeled_value(detail_text, "주소") or _extract_modan_labeled_value(detail_text, "방문주소")
+    if exact_location:
+        enriched["exact_location"] = exact_location
+        if not enriched.get("region_primary_name") or not enriched.get("region_secondary_name"):
+            primary, secondary = _infer_4blog_regions_from_detail_text(exact_location)
+            if not enriched.get("region_primary_name"):
+                enriched["region_primary_name"] = primary
+            if not enriched.get("region_secondary_name"):
+                enriched["region_secondary_name"] = secondary
+
+    platform_type = _extract_modan_platform_type(detail_text)
+    if platform_type:
+        enriched["platform_type"] = platform_type
+
+    published_at, apply_deadline = _parse_modan_date_range(_extract_modan_labeled_value(detail_text, "모집기간"))
+    if published_at:
+        enriched["published_at"] = published_at
+    if apply_deadline:
+        enriched["apply_deadline"] = apply_deadline
+
+    recruit_text = _extract_modan_labeled_value(detail_text, "모집 인원") or detail_text
+    recruit_match = re.search(r"모집\s*인원\s*[:：]?\s*([0-9]+)\s*명|([0-9]+)\s*명", recruit_text or "")
+    if recruit_match:
+        enriched["recruit_count"] = int(recruit_match.group(1) or recruit_match.group(2))
+
+    board_path = str((enriched.get("raw_payload") or {}).get("board_path") or urlsplit(enriched["original_url"]).path.strip("/"))
+    enriched["campaign_type"] = _infer_modan_campaign_type(
+        board_path,
+        raw_title,
+        detail_text,
+        enriched.get("exact_location"),
+        item.get("campaign_type"),
+    )
+
+    payload = dict(enriched.get("raw_payload") or {})
+    if template_text:
+        payload["detail_excerpt"] = template_text
+    enriched["raw_payload"] = payload
+    return enriched
+
+
 def parse_mrblog_listing(html: str, source_id: str | None = None) -> list[dict]:
     pattern = re.compile(
         r'<a href="(https://www\.mrblog\.net/campaigns/\d+)" class="campaign_item">.*?'
@@ -1079,6 +1468,84 @@ class ReviewPlaceSourceAdapter(PlaceholderSourceAdapter):
             except Exception:
                 detail_html = None
             enriched.append(enrich_reviewplace_detail(item, detail_html) if detail_html else item)
+        return enriched
+
+
+class ModanSourceAdapter(PlaceholderSourceAdapter):
+    def __init__(
+        self,
+        definition: SourceDefinition,
+        page_limit: int = 20,
+        detail_limit: int | None = 160,
+        board_configs: tuple[tuple[str, str, str | None], ...] = MODAN_BOARD_CONFIGS,
+    ):
+        super().__init__(definition)
+        self.page_limit = page_limit
+        self.detail_limit = detail_limit
+        self.board_configs = board_configs
+
+    def fetch(self) -> list[dict]:
+        items: list[dict] = []
+        seen_urls: set[str] = set()
+
+        for board_path, category_name, default_campaign_type in self.board_configs:
+            for page in range(1, self.page_limit + 1):
+                listing_url = _build_modan_listing_url(board_path, page)
+                try:
+                    listing_html = fetch_text_url(
+                        listing_url,
+                        headers=MODAN_BROWSER_HEADERS,
+                        timeout=MODAN_FETCH_TIMEOUT,
+                    )
+                except Exception:
+                    break
+
+                batch = parse_modan_listing(
+                    listing_html,
+                    listing_url,
+                    category_name=category_name,
+                    default_campaign_type=default_campaign_type,
+                    source_id=self.definition.source_id,
+                )
+                if not batch:
+                    break
+
+                new_count = 0
+                for item in batch:
+                    if item["original_url"] in seen_urls:
+                        continue
+                    seen_urls.add(item["original_url"])
+                    items.append(item)
+                    new_count += 1
+                if new_count == 0:
+                    break
+
+        prioritized = sorted(
+            items,
+            key=lambda item: (
+                0 if item.get("campaign_type") == "visit" else 1,
+                0 if item.get("category_name") in {"맛집", "뷰티/건강", "숙박", "문화/스포츠"} else 1,
+                0 if item.get("region_primary_name") else 1,
+                item.get("original_url") or "",
+            ),
+        )
+        detail_targets = prioritized if self.detail_limit is None else prioritized[: self.detail_limit]
+        detail_urls = {item["original_url"] for item in detail_targets}
+
+        enriched: list[dict] = []
+        for item in items:
+            if item["original_url"] not in detail_urls:
+                enriched.append(item)
+                continue
+            try:
+                detail_html = fetch_text_url(
+                    item["original_url"],
+                    headers={**MODAN_BROWSER_HEADERS, "Referer": item["original_url"]},
+                    timeout=MODAN_FETCH_TIMEOUT,
+                )
+            except Exception:
+                detail_html = None
+            enriched.append(enrich_modan_detail(item, detail_html) if detail_html else item)
         return enriched
 
 
@@ -1986,6 +2453,8 @@ def get_adapter(source_slug: str, source_file: str | None = None, report_mode: b
     definition = SEEDED_SOURCES[source_slug]
     if source_file:
         return FileSourceAdapter(definition, Path(source_file))
+    if source_slug == "modan":
+        return ModanSourceAdapter(definition, page_limit=2 if report_mode else 20, detail_limit=24 if report_mode else 160)
     if source_slug == "chehumview":
         return ChehumviewSourceAdapter(definition, page_limit=2 if report_mode else 20)
     if source_slug == "reviewplace":

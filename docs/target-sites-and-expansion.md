@@ -143,3 +143,103 @@ Store these as planning notes even if they are not yet in the schema:
 
 ## Handoff note
 This draft is planner-owned and ready to be promoted into `docs/target-sites-and-expansion.md` by the lead or a documentation/execution worker.
+
+## Immediate next-wave crawler targets (post-체험뷰 / 리뷰플레이스)
+
+The current next-wave recommendation after `chehumview` and `reviewplace` is:
+
+| Priority | Source | Suggested slug | Base URL | Why next | Crawl surface | Risk |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | 모두의체험단 | `modan` | `https://modan.kr` | ✅ Implemented on 2026-03-28. Main boards (`matzip`, `beauty`, `lodging`, `product`, `delivery`, `culture`, `various`, `reporters`) now flow through the seeded adapter. | Public HTML boards plus `/<board>/?idx=` detail pages | Medium |
+| 2 | 링블 | `ringble` | `https://ringble.co.kr` | Lower parser complexity than other long-tail sites; public category + detail pages with clear pagination | `category.php?category=...`, `detail.php?number=...&category=...`, `start=` pagination | Low |
+| 3 | 놀러와 | `nolowa` | `https://cometoplay.kr` | Public enough to crawl and likely useful for visit/delivery supply, but more brittle than 링블 | `item_list.php?category_id=...`, `item.php?category_id=...&it_id=...`, `page=` pagination | Medium |
+
+### Why these three
+
+- **모두의체험단** offers the best immediate supply gain after the two newly added sources because its public boards expose multiple campaign classes and some pages already include address / benefit / region-like fields.
+- **링블** is the safest low-maintenance follow-up because its route patterns are simple and the HTML surface is comparatively static.
+- **놀러와** remains valuable, but should come after 링블 because the root is more header / cookie sensitive, making operational reliability less certain.
+
+### Site-specific implementation notes
+
+#### 1) 모두의체험단 (`modan`)
+- Status:
+  - implemented in `crawler/sources/seeded.py`
+  - wired into `source-refresh`, `scheduled-refresh`, `source-counts`, and the web source filter list
+- Observed board routes:
+  - `/matzip`
+  - `/beauty`
+  - `/lodging`
+  - `/product`
+  - `/delivery`
+  - `/culture`
+  - `/various`
+  - `/reporters`
+- Observed detail route family:
+  - `/<board>/?idx=<id>`
+- Likely extractable fields:
+  - `title`
+  - `thumbnail_url`
+  - `benefit_text`
+  - `snippet`
+  - `platform_type`
+  - `campaign_type`
+  - `region_primary_name`
+  - `region_secondary_name`
+  - `exact_location`
+  - `original_url`
+  - partial `apply_deadline` / `recruit_count`
+- Main risk:
+  - exact-location / deadline coverage still depends on author-written detail copy, so supply coverage will exceed map-grade coverage
+
+#### 2) 링블 (`ringble`)
+- Observed list route family:
+  - `category.php?category=<id>`
+- Observed detail route family:
+  - `detail.php?number=<id>&category=<id>`
+- Observed pagination:
+  - `start=<offset>`
+- Likely extractable fields:
+  - `title`
+  - `thumbnail_url`
+  - `benefit_text`
+  - `snippet`
+  - `campaign_type`
+  - `platform_type`
+  - `original_url`
+  - some `region` / `deadline` depending on card/detail content
+- Main risk:
+  - relatively low; likely a plain HTML parser with lightweight pagination handling
+
+#### 3) 놀러와 (`nolowa`)
+- Observed list route family:
+  - `item_list.php?category_id=<id>`
+- Observed detail route family:
+  - `item.php?category_id=<id>&it_id=<id>`
+- Observed pagination:
+  - `page=<n>&sod=&sst=...`
+- Likely extractable fields:
+  - `title`
+  - `thumbnail_url`
+  - `benefit_text`
+  - `snippet`
+  - `campaign_type`
+  - `platform_type`
+  - `original_url`
+  - some `region` / address fields if detail pages stay stable
+- Main risk:
+  - header / cookie sensitivity at the root and a more brittle SSR surface than 링블
+
+### Recommended execution order
+
+1. verify live `modan` source-refresh counts and tune detail limits if needed
+2. implement `ringble`
+3. implement `nolowa`
+
+### Gate before implementation
+
+Before starting each:
+- verify the public list route still responds without login
+- capture one list page + one detail page fixture
+- confirm pagination stop condition
+- confirm at least `title`, `original_url`, and one of `benefit_text` / `snippet` are stably extractable

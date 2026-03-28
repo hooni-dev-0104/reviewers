@@ -20,6 +20,7 @@ from crawler.sources.seeded import (
     ChehumviewSourceAdapter,
     DinnerQueenSourceAdapter,
     GangnamMatzipSourceAdapter,
+    ModanSourceAdapter,
     SEEDED_SOURCES,
     SeoulOppaSourceAdapter,
     ReviewPlaceSourceAdapter,
@@ -30,8 +31,10 @@ from crawler.sources.seeded import (
     _extract_seouloppa_listing_urls,
     enrich_4blog_item_from_detail,
     enrich_gangnammatzip_detail,
+    enrich_modan_detail,
     enrich_reviewplace_detail,
     enrich_seouloppa_detail,
+    parse_modan_listing,
     parse_reviewplace_listing,
     parse_mrblog_listing,
     parse_gangnammatzip_listing,
@@ -452,6 +455,115 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(transformed["recruit_count"], 10)
         self.assertEqual(transformed["apply_deadline"], "2026-04-01")
         self.assertEqual(transformed["published_at"], "2026-03-25")
+
+    def test_parse_modan_listing(self):
+        html = """
+        <div class="shop-item _shop_item"
+          data-product-properties='{&quot;idx&quot;:2915,&quot;code&quot;:&quot;s2026021912465b0911a32&quot;,&quot;name&quot;:&quot;[택배/배송] 오파오 휴대용 미니 세탁기&quot;,&quot;image_url&quot;:&quot;https://cdn.example.com/modan.jpg&quot;}'>
+          <div class="item-wrap">
+            <a href="/delivery/?idx=2915" class="_fade_link shop-item-thumb ">
+              <img class="_org_img org_img" src="https://cdn.example.com/modan.jpg" />
+            </a>
+          </div>
+          <div class="item-detail">
+            <a href="/delivery/?idx=2915">
+              <h2 class="shop-title">[택배/배송] 오파오 휴대용 미니 세탁기</h2>
+              <div class="item-summary holder fr-view">
+                <p>오파오 휴대용 미니 세탁기 1대 제공</p>
+                <span class="sr-only">상품 요약설명</span>
+              </div>
+            </a>
+          </div>
+        </div>
+        """
+        items = parse_modan_listing(
+            html,
+            "https://www.modan.kr/delivery/?&page=1&sort=recent",
+            category_name="배송",
+            default_campaign_type="delivery",
+        )
+        self.assertEqual(len(items), 1)
+        item = items[0]
+        self.assertEqual(item["campaign_id"], "2915")
+        self.assertEqual(item["original_url"], "https://www.modan.kr/delivery/?idx=2915")
+        self.assertEqual(item["title"], "오파오 휴대용 미니 세탁기")
+        self.assertEqual(item["campaign_type"], "delivery")
+        self.assertEqual(item["category_name"], "배송")
+        self.assertEqual(item["benefit_text"], "오파오 휴대용 미니 세탁기 1대 제공")
+        self.assertEqual(item["thumbnail_url"], "https://cdn.example.com/modan.jpg")
+
+    def test_enrich_modan_detail(self):
+        item = {
+            "title": "샤브향 전주아중점",
+            "platform_type": "mixed",
+            "campaign_type": "visit",
+            "region_primary_name": "전북",
+            "region_secondary_name": "전주",
+            "benefit_text": None,
+            "snippet": None,
+            "raw_payload": {"board_path": "matzip"},
+            "original_url": "https://www.modan.kr/matzip/?idx=1433",
+        }
+        detail_html = """
+        <link rel="canonical" href="https://www.modan.kr/matzip/?idx=1433" />
+        <h1 class="view_tit no-margin-top title_font_style">[전북 전주] 샤브향 전주아중점<div class="ns-icon inline-blocked clearfix"></div></h1>
+        <div class="goods_summary body_font_color_70"><div class="fr-view"><p>월남쌈 소고기 샤브</p></div></div>
+        <template id="prodDetailPC">
+          <p>신청조건 : 인스타그램, 네이버블로그, 페이스북</p>
+          <p>주소 : 전북 전주시 덕진구 건산로 259 2층</p>
+          <p>키워드 : 샤브샤브,전주샤브샤브</p>
+          <p>방문일 : 평일 (선정 후 방문일정 조율 예정)</p>
+        </template>
+        """
+        enriched = enrich_modan_detail(item, detail_html)
+        self.assertEqual(enriched["benefit_text"], "월남쌈 소고기 샤브")
+        self.assertEqual(enriched["snippet"], "월남쌈 소고기 샤브")
+        self.assertEqual(enriched["exact_location"], "전북 전주시 덕진구 건산로 259 2층")
+        self.assertEqual(enriched["platform_type"], "mixed")
+        self.assertEqual(enriched["campaign_type"], "visit")
+
+    def test_modan_adapter_fetches_listing_pages(self):
+        page1 = """
+        <div class="shop-item _shop_item"
+          data-product-properties='{&quot;idx&quot;:2915,&quot;code&quot;:&quot;s2026021912465b0911a32&quot;,&quot;name&quot;:&quot;[택배/배송] 오파오 휴대용 미니 세탁기&quot;,&quot;image_url&quot;:&quot;https://cdn.example.com/modan-1.jpg&quot;}'>
+          <div class="item-wrap"><a href="/delivery/?idx=2915" class="_fade_link shop-item-thumb "><img class="_org_img org_img" src="https://cdn.example.com/modan-1.jpg" /></a></div>
+          <div class="item-detail"><a href="/delivery/?idx=2915"><h2 class="shop-title">[택배/배송] 오파오 휴대용 미니 세탁기</h2><div class="item-summary holder fr-view"><p>혜택 1</p><span class="sr-only">상품 요약설명</span></div></a></div>
+        </div>
+        """
+        page2 = """
+        <div class="shop-item _shop_item"
+          data-product-properties='{&quot;idx&quot;:2916,&quot;code&quot;:&quot;s2026021912465b0911a33&quot;,&quot;name&quot;:&quot;[택배/배송] 둘째 캠페인&quot;,&quot;image_url&quot;:&quot;https://cdn.example.com/modan-2.jpg&quot;}'>
+          <div class="item-wrap"><a href="/delivery/?idx=2916" class="_fade_link shop-item-thumb "><img class="_org_img org_img" src="https://cdn.example.com/modan-2.jpg" /></a></div>
+          <div class="item-detail"><a href="/delivery/?idx=2916"><h2 class="shop-title">[택배/배송] 둘째 캠페인</h2><div class="item-summary holder fr-view"><p>혜택 2</p><span class="sr-only">상품 요약설명</span></div></a></div>
+        </div>
+        """
+        detail_html = """
+        <link rel="canonical" href="https://www.modan.kr/delivery/?idx=2915" />
+        <h1 class="view_tit no-margin-top title_font_style">오파오 휴대용 미니 세탁기<div class="ns-icon inline-blocked clearfix"></div></h1>
+        <div class="goods_summary body_font_color_70"><div class="fr-view"><p>오파오 휴대용 미니 세탁기 1대 제공</p></div></div>
+        <template id="prodDetailPC">
+          <p>체험 방식: 배송 제품 체험</p>
+          <p>방문 여부: 방문 불필요</p>
+          <p>모집 인원: 10명</p>
+          <p>모집기간: 2026.02.19 ~ 2026.02.25</p>
+          <p>인스타그램 · 네이버 블로그 · 유튜브 업로드 필수</p>
+        </template>
+        """
+        with mock.patch(
+            "crawler.sources.seeded.fetch_text_url",
+            side_effect=[page1, page2, detail_html, detail_html],
+        ):
+            items = ModanSourceAdapter(
+                SEEDED_SOURCES["modan"],
+                page_limit=2,
+                detail_limit=2,
+                board_configs=(("delivery", "배송", "delivery"),),
+            ).fetch()
+        self.assertEqual(len(items), 2)
+        self.assertEqual(items[0]["platform_type"], "mixed")
+        self.assertEqual(items[0]["recruit_count"], 10)
+        self.assertEqual(items[0]["apply_deadline"], "2026-02-25")
+        self.assertEqual(items[1]["campaign_type"], "delivery")
 
     def test_parse_reviewplace_listing(self):
         html = """

@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 
-PUBLIC_SOURCE_SLUGS = ["4blog", "chehumview", "dinnerqueen", "reviewnote", "reviewplace", "revu", "seouloppa", "gangnammatzip"]
+PUBLIC_SOURCE_SLUGS = ["4blog", "chehumview", "dinnerqueen", "modan", "reviewnote", "reviewplace", "revu", "seouloppa", "gangnammatzip"]
 
 APPLICANT_CORE_FIELDS = [
     ("title", "title"),
@@ -104,6 +104,7 @@ def build_source_quality_report(result: dict[str, Any]) -> str:
             "- 4blog",
             "- chehumview",
             "- dinnerqueen",
+            "- modan",
             "- reviewnote",
             "- reviewplace",
             "- revu (auth-required)",
