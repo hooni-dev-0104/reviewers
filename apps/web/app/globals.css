@@ -1099,28 +1099,50 @@ input, select {
   .page-shell { padding: 14px; }
   .topbar, .footer-bar, .hero-panel, .explore-panel, .trust-page, .detail-shell { padding: 18px; border-radius: 22px; }
   .topbar-shell { padding-top: 8px; }
-  .topbar, .footer-bar { flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; }
-  .topbar nav, .hero-actions, .stats-strip, .account-group, .reminder-options, .topbar-brand-group { flex-wrap: wrap; }
-  .brand-mark { font-size: 1.28rem; }
-  .topbar-brand-group {
-    width: 100%;
-    justify-content: space-between;
+  .topbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
     gap: 10px;
   }
-  .topbar-side {
+  .footer-bar { flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; }
+  .topbar nav, .hero-actions, .stats-strip, .account-group, .reminder-options { flex-wrap: wrap; }
+  .brand-mark { font-size: 1.28rem; }
+  .topbar-brand-group {
+    display: grid;
+    grid-template-columns: 1fr;
     width: 100%;
-    justify-content: flex-start;
+    gap: 10px;
+    align-items: start;
+  }
+  .topbar-side {
+    width: auto;
+    justify-content: flex-end;
+    align-self: start;
   }
   .top-tabs {
     width: 100%;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    padding: 4px;
   }
   .top-tabs a {
-    flex: 1 1 0;
-    padding-inline: 10px;
-    font-size: 0.82rem;
+    min-height: 46px;
+    padding: 8px 6px;
+    font-size: 0.76rem;
+    line-height: 1.15;
+    text-align: center;
+    white-space: normal;
+    word-break: keep-all;
   }
-  .visitor-widget { font-size: 0.76rem; padding: 5px 9px; gap: 6px; }
+  .visitor-widget {
+    font-size: 0.74rem;
+    padding: 6px 9px;
+    gap: 6px;
+    justify-content: center;
+    min-height: 38px;
+  }
   .decision-panel { padding: 20px; }
   .decision-panel-head h2 { font-size: 1.2rem; }
   .filter-shell { padding: 10px; gap: 8px; border-radius: 18px; }

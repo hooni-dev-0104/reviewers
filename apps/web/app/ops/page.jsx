@@ -18,14 +18,14 @@ export default async function OpsPage() {
         <p>크롤링 건강도, 유저 저장/리마인드 사용량, 방문자 흐름, 광고 슬롯 상태를 빠르게 체크할 수 있어요.</p>
         {!opsEnabled ? (
           <section className="empty-state">
-            <p>운영 비밀번호 환경변수가 아직 설정되지 않았어요.</p>
-            <span>Vercel에 OPS_DASHBOARD_KEY를 넣으면 보호된 운영 대시보드를 바로 사용할 수 있어요.</span>
+            <p>운영 세션 설정이 아직 준비되지 않았어요.</p>
+            <span>세션 서명용 환경값이 있어야 보호된 운영 대시보드를 사용할 수 있어요.</span>
           </section>
         ) : !authenticated ? (
           <form className="account-form-shell ops-login-form" action="/api/ops/login" method="post">
             <div className="search-stack">
-              <label htmlFor="opsKey">운영 비밀번호</label>
-              <input id="opsKey" name="opsKey" type="password" placeholder="OPS_DASHBOARD_KEY" required />
+              <label htmlFor="opsKey">관리자 비밀번호</label>
+              <input id="opsKey" name="opsKey" type="password" placeholder="등록된 관리자 비밀번호" required />
             </div>
             <button type="submit">대시보드 열기</button>
           </form>
