@@ -790,7 +790,7 @@ input, select {
 .detail-summary-grid {
   margin-top: 18px;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 .detail-summary-card {
@@ -808,6 +808,11 @@ input, select {
 .detail-summary-card strong {
   font-size: 1.08rem;
   line-height: 1.35;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+}
+.detail-summary-card-benefit {
+  min-width: 0;
 }
 .detail-summary-card small {
   color: var(--muted);

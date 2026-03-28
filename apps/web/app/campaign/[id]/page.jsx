@@ -13,8 +13,7 @@ import {
   getConfidence,
   getDeadlineState
 } from '@/lib/format';
-import { buildSourceInsights } from '@/lib/source-insights';
-import { getCampaignById, getCampaignCount, getCampaignSnapshotRawPayload, getRelatedCampaigns, getVisitorCounts } from '@/lib/supabase';
+import { getCampaignById, getCampaignCount, getRelatedCampaigns, getVisitorCounts } from '@/lib/supabase';
 import { SiteShell } from '@/components/site-shell';
 import { VisitorWidget } from '@/components/visitor-widget';
 
@@ -22,11 +21,10 @@ export const dynamic = 'force-dynamic';
 
 export default async function CampaignDetailPage({ params }) {
   const { id } = await params;
-  const [campaign, counts, campaignCount, rawPayload] = await Promise.all([
+  const [campaign, counts, campaignCount] = await Promise.all([
     getCampaignById(id),
     getVisitorCounts(),
-    getCampaignCount(),
-    getCampaignSnapshotRawPayload(id)
+    getCampaignCount()
   ]);
 
   if (!campaign) {
@@ -39,7 +37,6 @@ export default async function CampaignDetailPage({ params }) {
   const kakaoMapUrl = getInternalMapLaunchUrl(campaign, 'kakao');
   const relatedCampaigns = await getRelatedCampaigns(campaign);
   const detailImage = getDetailImageSrc(campaign.thumbnail_url);
-  const sourceInsights = buildSourceInsights(campaign, rawPayload);
 
   return (
     <SiteShell campaignCount={campaignCount} visitorWidget={<VisitorWidget initialCounts={counts} />}>
@@ -73,7 +70,7 @@ export default async function CampaignDetailPage({ params }) {
             </div>
 
             <div className="detail-summary-grid">
-              <div className="detail-summary-card">
+              <div className="detail-summary-card detail-summary-card-benefit">
                 <span>혜택</span>
                 <strong>{campaign.benefit_text || '미공개'}</strong>
               </div>
@@ -142,24 +139,10 @@ export default async function CampaignDetailPage({ params }) {
                 <dd>{formatRegion(campaign)}</dd>
               </div>
               <div>
-                <dt>마지막 갱신</dt>
-                <dd>{new Date(campaign.last_seen_at).toLocaleString('ko-KR')}</dd>
-              </div>
-              <div>
                 <dt>원문 링크</dt>
                 <dd className="break-anywhere">{campaign.original_url}</dd>
               </div>
             </dl>
-            {sourceInsights ? (
-              <div className="board-locked-meta detail-inline-notes">
-                <strong>{sourceInsights.title}</strong>
-                <ul>
-                  {sourceInsights.items.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
           </article>
 
           <article className="info-panel">
