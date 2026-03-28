@@ -10,6 +10,21 @@ function uniquePush(items, value) {
   }
 }
 
+function summarizeHashtags(value, limit = 3) {
+  const tags = String(value || '')
+    .split(/[\s,]+/)
+    .map((item) => item.trim())
+    .filter((item) => item.startsWith('#'));
+  if (!tags.length) {
+    return null;
+  }
+  const shown = tags.slice(0, limit);
+  const remaining = tags.length - shown.length;
+  return remaining > 0
+    ? `원문 키워드: ${shown.join(' ')} 외 ${remaining}개`
+    : `원문 키워드: ${shown.join(' ')}`;
+}
+
 function addKeywordNote(items, text, pattern, formatter = (value) => value) {
   const normalized = formatText(text);
   if (!normalized) {
@@ -30,7 +45,12 @@ function buildGenericNotes(campaign, rawPayload) {
   if (campaign.campaign_type === 'visit' && campaign.exact_location) {
     uniquePush(notes, `방문 위치: ${campaign.exact_location}`);
   }
-  if (campaign.snippet && campaign.snippet !== campaign.benefit_text && campaign.snippet !== campaign.title) {
+  if (
+    campaign.snippet &&
+    campaign.snippet !== campaign.benefit_text &&
+    campaign.snippet !== campaign.title &&
+    !campaign.snippet.includes('#')
+  ) {
     uniquePush(notes, campaign.snippet);
   }
   if (rawPayload?.site_url) {
@@ -153,14 +173,7 @@ function buildRevuNotes(campaign) {
 }
 
 function buildFourBlogNotes(campaign) {
-  const notes = buildGenericNotes(campaign, {});
-  if (/키워드|#/.test(formatText(campaign.snippet))) {
-    uniquePush(notes, campaign.snippet);
-  }
-  if (!notes.length) {
-    uniquePush(notes, '포블로그는 제공내역과 키워드가 함께 내려오는 편이라 원문 키워드를 같이 보는 게 좋아요.');
-  }
-  return notes;
+  return [];
 }
 
 function buildDinnerqueenNotes(campaign) {
