@@ -19,17 +19,14 @@ on:
         required: true
         default: false
         type: boolean
-  push:
-    branches:
-      - ringble-refresh-20260328
 
 concurrency:
-  group: source-refresh-${{ github.event_name == 'push' && 'ringble' || inputs.source }}
+  group: source-refresh-${{ inputs.source }}
   cancel-in-progress: true
 
 jobs:
   refresh:
-    if: github.event_name == 'push' || inputs.source != 'modan'
+    if: inputs.source != 'modan'
     runs-on: ubuntu-latest
     timeout-minutes: ${{ inputs.source == 'seouloppa' && 60 || 35 }}
     steps:
@@ -54,18 +51,12 @@ jobs:
           REVU_PASSWORD: ${{ secrets.REVU_PASSWORD }}
           CRAWLER_DRY_RUN: "false"
         run: |
-          if [ "${{ github.event_name }}" = "push" ]; then
-            python -m crawler.cli run-source "ringble" \
-              --write \
-              --delete-before-refresh
-          else
-            python -m crawler.cli run-source "${{ inputs.source }}" \
-              --write \
-              ${{ inputs.delete_before_refresh && '--delete-before-refresh' || '' }}
-          fi
+          python -m crawler.cli run-source "${{ inputs.source }}" \
+            --write \
+            ${{ inputs.delete_before_refresh && '--delete-before-refresh' || '' }}
 
   refresh-modan:
-    if: github.event_name == 'workflow_dispatch' && inputs.source == 'modan'
+    if: inputs.source == 'modan'
     runs-on: macos-14
     timeout-minutes: 45
     steps:
