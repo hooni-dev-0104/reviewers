@@ -1487,17 +1487,31 @@ class ModanSourceAdapter(PlaceholderSourceAdapter):
     def fetch(self) -> list[dict]:
         items: list[dict] = []
         seen_urls: set[str] = set()
+        fetch_errors: list[str] = []
 
         for board_path, category_name, default_campaign_type in self.board_configs:
             for page in range(1, self.page_limit + 1):
                 listing_url = _build_modan_listing_url(board_path, page)
-                try:
-                    listing_html = fetch_text_url(
-                        listing_url,
-                        headers=MODAN_BROWSER_HEADERS,
-                        timeout=MODAN_FETCH_TIMEOUT,
-                    )
-                except Exception:
+                listing_candidates = [listing_url]
+                if page == 1:
+                    listing_candidates.insert(0, f"https://www.modan.kr/{board_path.strip('/')}")
+                listing_html = None
+                last_error: Exception | None = None
+                for candidate_url in dict.fromkeys(listing_candidates):
+                    try:
+                        listing_html = fetch_text_url(
+                            candidate_url,
+                            headers={**MODAN_BROWSER_HEADERS, "Referer": "https://www.modan.kr/"},
+                            timeout=MODAN_FETCH_TIMEOUT,
+                        )
+                        break
+                    except Exception as exc:
+                        last_error = exc
+                if not listing_html:
+                    if last_error:
+                        fetch_errors.append(
+                            f"listing fetch failed: {board_path} page={page} :: {_format_source_exception(last_error)}"
+                        )
                     break
 
                 batch = parse_modan_listing(
@@ -1508,6 +1522,7 @@ class ModanSourceAdapter(PlaceholderSourceAdapter):
                     source_id=self.definition.source_id,
                 )
                 if not batch:
+                    fetch_errors.append(f"listing parsed zero items: {board_path} page={page} bytes={len(listing_html)}")
                     break
 
                 new_count = 0
@@ -1546,6 +1561,9 @@ class ModanSourceAdapter(PlaceholderSourceAdapter):
             except Exception:
                 detail_html = None
             enriched.append(enrich_modan_detail(item, detail_html) if detail_html else item)
+        print(f"[modan] fetched listing_items={len(items)} detail_targets={len(detail_urls)} errors={len(fetch_errors)}")
+        for error in fetch_errors[:20]:
+            print(f"[modan] {error}")
         return enriched
 
 
