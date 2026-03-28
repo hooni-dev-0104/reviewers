@@ -346,6 +346,25 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(transformed["region_secondary_name"], "수성구")
         self.assertIn("#테스트", transformed["snippet"])
 
+    def test_transform_4blog_item_keeps_benefit_parenthesis_when_keywords_follow(self):
+        raw = {
+            "CID": 389914,
+            "CAMPAIGN_NM": "[방문] 테스트 식당",
+            "LOCATION_NM": "",
+            "REVIEWER_BENEFIT": "2인 식사권 (35000원 상당 ) #옥포고기집 #옥포막창",
+            "REMAINDATE": 1,
+            "CATEGORY": "blog",
+            "CATEGORY1": "",
+            "PRID": 456,
+            "IMGKEY": "image.jpg",
+            "REQ_CLOSE_DT": "03.27",
+            "REQ_OPEN_DT": "03.20",
+            "REVIEWER_CNT": 5,
+            "KEYWORD": "#옥포고기집 #옥포막창",
+        }
+        transformed = transform_4blog_item(raw)
+        self.assertEqual(transformed["benefit_text"], "2인 식사권 (35000원 상당)")
+
     def test_enrich_4blog_item_from_detail(self):
         item = {
             "title": "테스트 캠페인",

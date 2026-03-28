@@ -1750,7 +1750,7 @@ def transform_4blog_item(item: dict, source_id: str | None = None) -> dict:
     snippet_parts = [item.get("REVIEWER_BENEFIT"), item.get("KEYWORD")]
     snippet = " ".join(part.strip() for part in snippet_parts if isinstance(part, str) and part.strip()) or None
 
-    benefit_text = _extract_primary_desc(item.get("REVIEWER_BENEFIT")) or _normalize_benefit_text(item.get("REVIEWER_BENEFIT"))
+    benefit_text = _clean_4blog_benefit_text(item.get("REVIEWER_BENEFIT"))
 
     return {
         "source_id": source_id,
@@ -2905,6 +2905,17 @@ def _extract_primary_desc(desc: str | None) -> str | None:
         return None
     text = re.split(r"\s+\*\*|\s+-\s+(?=[가-힣A-Za-z(])|(?<=상당)\s+", text, maxsplit=1)[0].strip()
     return text or None
+
+
+def _clean_4blog_benefit_text(value: str | None) -> str | None:
+    text = _normalize_benefit_text(value)
+    if not text:
+        return None
+    if "#" in text:
+        text = text.split("#", 1)[0].strip()
+    text = re.sub(r"\(\s+", "(", text)
+    text = re.sub(r"\s+\)", ")", text)
+    return text.strip(" -/|") or None
 
 
 def _extract_chehumview_benefit(detail: dict | None = None, item: dict | None = None) -> str | None:
