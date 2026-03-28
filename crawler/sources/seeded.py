@@ -3004,7 +3004,7 @@ def get_adapter(source_slug: str, source_file: str | None = None, report_mode: b
     if source_slug == "seouloppa":
         return SeoulOppaSourceAdapter(definition, detail_limit=12 if report_mode else 80)
     if source_slug == "ringble":
-        return RingbleSourceAdapter(definition, page_limit=2 if report_mode else 8, detail_limit=16 if report_mode else 120)
+        return RingbleSourceAdapter(definition, page_limit=2 if report_mode else 8, detail_limit=16 if report_mode else None)
     if source_slug == "gangnammatzip":
         return GangnamMatzipSourceAdapter(definition, detail_limit=10 if report_mode else 120)
     return PlaceholderSourceAdapter(definition)

@@ -90,11 +90,25 @@ function buildSeoulOppaNotes(campaign, rawPayload) {
 }
 
 function buildReviewnoteNotes(campaign) {
-  return buildGenericNotes(campaign, {});
+  const notes = buildGenericNotes(campaign, {});
+  if (/페이백|구매가/.test(formatText(campaign.snippet))) {
+    uniquePush(notes, campaign.snippet);
+  }
+  if (!notes.length) {
+    uniquePush(notes, '리뷰노트는 포인트/구매가 조건이 함께 붙는 경우가 많아 원문 확인이 중요해요.');
+  }
+  return notes;
 }
 
 function buildGangnamMatzipNotes(campaign) {
-  return buildGenericNotes(campaign, {});
+  const notes = buildGenericNotes(campaign, {});
+  if (/가이드|자세한 상품/.test(formatText(campaign.benefit_text))) {
+    uniquePush(notes, '제공 상세는 원문 가이드에서 한 번 더 확인하는 편이 좋아요.');
+  }
+  if (!notes.length) {
+    uniquePush(notes, '강남맛집은 체험권/가이드 조건이 함께 붙는 경우가 많아요.');
+  }
+  return notes;
 }
 
 function buildMrblogNotes(campaign) {
@@ -102,19 +116,43 @@ function buildMrblogNotes(campaign) {
   if (/영수증리뷰|캠페인미션|개인부담|예약/.test(formatText(campaign.benefit_text))) {
     uniquePush(notes, campaign.benefit_text);
   }
+  if (!notes.length) {
+    uniquePush(notes, '미블은 영수증 리뷰·예약·개인부담 조건이 원문에 길게 붙는 경우가 많아요.');
+  }
   return notes;
 }
 
 function buildRevuNotes(campaign) {
-  return buildGenericNotes(campaign, {});
+  const notes = buildGenericNotes(campaign, {});
+  if (/콘텐츠|예약|테이크아웃/.test(formatText(campaign.snippet))) {
+    uniquePush(notes, campaign.snippet);
+  }
+  if (!notes.length) {
+    uniquePush(notes, '레뷰는 예약 여부, 콘텐츠 개수, 테이크아웃 같은 추가 조건이 원문에 붙는 경우가 있어요.');
+  }
+  return notes;
 }
 
 function buildFourBlogNotes(campaign) {
-  return buildGenericNotes(campaign, {});
+  const notes = buildGenericNotes(campaign, {});
+  if (/키워드|#/.test(formatText(campaign.snippet))) {
+    uniquePush(notes, campaign.snippet);
+  }
+  if (!notes.length) {
+    uniquePush(notes, '포블로그는 제공내역과 키워드가 함께 내려오는 편이라 원문 키워드를 같이 보는 게 좋아요.');
+  }
+  return notes;
 }
 
 function buildDinnerqueenNotes(campaign) {
-  return buildGenericNotes(campaign, {});
+  const notes = buildGenericNotes(campaign, {});
+  if (/\[랜덤픽\]/.test(formatText(campaign.title))) {
+    uniquePush(notes, '랜덤픽 캠페인은 일반 체험단보다 별도 미션/선정 조건을 확인해야 해요.');
+  }
+  if (!notes.length) {
+    uniquePush(notes, '디너의여왕은 제공내역 아래 추가금액·참여조건 공지가 함께 붙는 경우가 많아요.');
+  }
+  return notes;
 }
 
 export function buildSourceInsights(campaign, rawPayload) {
