@@ -39,6 +39,9 @@ export default async function OpsBoardDetailPage({ params }) {
         </div>
         <div className="hero-actions">
           <Link href="/ops/board" className="ghost-link">목록으로</Link>
+          <form action={`/api/ops/board/${post.id}/delete`} method="post">
+            <button type="submit" className="board-delete-button">삭제</button>
+          </form>
         </div>
 
         <section className="detail-grid">

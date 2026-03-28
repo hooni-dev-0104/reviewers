@@ -881,11 +881,23 @@ input, select {
   display: flex;
   gap: 10px;
   align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.board-row-head-main {
+  display: flex;
+  gap: 10px;
+  align-items: center;
   flex-wrap: wrap;
 }
 .board-row-head h3 {
   margin: 0;
   font-size: 1rem;
+}
+.board-delete-button {
+  background: #fff1f4 !important;
+  border: 1px solid #ffd2dd !important;
+  color: #cc466b !important;
 }
 .board-row-meta {
   display: flex;

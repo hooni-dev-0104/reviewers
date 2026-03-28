@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { hashPassword, verifyPassword } from '@/lib/auth';
-import { insertRows, selectOne, selectRows } from '@/lib/server-data';
+import { insertRows, selectOne, selectRows, updateRows } from '@/lib/server-data';
 
 const BOARD_VISIBILITIES = new Set(['public', 'private']);
 
@@ -193,4 +193,25 @@ export async function unlockPrivateBoardPost(id, nickname, password) {
   }
 
   return sanitizeBoardPost(row, { includeBody: true });
+}
+
+export async function softDeleteBoardPost(id) {
+  if (!id) {
+    return false;
+  }
+
+  try {
+    await updateRows(
+      'board_posts',
+      { id: `eq.${id}`, is_deleted: 'eq.false' },
+      { is_deleted: true },
+      'return=minimal'
+    );
+    return true;
+  } catch (error) {
+    if (isBoardTableUnavailable(error)) {
+      return false;
+    }
+    throw error;
+  }
 }

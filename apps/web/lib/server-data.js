@@ -75,6 +75,19 @@ export async function deleteRows(table, params = {}) {
   return response.ok;
 }
 
+export async function updateRows(table, params = {}, rows = null, prefer = 'return=representation') {
+  const search = new URLSearchParams(params);
+  const response = await serviceFetch(`/${table}?${search.toString()}`, {
+    method: 'PATCH',
+    headers: { Prefer: prefer },
+    body: JSON.stringify(rows || {})
+  });
+  if (prefer.includes('return=minimal')) {
+    return null;
+  }
+  return response.json();
+}
+
 export async function countRows(table, params = {}) {
   const search = new URLSearchParams({ select: 'id', ...params });
   const response = await serviceFetch(`/${table}?${search.toString()}`, {

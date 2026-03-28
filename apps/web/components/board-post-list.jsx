@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 import { formatBoardDate } from '@/lib/board';
 
-export function BoardPostList({ posts = [], basePath = '/board' }) {
+export function BoardPostList({ posts = [], basePath = '/board', showDelete = false }) {
   if (!posts.length) {
     return (
       <section className="empty-state">
@@ -17,12 +17,19 @@ export function BoardPostList({ posts = [], basePath = '/board' }) {
       {posts.map((post) => (
         <article key={post.id} className="board-row">
           <div className="board-row-head">
-            <span className={`badge ${post.visibility === 'private' ? 'badge-warn' : 'badge-ok'}`}>
-              {post.visibility === 'private' ? '비공개' : '공개'}
-            </span>
-            <h3>
-              <Link href={`${basePath}/${post.id}`}>{post.title}</Link>
-            </h3>
+            <div className="board-row-head-main">
+              <span className={`badge ${post.visibility === 'private' ? 'badge-warn' : 'badge-ok'}`}>
+                {post.visibility === 'private' ? '비공개' : '공개'}
+              </span>
+              <h3>
+                <Link href={`${basePath}/${post.id}`}>{post.title}</Link>
+              </h3>
+            </div>
+            {showDelete ? (
+              <form action={`/api/ops/board/${post.id}/delete`} method="post">
+                <button type="submit" className="board-delete-button">삭제</button>
+              </form>
+            ) : null}
           </div>
           <div className="board-row-meta">
             <span>{post.nickname}</span>
