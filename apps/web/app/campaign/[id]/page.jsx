@@ -126,6 +126,10 @@ export default async function CampaignDetailPage({ params }) {
             <h2>상세정보</h2>
             <dl>
               <div>
+                <dt>혜택</dt>
+                <dd>{campaign.benefit_text || '미공개'}</dd>
+              </div>
+              <div>
                 <dt>출처</dt>
                 <dd>{formatSourceName(campaign.sources)}</dd>
               </div>
