@@ -208,6 +208,15 @@ create table if not exists public.board_posts (
   )
 );
 
+create table if not exists public.ops_access_keys (
+  id uuid primary key default gen_random_uuid(),
+  label text not null unique,
+  passcode_hash text not null,
+  is_active boolean not null default true,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
 create table if not exists public.sponsor_slots (
   id uuid primary key default gen_random_uuid(),
   slot_key text not null,
@@ -253,6 +262,7 @@ create index if not exists idx_user_saved_campaigns_user_id on public.user_saved
 create index if not exists idx_reminder_subscriptions_user_id on public.reminder_subscriptions (user_id, created_at desc);
 create index if not exists idx_board_posts_visibility_created_at on public.board_posts (visibility, created_at desc);
 create index if not exists idx_board_posts_is_deleted_created_at on public.board_posts (is_deleted, created_at desc);
+create index if not exists idx_ops_access_keys_is_active on public.ops_access_keys (is_active, updated_at desc);
 create index if not exists idx_sponsor_slots_slot_key on public.sponsor_slots (slot_key, is_active, priority);
 
 create or replace trigger trg_sources_updated_at
@@ -283,6 +293,10 @@ create or replace trigger trg_board_posts_updated_at
 before update on public.board_posts
 for each row execute function public.set_updated_at();
 
+create or replace trigger trg_ops_access_keys_updated_at
+before update on public.ops_access_keys
+for each row execute function public.set_updated_at();
+
 create or replace trigger trg_sponsor_slots_updated_at
 before update on public.sponsor_slots
 for each row execute function public.set_updated_at();
@@ -301,6 +315,7 @@ alter table public.user_sessions enable row level security;
 alter table public.user_saved_campaigns enable row level security;
 alter table public.reminder_subscriptions enable row level security;
 alter table public.board_posts enable row level security;
+alter table public.ops_access_keys enable row level security;
 alter table public.sponsor_slots enable row level security;
 
 do $$
@@ -356,6 +371,11 @@ begin
     create policy "Service role only board posts" on public.board_posts for all using (false) with check (false);
   end if;
   if not exists (
+    select 1 from pg_policies where schemaname='public' and tablename='ops_access_keys' and policyname='Service role only ops access keys'
+  ) then
+    create policy "Service role only ops access keys" on public.ops_access_keys for all using (false) with check (false);
+  end if;
+  if not exists (
     select 1 from pg_policies where schemaname='public' and tablename='sponsor_slots' and policyname='Public read active sponsor slots'
   ) then
     create policy "Public read active sponsor slots" on public.sponsor_slots for select using (is_active = true);
@@ -409,6 +429,18 @@ on conflict (slug) do update set
   name = excluded.name,
   region_level = excluded.region_level,
   sort_order = excluded.sort_order,
+  updated_at = timezone('utc', now());
+
+insert into public.ops_access_keys (label, passcode_hash, is_active)
+values
+  (
+    'primary-admin',
+    '99ca1c31df7906a2a8ae434c16b24f4a:87099472f0cf254c26e2328190d5a5ed9e6adf354fc1830448e0ff36164df6cf6fdd8f356d7bf3dbe60de6596de185be22b9beea0c1864b65efeb57245391547',
+    true
+  )
+on conflict (label) do update set
+  passcode_hash = excluded.passcode_hash,
+  is_active = excluded.is_active,
   updated_at = timezone('utc', now());
 
 commit;

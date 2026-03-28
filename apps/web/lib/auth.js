@@ -3,7 +3,7 @@ import 'server-only';
 import crypto from 'node:crypto';
 import { cookies } from 'next/headers';
 
-import { deleteRows, insertRows, selectOne } from '@/lib/server-data';
+import { deleteRows, insertRows, selectOne, selectRows } from '@/lib/server-data';
 import { requireEnv } from '@/lib/env';
 
 const SESSION_COOKIE = 'rv_session';
@@ -93,7 +93,32 @@ export function validatePassword(value) {
 }
 
 export function requireOpsKey(input) {
-  return input === requireEnv('OPS_DASHBOARD_KEY');
+  return input === (process.env.OPS_DASHBOARD_KEY || '');
+}
+
+export async function verifyOpsKey(input) {
+  const normalized = String(input || '').trim();
+  if (!normalized) {
+    return false;
+  }
+
+  try {
+    const rows = await selectRows('ops_access_keys', {
+      select: 'passcode_hash',
+      is_active: 'eq.true',
+      limit: '20'
+    });
+    if (Array.isArray(rows) && rows.length) {
+      return rows.some((row) => verifyPassword(normalized, row.passcode_hash));
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error || '');
+    if (!message.includes('ops_access_keys')) {
+      throw error;
+    }
+  }
+
+  return requireOpsKey(normalized);
 }
 
 export function signOpsCookie() {

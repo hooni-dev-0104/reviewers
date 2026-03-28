@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
-import { requireOpsKey, signOpsCookie } from '@/lib/auth';
+import { signOpsCookie, verifyOpsKey } from '@/lib/auth';
 
 export async function POST(request) {
   if (!process.env.OPS_DASHBOARD_KEY) {
@@ -9,7 +9,7 @@ export async function POST(request) {
   }
   const formData = await request.formData();
   const opsKey = String(formData.get('opsKey') || '');
-  if (!requireOpsKey(opsKey)) {
+  if (!(await verifyOpsKey(opsKey))) {
     return NextResponse.redirect(new URL('/ops', request.url));
   }
 
