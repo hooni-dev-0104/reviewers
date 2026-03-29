@@ -310,6 +310,95 @@ a { color: inherit; text-decoration: none; }
   color: #b65c00;
   box-shadow: 0 8px 18px rgba(255, 122, 0, 0.12);
 }
+.board-subpage-shell {
+  gap: 18px;
+}
+.board-subhero-card {
+  align-items: start;
+}
+.board-subhero-copy {
+  gap: 14px;
+}
+.board-subhero-title,
+.board-detail-title {
+  margin: 0;
+  color: #142033;
+  letter-spacing: -0.05em;
+  line-height: 1.12;
+}
+.board-subhero-title {
+  max-width: 10ch;
+  font-size: clamp(2.2rem, 4vw, 3.2rem);
+}
+.board-subhero-description,
+.board-detail-summary {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.68;
+}
+.board-subhero-description {
+  max-width: 34rem;
+  font-size: 1rem;
+}
+.board-secondary-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 18px;
+  border-radius: 16px;
+  border: 1px solid #dce5f1;
+  background: rgba(255, 255, 255, 0.92);
+  color: #213047;
+  font-weight: 700;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.05);
+}
+.board-inline-note {
+  display: grid;
+  gap: 6px;
+  width: min(100%, 17rem);
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.82);
+}
+.board-inline-note strong {
+  font-size: 0.95rem;
+  color: #22334c;
+}
+.board-inline-note span {
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+.board-compose-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(260px, 0.74fr);
+  gap: 16px;
+  align-items: start;
+}
+.board-side-guide {
+  display: grid;
+  gap: 12px;
+  padding: 22px;
+  border-radius: 24px;
+  border: 1px solid #dce5f1;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.05);
+}
+.board-side-guide h2 {
+  margin: 0;
+  font-size: 1.08rem;
+  letter-spacing: -0.03em;
+}
+.board-side-guide ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  display: grid;
+  gap: 10px;
+  line-height: 1.58;
+}
 .filter-shell { border-radius: 24px; padding: 14px; margin-bottom: 16px; display: grid; gap: 10px; background: #ffffff; }
 .search-row {
   display: grid;
@@ -952,15 +1041,32 @@ input, select {
 .board-form-shell {
   border-radius: 24px;
   border: 1px solid var(--line);
-  background: #ffffff;
-  padding: 20px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 251, 255, 0.98) 100%);
+  padding: 22px;
   display: grid;
-  gap: 14px;
+  gap: 16px;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.05);
 }
 .board-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
+}
+.board-field {
+  min-width: 0;
+}
+.board-field-hint,
+.board-submit-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+.board-conditional-field {
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid #f0deab;
+  background: #fffaf0;
 }
 .board-textarea {
   min-height: 220px;
@@ -979,6 +1085,96 @@ input, select {
   height: 1px;
   opacity: 0;
   pointer-events: none;
+}
+.board-form-actions {
+  display: grid;
+  gap: 8px;
+}
+.board-submit-button {
+  width: 100%;
+  min-height: 50px;
+  border-radius: 16px;
+  font-weight: 800;
+}
+.board-detail-hero-card {
+  align-items: start;
+}
+.board-detail-copy {
+  gap: 12px;
+}
+.board-detail-title {
+  font-size: clamp(2rem, 3.8vw, 3rem);
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+}
+.board-detail-summary {
+  max-width: 38rem;
+  font-size: 0.98rem;
+}
+.board-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+.board-detail-meta span:not(.badge) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.8);
+}
+.board-detail-side {
+  gap: 12px;
+}
+.board-detail-grid {
+  align-items: start;
+}
+.board-meta-panel,
+.board-detail-body-card,
+.board-private-gate {
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.05);
+}
+.board-meta-list {
+  display: grid;
+  gap: 14px;
+}
+.board-meta-list div {
+  display: grid;
+  gap: 4px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #edf2f7;
+}
+.board-meta-list div:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+.board-detail-body-card .board-body {
+  color: #22334c;
+  font-size: 0.98rem;
+  line-height: 1.8;
+}
+.board-private-gate {
+  display: grid;
+  gap: 12px;
+}
+.board-private-description {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.board-private-form {
+  gap: 14px;
+  box-shadow: none;
+}
+.board-private-preview {
+  background: linear-gradient(180deg, #fffaf0 0%, #fffdf8 100%);
+}
+.board-private-actions {
+  margin-top: 4px;
 }
 .board-list {
   display: grid;
@@ -1252,6 +1448,9 @@ input, select {
   .hero-panel, .detail-hero, .section-headline, .detail-grid, .trust-grid, .stats-strip, .results-toolbar {
     grid-template-columns: 1fr;
   }
+  .board-compose-grid {
+    grid-template-columns: 1fr;
+  }
   .campaign-grid, .filter-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1281,7 +1480,9 @@ input, select {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: start;
-    gap: 10px;
+    gap: 8px;
+    padding: 12px 14px;
+    border-radius: 20px;
   }
   .footer-bar { flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; }
   .topbar nav, .hero-actions, .stats-strip, .account-group, .reminder-options { flex-wrap: wrap; }
@@ -1297,7 +1498,7 @@ input, select {
     display: grid;
     grid-template-columns: 1fr;
     width: 100%;
-    gap: 10px;
+    gap: 8px;
     align-items: start;
   }
   .topbar-side {
@@ -1310,29 +1511,31 @@ input, select {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     flex-wrap: nowrap;
-    gap: 6px;
-    padding: 4px;
+    gap: 4px;
+    padding: 3px 4px;
     overflow: visible;
   }
   .topbar nav.top-tabs a {
     display: inline-flex !important;
     min-width: 0;
     width: 100%;
-    min-height: 40px;
-    padding: 0 8px;
-    font-size: 0.78rem;
-    line-height: 1;
+    min-height: 38px;
+    padding: 0 6px;
+    font-size: 0.75rem;
+    line-height: 1.05;
     text-align: center;
     white-space: nowrap;
     word-break: normal;
   }
   .visitor-widget {
-    font-size: 0.74rem;
-    padding: 6px 9px;
-    gap: 6px;
+    font-size: 0.71rem;
+    padding: 5px 8px;
+    gap: 5px;
     justify-content: center;
-    min-height: 38px;
+    min-height: 34px;
+    white-space: nowrap;
   }
+  .divider { height: 10px; }
   .decision-panel { padding: 20px; }
   .decision-panel-head h2 { font-size: 1.2rem; }
   .board-page-shell { gap: 16px; }
@@ -1373,6 +1576,40 @@ input, select {
     line-height: 1.5;
     text-align: left;
   }
+  .board-subhero-title,
+  .board-detail-title {
+    max-width: 10ch;
+    font-size: clamp(1.85rem, 9vw, 2.45rem);
+  }
+  .board-subhero-description,
+  .board-detail-summary {
+    max-width: none;
+    font-size: 0.94rem;
+    line-height: 1.58;
+  }
+  .board-secondary-link {
+    width: 100%;
+    min-height: 44px;
+    border-radius: 14px;
+  }
+  .board-inline-note {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 16px;
+  }
+  .board-inline-note span {
+    font-size: 0.82rem;
+  }
+  .board-compose-grid {
+    gap: 14px;
+  }
+  .board-side-guide {
+    padding: 18px;
+    border-radius: 20px;
+  }
+  .board-side-guide h2 {
+    font-size: 1rem;
+  }
   .board-filter-bar {
     gap: 6px;
     padding: 6px;
@@ -1397,6 +1634,44 @@ input, select {
   .board-empty-actions small {
     max-width: 16rem;
     font-size: 0.83rem;
+  }
+  .board-form-shell {
+    padding: 18px;
+    border-radius: 20px;
+    gap: 14px;
+  }
+  .board-field-hint,
+  .board-submit-note {
+    font-size: 0.8rem;
+  }
+  .board-conditional-field {
+    padding: 12px;
+    border-radius: 16px;
+  }
+  .board-submit-button {
+    min-height: 48px;
+    border-radius: 15px;
+  }
+  .board-detail-meta {
+    gap: 6px;
+    font-size: 0.82rem;
+  }
+  .board-detail-meta span:not(.badge) {
+    min-height: 28px;
+    padding: 0 8px;
+  }
+  .board-meta-panel,
+  .board-detail-body-card,
+  .board-private-gate {
+    padding: 18px;
+    border-radius: 20px;
+  }
+  .board-detail-body-card .board-body {
+    font-size: 0.94rem;
+    line-height: 1.72;
+  }
+  .board-private-gate {
+    gap: 10px;
   }
   .board-row {
     padding: 16px;

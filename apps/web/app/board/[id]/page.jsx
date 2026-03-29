@@ -23,22 +23,37 @@ export default async function BoardDetailPage({ params }) {
 
   return (
     <SiteShell campaignCount={campaignCount} visitorWidget={<VisitorWidget initialCounts={counts} />}>
-      <section className="trust-page saved-page">
-        <span className="eyebrow">게시판</span>
-        <h1>{post.title}</h1>
-        <div className="chip-row compact-row">
-          <span>{post.visibility === 'private' ? '비공개 글' : '공개 글'}</span>
-          <span>{post.nickname}</span>
-          <span>{formatBoardDate(post.created_at)}</span>
-        </div>
-        <div className="hero-actions">
-          <Link href="/board" className="ghost-link">목록으로</Link>
+      <section className="trust-page saved-page board-page-shell board-subpage-shell">
+        <div className="board-hero-card board-detail-hero-card">
+          <div className="board-hero-copy board-detail-copy">
+            <span className="eyebrow">게시판</span>
+            <h1 className="board-detail-title">{post.title}</h1>
+            <p className="board-detail-summary">
+              {post.visibility === 'private'
+                ? '비공개 글이라 작성한 닉네임과 비밀번호를 입력해야 본문을 확인할 수 있어요.'
+                : '공개 글이라 누구나 바로 내용을 읽을 수 있어요.'}
+            </p>
+            <div className="board-detail-meta">
+              <span className={`badge ${post.visibility === 'private' ? 'badge-warn' : 'badge-ok'}`}>
+                {post.visibility === 'private' ? '비공개 글' : '공개 글'}
+              </span>
+              <span>{post.nickname}</span>
+              <span>{formatBoardDate(post.created_at)}</span>
+            </div>
+          </div>
+          <div className="board-hero-side board-detail-side">
+            <Link href="/board" className="board-secondary-link">목록으로</Link>
+            <div className="board-inline-note">
+              <strong>작성 정보</strong>
+              <span>{post.nickname} · {formatBoardDate(post.created_at)}</span>
+            </div>
+          </div>
         </div>
 
-        <section className="detail-grid">
-          <article className="info-panel">
+        <section className="detail-grid board-detail-grid">
+          <article className="info-panel board-meta-panel">
             <h2>글 정보</h2>
-            <dl>
+            <dl className="board-meta-list">
               <div>
                 <dt>닉네임</dt>
                 <dd>{post.nickname}</dd>
@@ -55,7 +70,7 @@ export default async function BoardDetailPage({ params }) {
           </article>
 
           {post.visibility === 'public' ? (
-            <article className="info-panel">
+            <article className="info-panel board-detail-body-card">
               <h2>본문</h2>
               <div className="board-body">{post.body}</div>
             </article>
