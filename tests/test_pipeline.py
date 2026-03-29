@@ -1551,6 +1551,35 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(item["region_secondary_name"], "하남시")
         self.assertEqual(item["benefit_text"], "사진 중 택1")
 
+    def test_transform_revu_item_includes_campaign_options_in_benefit(self):
+        item = transform_revu_item(
+            {
+                "id": 1,
+                "title": "[일산] 일영대추나무집_B",
+                "media": "blog",
+                "reviewerLimit": 5,
+                "requestStartedOn": "2026-03-28",
+                "requestEndedOn": "2026-03-30",
+                "status": "REQUEST",
+                "active": True,
+                "thumbnail": "https://files.weble.net/campaign/data/1/thumb.jpg",
+                "brief": "제공내역 중 택 1",
+                "campaignData": {"point": 0, "reward": "제공내역 중 택 1"},
+                "campaignOptions": [
+                    {"name": "선택 1", "value": "삼겹살 2인분 + 돌솥밥 1개 + 된장찌개 + 전"},
+                    {"name": "선택 2", "value": "생 오리고기 2인분 + 돌솥밥 1개 + 콩비지찌개 + 전"},
+                ],
+                "category": ["지역_기타", "방문형"],
+                "localTag": ["고양시"],
+                "venue": {"addressFirst": "경기 고양시 일산동구 어쩌고"},
+            }
+        )
+        self.assertIn("제공내역 중 택 1", item["benefit_text"])
+        self.assertIn("선택 1", item["benefit_text"])
+        self.assertIn("삼겹살 2인분", item["benefit_text"])
+        self.assertIn("선택 2", item["benefit_text"])
+        self.assertIn("생 오리고기 2인분", item["benefit_text"])
+
     def test_parse_mrblog_listing(self):
         html = """
         <a href="https://www.mrblog.net/campaigns/1064298" class="campaign_item">

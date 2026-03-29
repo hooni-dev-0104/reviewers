@@ -1661,6 +1661,28 @@ def _infer_revu_campaign_type(categories: list[str]) -> str:
     return "etc"
 
 
+def _extract_revu_campaign_option_text(options: list[dict[str, Any]] | None) -> str | None:
+    if not isinstance(options, list):
+        return None
+
+    values: list[str] = []
+    for option in options:
+      if not isinstance(option, dict):
+          continue
+      parts = [
+          _normalize_benefit_text(option.get("name")),
+          _normalize_benefit_text(option.get("value")),
+          _normalize_benefit_text(option.get("label")),
+          _normalize_benefit_text(option.get("description")),
+      ]
+      text = " ".join(part for part in parts if part)
+      text = _normalize_benefit_text(text)
+      if text and text not in values:
+          values.append(text)
+
+    return " / ".join(values) if values else None
+
+
 def transform_revu_item(item: dict, source_id: str | None = None) -> dict:
     categories = item.get("category") or []
     if not isinstance(categories, list):
@@ -1698,7 +1720,8 @@ def transform_revu_item(item: dict, source_id: str | None = None) -> dict:
             reward_bits.append(f"{int(coupon_data['customerPrice']):,}원 상당")
         if coupon_data.get("supplyPrice"):
             reward_bits.append(f"제공가 {int(coupon_data['supplyPrice']):,}원")
-    benefit_text = _combine_benefit_parts(item.get("brief"), campaign_data.get("reward"), " / ".join(reward_bits))
+    option_text = _extract_revu_campaign_option_text(item.get("campaignOptions"))
+    benefit_text = _combine_benefit_parts(item.get("brief"), campaign_data.get("reward"), " / ".join(reward_bits), option_text)
 
     raw_media = str(item.get("media") or "").lower()
     title = (item.get("title") or item.get("item") or "").strip()
@@ -1728,6 +1751,7 @@ def transform_revu_item(item: dict, source_id: str | None = None) -> dict:
             "campaign_coupon_data": coupon_data,
             "required_post_count": item.get("requiredPostCount"),
             "campaign_options": item.get("campaignOptions"),
+            "campaign_option_text": option_text,
         },
     }
 
