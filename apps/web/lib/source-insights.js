@@ -150,6 +150,20 @@ function buildGangnamMatzipNotes(campaign) {
   return notes;
 }
 
+function buildNolowaNotes(campaign, rawPayload) {
+  const notes = buildGenericNotes(campaign, rawPayload);
+  if (campaign.exact_location) {
+    uniquePush(notes, `방문 주소: ${campaign.exact_location}`);
+  }
+  if (/원고료|기자단/.test(formatText(campaign.benefit_text || campaign.snippet))) {
+    uniquePush(notes, '기자단/원고료형은 제공 조건과 작성 가이드를 원문에서 함께 확인하는 편이 좋아요.');
+  }
+  if (!notes.length) {
+    uniquePush(notes, '놀러와는 제공내역, 리뷰 기간, 참고사항을 함께 확인하면 판단이 쉬워요.');
+  }
+  return notes;
+}
+
 function buildMrblogNotes(campaign) {
   const notes = buildGenericNotes(campaign, {});
   if (/영수증리뷰|캠페인미션|개인부담|예약/.test(formatText(campaign.benefit_text))) {
@@ -199,6 +213,7 @@ export function buildSourceInsights(campaign, rawPayload) {
     seouloppa: buildSeoulOppaNotes,
     reviewnote: buildReviewnoteNotes,
     gangnammatzip: buildGangnamMatzipNotes,
+    nolowa: buildNolowaNotes,
     mrblog: buildMrblogNotes,
     revu: buildRevuNotes,
     '4blog': buildFourBlogNotes,

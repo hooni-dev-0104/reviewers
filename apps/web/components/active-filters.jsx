@@ -13,6 +13,7 @@ const LABELS = {
     revu: '레뷰',
     dinnerqueen: '디너의여왕',
     ringble: '링블',
+    nolowa: '놀러와',
     '4blog': '포블로그'
   },
   platform: {

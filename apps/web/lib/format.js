@@ -20,7 +20,8 @@ const SOURCE_TONES = {
   revu: 'violet',
   reviewnote: 'blue',
   '4blog': 'emerald',
-  dinnerqueen: 'rose'
+  dinnerqueen: 'rose',
+  nolowa: 'amber'
 };
 
 const NON_LOCATION_TAGS = new Set(['배송형', '구매평', '기자단', '방문형', '클립', '서비스', '블로그', '인스타', '유튜브', '릴스']);
