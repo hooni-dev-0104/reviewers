@@ -5,3 +5,4 @@
 - After implementing a clearly scoped feature, continue through commit and push to `main` unless the user gives a different delivery instruction.
 - Commit messages must be written in Korean as a single sentence, start with a work-type prefix such as `feat`, `bugfix`, or `chore`, and clearly summarize the implemented change.
 - Run `git add`, `git commit`, and `git push` autonomously without asking for separate conversational permission when they are the natural completion steps for the current task.
+- When `git add`, `git commit`, or `git push` are the natural next steps, execute them immediately without a separate explanatory preamble in the chat.
