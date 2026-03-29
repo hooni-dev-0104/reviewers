@@ -1565,6 +1565,8 @@ input, select {
   .board-hero-side {
     justify-items: stretch;
     gap: 10px;
+    width: 100%;
+    margin-left: 0;
   }
   .board-write-link {
     width: 100%;
