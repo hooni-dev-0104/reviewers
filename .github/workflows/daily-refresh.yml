@@ -78,6 +78,9 @@ jobs:
           - source: ringble
             runner: ubuntu-latest
             timeout_minutes: 30
+          - source: nolowa
+            runner: ubuntu-latest
+            timeout_minutes: 30
           - source: gangnammatzip
             runner: ubuntu-latest
             timeout_minutes: 25

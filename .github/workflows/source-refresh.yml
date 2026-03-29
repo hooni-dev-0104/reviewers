@@ -18,6 +18,7 @@ on:
           - revu
           - seouloppa
           - ringble
+          - nolowa
           - gangnammatzip
       delete_before_refresh:
         description: "Delete existing rows before refresh"

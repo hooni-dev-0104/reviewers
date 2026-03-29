@@ -21,22 +21,27 @@ from crawler.sources.seeded import (
     DinnerQueenSourceAdapter,
     GangnamMatzipSourceAdapter,
     ModanSourceAdapter,
+    NolowaSourceAdapter,
     RingbleSourceAdapter,
     SEEDED_SOURCES,
     SeoulOppaSourceAdapter,
     ReviewPlaceSourceAdapter,
     _build_gangnammatzip_ajax_url,
+    _build_nolowa_listing_url,
     _build_seouloppa_ajax_payload,
     _estimate_deadline_from_d_label,
     _extract_gangnammatzip_listing_urls,
+    _extract_nolowa_listing_urls,
     _extract_seouloppa_listing_urls,
     enrich_4blog_item_from_detail,
     enrich_gangnammatzip_detail,
     enrich_modan_detail,
+    enrich_nolowa_detail,
     enrich_ringble_detail,
     enrich_reviewplace_detail,
     enrich_seouloppa_detail,
     parse_modan_listing,
+    parse_nolowa_listing,
     parse_ringble_listing,
     parse_reviewplace_listing,
     parse_mrblog_listing,
@@ -1224,6 +1229,169 @@ class PipelineTests(unittest.TestCase):
             items = GangnamMatzipSourceAdapter(SEEDED_SOURCES["gangnammatzip"], detail_limit=1).fetch()
 
         self.assertEqual(len(items), 2)
+
+    def test_extract_nolowa_listing_urls_discovers_subcategory_links(self):
+        html = """
+        <a href="/item_list.php?category_id=001&sst=it_datetime&sod=desc">전체보기</a>
+        <a href="/item_list.php?category_id=001012&sst=it_datetime&sod=desc">맛집</a>
+        <a href="/item_list.php?category_id=002010&sst=it_datetime&sod=desc">식품</a>
+        <a href="/item_list.php?category_id=004&sst=it_datetime&sod=desc">기자단</a>
+        """
+        urls = _extract_nolowa_listing_urls(html, current_url="https://cometoplay.kr/item_list.php?category_id=001")
+        self.assertIn("https://cometoplay.kr/item_list.php?category_id=001012&sst=it_datetime&sod=desc", urls)
+        self.assertIn("https://cometoplay.kr/item_list.php?category_id=002010&sst=it_datetime&sod=desc", urls)
+        self.assertIn("https://cometoplay.kr/item_list.php?category_id=004&sst=it_datetime&sod=desc", urls)
+
+    def test_build_nolowa_listing_url_preserves_sort_and_page(self):
+        url = _build_nolowa_listing_url(
+            "https://cometoplay.kr/item_list.php?category_id=001012&sst=it_payenddate&sod=asc",
+            page=3,
+        )
+        self.assertIn("category_id=001012", url)
+        self.assertIn("sst=it_payenddate", url)
+        self.assertIn("sod=asc", url)
+        self.assertIn("page=3", url)
+
+    def test_parse_nolowa_listing(self):
+        html = """
+        <li>
+          <div class="thumb">
+            <a href="item.php?it_id=1774574207&category_id=004"><img src="./data/list/thumb/thumb-1774574236ECA784_270x270.jpg" alt="" class="it_img"></a>
+          </div>
+          <a href="item.php?it_id=1774574207&category_id=004">
+            <div class="it_info">
+              <span class="it_name">[서울 강서] 프라이빗 필라테스 기자단</span>
+              <span class="it_description">#원고료지급 #기자단</span>
+            </div>
+            <div class="option_re">
+              <span class="txt_num">D-day 11</span>
+              <i class="blog"></i>
+              <span class="peo_cnt">신청 <b class="txt_num point_color4">26</b> 명  / 모집 <b class="txt_num" style="color:#666;">2</b> 명</span>
+            </div>
+          </a>
+        </li>
+        """
+        items = parse_nolowa_listing(html)
+        self.assertEqual(len(items), 1)
+        item = items[0]
+        self.assertEqual(item["title"], "프라이빗 필라테스 기자단")
+        self.assertEqual(item["original_url"], "https://cometoplay.kr/item.php?it_id=1774574207")
+        self.assertEqual(item["platform_type"], "blog")
+        self.assertEqual(item["campaign_type"], "content")
+        self.assertEqual(item["region_primary_name"], "서울")
+        self.assertEqual(item["region_secondary_name"], "강서")
+        self.assertEqual(item["recruit_count"], 2)
+
+    def test_enrich_nolowa_detail_extracts_visit_fields_and_coordinates(self):
+        item = {
+            "title": "기본 제목",
+            "original_url": "https://cometoplay.kr/item.php?it_id=1774576117",
+            "platform_type": "blog",
+            "campaign_type": "visit",
+            "snippet": "#중식당 #짬뽕맛집 #목화탕수육",
+            "raw_payload": {"listing_category_id": "001"},
+        }
+        detail_html = """
+        <meta property="og:title" content="생생정보통 죽전 특급호텔 출신 오너쉐프의 중식맛집! [홍춘]" />
+        <meta property="og:description" content="#중식당 #짬뽕맛집 #목화탕수육" />
+        <span class="tit_cate"><img src="/skin/demo/img/dot.png"> 지역 <img src="/skin/demo/img/arrow.png"> 맛집 <img src="/skin/demo/img/arrow.png"> 경기 <img src="/skin/demo/img/arrow.png"> 성남/용인 </span>
+        <span class="blog">네이버블로그</span>
+        <div class="review_wrap">
+          <span class="box01"><em>리뷰어 신청</em> 03.27 ~ 04.01</span>
+          <span class="box01"><em class="txt_color">리뷰어 선정</em> <span class="txt_color">04.02</span></span>
+        </div>
+        <div class="etc_list2">
+          <span class="tit_etc2">제공내역</span>
+          <span class="etc2 font_1">목화탕수육(소)+홍춘짬뽕 (60,000원 상당)</span>
+        </div>
+        <div class="etc_list">
+          <span class="tit_etc">모집인원</span>
+          <span class="etc font_1"><span> 신청인원 <b style="color:#ff4e00;">11</b> / 모집인원 <b>10 </b></span></span>
+        </div>
+        <li class="tit">업체주소</li>
+        <li class="info">경기도 용인시 수지구 죽전로 168번길 29 1층<div id="map"></div></li>
+        <script>
+        var mapOption = {
+            center: new kakao.maps.LatLng(37.3241994053158, 127.126061866936),
+            level: 3
+        };
+        </script>
+        """
+        enriched = enrich_nolowa_detail(item, detail_html)
+        self.assertEqual(enriched["platform_type"], "blog")
+        self.assertEqual(enriched["category_name"], "맛집")
+        self.assertEqual(enriched["subcategory_name"], "경기")
+        self.assertEqual(enriched["region_primary_name"], "경기")
+        self.assertEqual(enriched["apply_deadline"], "2026-04-01")
+        self.assertEqual(enriched["published_at"], "2026-03-27")
+        self.assertEqual(enriched["benefit_text"], "목화탕수육(소)+홍춘짬뽕 (60,000원 상당)")
+        self.assertEqual(enriched["recruit_count"], 10)
+        self.assertEqual(enriched["exact_location"], "경기도 용인시 수지구 죽전로 168번길 29 1층")
+        self.assertAlmostEqual(enriched["latitude"], 37.3241994053158)
+        self.assertAlmostEqual(enriched["longitude"], 127.126061866936)
+
+    def test_nolowa_adapter_discovers_subcategory_pages_without_truncating_list(self):
+        region_listing = """
+        <a href="/item_list.php?category_id=001012&sst=it_datetime&sod=desc">맛집</a>
+        <div class="item_box_list"><ul>
+        <li>
+          <div class="thumb"><a href="item.php?it_id=1&category_id=001"><img src="./data/list/thumb/1.jpg" class="it_img"></a></div>
+          <a href="item.php?it_id=1&category_id=001"><div class="it_info"><span class="it_name">[서울 강남] A</span><span class="it_description">#맛집</span></div><div class="option_re"><span class="txt_num">D-day 3</span><i class="blog"></i><span class="peo_cnt">신청 <b>1</b> 명  / 모집 <b>5</b> 명</span></div></a>
+        </li>
+        <div class='paging'><a href='?category_id=001&sst=it_datetime&sod=desc&page=2' class='num_box'>2</a></div>
+        </ul></div>
+        """
+        region_listing_page2 = """
+        <div class="item_box_list"><ul>
+        <li>
+          <div class="thumb"><a href="item.php?it_id=2&category_id=001"><img src="./data/list/thumb/2.jpg" class="it_img"></a></div>
+          <a href="item.php?it_id=2&category_id=001"><div class="it_info"><span class="it_name">[서울 송파] B</span><span class="it_description">#카페</span></div><div class="option_re"><span class="txt_num">D-day 2</span><i class="blog"></i><span class="peo_cnt">신청 <b>0</b> 명  / 모집 <b>4</b> 명</span></div></a>
+        </li>
+        </ul></div>
+        """
+        subcategory_listing = """
+        <div class="item_box_list"><ul>
+        <li>
+          <div class="thumb"><a href="item.php?it_id=1&category_id=001012"><img src="./data/list/thumb/1.jpg" class="it_img"></a></div>
+          <a href="item.php?it_id=1&category_id=001012"><div class="it_info"><span class="it_name">[서울 강남] A</span><span class="it_description">#맛집</span></div><div class="option_re"><span class="txt_num">D-day 3</span><i class="blog"></i><span class="peo_cnt">신청 <b>1</b> 명  / 모집 <b>5</b> 명</span></div></a>
+        </li>
+        <li>
+          <div class="thumb"><a href="item.php?it_id=3&category_id=001012"><img src="./data/list/thumb/3.jpg" class="it_img"></a></div>
+          <a href="item.php?it_id=3&category_id=001012"><div class="it_info"><span class="it_name">[서울 마포] C</span><span class="it_description">#브런치</span></div><div class="option_re"><span class="txt_num">D-day 1</span><i class="blog"></i><span class="peo_cnt">신청 <b>2</b> 명  / 모집 <b>3</b> 명</span></div></a>
+        </li>
+        </ul></div>
+        """
+        product_listing = "<div class='item_box_list'><ul></ul></div>"
+        reporter_listing = "<div class='item_box_list'><ul></ul></div>"
+        detail_html = """
+        <meta property="og:title" content="[서울 강남] 테스트 캠페인" />
+        <meta property="og:description" content="#테스트" />
+        <span class="tit_cate">지역 맛집 서울 강남</span>
+        <span class="blog">네이버블로그</span>
+        <div class="review_wrap"><span class="box01"><em>리뷰어 신청</em> 03.27 ~ 04.01</span></div>
+        <div class="etc_list2"><span class="tit_etc2">제공내역</span><span class="etc2">테스트 제공</span></div>
+        """
+
+        def fake_fetch_text_url(url, *args, **kwargs):
+            if "category_id=001012" in url and "page=" not in url:
+                return subcategory_listing
+            if "category_id=001&" in url and "page=2" in url:
+                return region_listing_page2
+            if "category_id=001" in url:
+                return region_listing
+            if "category_id=002" in url:
+                return product_listing
+            if "category_id=004" in url:
+                return reporter_listing
+            if "item.php?it_id=" in url:
+                return detail_html
+            raise AssertionError(f"unexpected url {url}")
+
+        with mock.patch("crawler.sources.seeded.fetch_text_url", side_effect=fake_fetch_text_url):
+            items = NolowaSourceAdapter(SEEDED_SOURCES["nolowa"], page_limit=2, detail_limit=1).fetch()
+
+        self.assertEqual(len(items), 3)
+        self.assertEqual(len({item["original_url"] for item in items}), 3)
 
     def test_transform_reviewnote_api_item(self):
         item = transform_reviewnote_api_item(

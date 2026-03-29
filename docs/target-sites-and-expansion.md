@@ -152,7 +152,7 @@ The current next-wave recommendation after `chehumview` and `reviewplace` is:
 | --- | --- | --- | --- | --- | --- | --- |
 | 1 | 모두의체험단 | `modan` | `https://modan.kr` | ✅ Implemented on 2026-03-28. Main boards (`matzip`, `beauty`, `lodging`, `product`, `delivery`, `culture`, `various`, `reporters`) now flow through the seeded adapter. | Public HTML boards plus `/<board>/?idx=` detail pages | Medium |
 | 2 | 링블 | `ringble` | `https://ringble.co.kr` | Lower parser complexity than other long-tail sites; public category + detail pages with clear pagination | `category.php?category=...`, `detail.php?number=...&category=...`, `start=` pagination | Low |
-| 3 | 놀러와 | `nolowa` | `https://cometoplay.kr` | Public enough to crawl and likely useful for visit/delivery supply, but more brittle than 링블 | `item_list.php?category_id=...`, `item.php?category_id=...&it_id=...`, `page=` pagination | Medium |
+| 3 | 놀러와 | `nolowa` | `https://cometoplay.kr` | ✅ Implemented on 2026-03-29. Base category discovery, subcategory pagination, canonical detail dedupe, and detail enrichment now flow through the seeded adapter. | `item_list.php?category_id=...`, `item.php?category_id=...&it_id=...`, `page=` pagination | Medium |
 
 ### Why these three
 
@@ -212,6 +212,10 @@ The current next-wave recommendation after `chehumview` and `reviewplace` is:
   - relatively low; likely a plain HTML parser with lightweight pagination handling
 
 #### 3) 놀러와 (`nolowa`)
+- Status:
+  - implemented in `crawler/sources/seeded.py`
+  - covered by `tests/test_pipeline.py`
+  - wired into `source-refresh`, `daily-refresh`, and public-source reporting
 - Observed list route family:
   - `item_list.php?category_id=<id>`
 - Observed detail route family:
@@ -234,7 +238,7 @@ The current next-wave recommendation after `chehumview` and `reviewplace` is:
 
 1. verify live `modan` source-refresh counts and tune detail limits if needed
 2. implement `ringble`
-3. implement `nolowa`
+3. verify live `nolowa` source-refresh counts and tune detail limits / category discovery if needed
 
 ### Gate before implementation
 
@@ -243,3 +247,11 @@ Before starting each:
 - capture one list page + one detail page fixture
 - confirm pagination stop condition
 - confirm at least `title`, `original_url`, and one of `benefit_text` / `snippet` are stably extractable
+
+## Redis-based performance follow-ups
+
+- Cache `nolowa` listing HTML by `category_id + page + sort` with a short TTL (for example 15-30 minutes) so repeated refreshes or manual retries do not re-download the same list pages.
+- Cache detail HTML by canonical `original_url` with a longer TTL (for example 12-24 hours) and reuse it across dry-runs, reports, and refresh retries.
+- Cache normalized geocoding results by `exact_location` so address-heavy visit campaigns do not repeatedly spend external geocoder budget.
+- Keep a Redis set of `source_slug + original_url` seen during a refresh window to avoid duplicate detail fetches when the same campaign appears in parent and subcategory pages.
+- Use Redis-backed rate-limit tokens if source refresh moves to parallel workers or multiple runners, so listing/detail concurrency can increase without spiking source load.

@@ -27,6 +27,7 @@ class PipelineStats:
 GEOCODE_BUDGETS = {
     "seouloppa": 120,
     "ringble": 120,
+    "nolowa": 160,
     "gangnammatzip": 240,
     "4blog": 20,
 }
@@ -47,6 +48,7 @@ def _source_priority(slug: str) -> int:
         "4blog": 50,
         "seouloppa": 60,
         "ringble": 65,
+        "nolowa": 68,
         "gangnammatzip": 70,
     }.get(slug, 100)
 
@@ -55,6 +57,7 @@ def _source_notes(slug: str) -> str | None:
     return {
         "seouloppa": "후보 소스 1차 파서 구현",
         "ringble": "후보 소스 1차 파서 구현",
+        "nolowa": "후보 소스 1차 파서 구현",
         "gangnammatzip": "후보 소스 1차 파서 구현",
     }.get(slug)
 

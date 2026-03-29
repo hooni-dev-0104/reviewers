@@ -25,6 +25,7 @@ from crawler.sources.base import (
 SEEDED_SOURCES: dict[str, SourceDefinition] = {
     "chehumview": SourceDefinition("chehumview", "체험뷰", "https://chvu.co.kr", "mixed", "dynamic"),
     "modan": SourceDefinition("modan", "모두의체험단", "https://www.modan.kr", "mixed", "static"),
+    "nolowa": SourceDefinition("nolowa", "놀러와", "https://cometoplay.kr", "mixed", "static"),
     "reviewnote": SourceDefinition("reviewnote", "리뷰노트", "https://www.reviewnote.co.kr", "mixed", "dynamic"),
     "reviewplace": SourceDefinition("reviewplace", "리뷰플레이스", "https://www.reviewplace.co.kr", "mixed", "dynamic"),
     "revu": SourceDefinition("revu", "레뷰", "https://www.revu.net", "mixed", "dynamic"),
@@ -111,6 +112,83 @@ MRBLOG_PLATFORM_MAP = {
     "reels": "instagram",
     "youtube": "youtube",
 }
+
+NOLOWA_BROWSER_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/137.0.0.0 Safari/537.36"
+    ),
+    "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Cache-Control": "no-cache",
+    "Pragma": "no-cache",
+}
+
+NOLOWA_FETCH_TIMEOUT = 20
+
+NOLOWA_BASE_LISTING_URLS = (
+    "https://cometoplay.kr/item_list.php?category_id=001&sst=it_datetime&sod=desc",
+    "https://cometoplay.kr/item_list.php?category_id=002&sst=it_datetime&sod=desc",
+    "https://cometoplay.kr/item_list.php?category_id=004&sst=it_datetime&sod=desc",
+)
+
+NOLOWA_PLATFORM_CLASS_MAP = {
+    "blog": "blog",
+    "insta": "instagram",
+    "instagram": "instagram",
+    "youtube": "youtube",
+    "clip": "instagram",
+    "reels": "instagram",
+}
+
+NOLOWA_CATEGORY_TYPE_MAP = {
+    "001": "visit",
+    "002": "delivery",
+    "004": "content",
+    "001016": "delivery",
+}
+
+NOLOWA_CATEGORY_LABEL_MAP = {
+    "001": "지역",
+    "001012": "맛집",
+    "001013": "뷰티",
+    "001014": "숙박",
+    "001015": "문화",
+    "001016": "배달",
+    "001017": "기타",
+    "002": "제품",
+    "002006": "생활",
+    "002007": "디지털",
+    "002008": "패션",
+    "002009": "뷰티",
+    "002010": "식품",
+    "002011": "기타",
+    "004": "기자단",
+}
+
+NOLOWA_CATEGORY_CONFIGS = (
+    ("001", "지역", "visit"),
+    ("002", "제품", "delivery"),
+    ("004", "기자단", "content"),
+)
+
+NOLOWA_NON_REGION_TOKENS = {
+    "쇼핑몰",
+    "제품",
+    "기자단",
+    "체험단",
+    "배송",
+    "배달",
+    "원고료",
+    "기타",
+}
+
+# Historical typo aliases kept temporarily to avoid import-time breakage while nolowa helpers
+# are consolidated around the final adapter implementation below.
+NOLLOWA_PLATFORM_MAP = NOLOWA_PLATFORM_CLASS_MAP
+NOLLOWA_CATEGORY_CONFIGS = NOLOWA_CATEGORY_CONFIGS
+NOLLOWA_BROWSER_HEADERS = NOLOWA_BROWSER_HEADERS
+NOLLOWA_FETCH_TIMEOUT = NOLOWA_FETCH_TIMEOUT
 
 REVU_MEDIA_MAP = {
     "blog": "blog",
@@ -1572,86 +1650,6 @@ def enrich_modan_detail(item: dict, detail_html: str) -> dict:
     return enriched
 
 
-def parse_mrblog_listing(html: str, source_id: str | None = None) -> list[dict]:
-    pattern = re.compile(
-        r'<a href="(https://www\.mrblog\.net/campaigns/\d+)" class="campaign_item">.*?'
-        r'<img src="([^"]+)".*?'
-        r'(<span class="area">.*?</span>)\s*'
-        r'<strong class="subject">([^<]+)</strong>.*?'
-        r'<p class="desc">\s*(.*?)\s*</p>.*?'
-        r'<span class="d_day">\s*([0-9]+)일 남음\s*</span>.*?'
-        r'신청 <strong>([0-9]+)명</strong>\s*</span>\s*/ 모집\s*([0-9]+)명',
-        re.S,
-    )
-    items: list[dict] = []
-    for match in pattern.finditer(html):
-        href, image_url, area_block, subject, desc, d_day, applied, recruit = match.groups()
-        area_clean = _strip_tags(area_block)
-        region_primary = None
-        region_secondary = None
-        platform_type = "etc"
-
-        class_match = re.search(r'sns_icon\s+([a-zA-Z0-9_-]+)', area_block)
-        if class_match:
-            platform_type = MRBLOG_PLATFORM_MAP.get(class_match.group(1).lower(), "etc")
-        elif "릴스" in area_clean or "인스타" in area_clean:
-            platform_type = "instagram"
-        elif "블로그" in area_clean:
-            platform_type = "blog"
-        elif "유튜브" in area_clean:
-            platform_type = "youtube"
-
-        text_after_icon = _extract_first(r'sns_icon[^>]*></span>\s*([^<]+)', area_block, re.S)
-        if text_after_icon:
-            area_clean = _strip_tags(text_after_icon)
-        area_clean = (
-            area_clean.replace("릴스", "")
-            .replace("인스타그램", "")
-            .replace("블로그", "")
-            .replace("유튜브", "")
-            .strip()
-        )
-
-        parts = area_clean.split()
-        if parts:
-            region_primary = parts[0]
-            if len(parts) > 1:
-                region_secondary = " ".join(parts[1:])
-
-        campaign_type = "visit"
-        if "배송" in desc:
-            campaign_type = "delivery"
-        elif "숙박" in desc or "이용권" in desc:
-            campaign_type = "visit"
-
-        items.append(
-            {
-                "source_id": source_id,
-                "title": html_lib.unescape(subject).strip(),
-                "original_url": href,
-                "platform_type": platform_type,
-                "campaign_type": campaign_type,
-                "category_name": None,
-                "subcategory_name": None,
-                "region_primary_name": region_primary,
-                "region_secondary_name": region_secondary,
-                "benefit_text": _extract_primary_desc(desc) or _normalize_benefit_text(desc),
-                "recruit_count": int(recruit),
-                "apply_deadline": None,
-                "published_at": None,
-                "thumbnail_url": image_url,
-                "snippet": _normalize_benefit_text(desc),
-                "raw_status": "active" if int(d_day) >= 0 else "expired",
-                "status": "active" if int(d_day) >= 0 else "expired",
-                "requires_review": True,
-                "raw_payload": {
-                    "listing_desc": _normalize_benefit_text(desc),
-                },
-            }
-        )
-    return items
-
-
 def _infer_revu_campaign_type(categories: list[str]) -> str:
     if "배송형" in categories:
         return "delivery"
@@ -2156,12 +2154,211 @@ class RingbleSourceAdapter(PlaceholderSourceAdapter):
         return items
 
 
+
+def parse_mrblog_listing(html: str, source_id: str | None = None) -> list[dict]:
+    pattern = re.compile(
+        r'<a href="(https://www\.mrblog\.net/campaigns/\d+)" class="campaign_item">.*?'
+        r'<img src="([^"]+)".*?'
+        r'(<span class="area">.*?</span>)\s*'
+        r'<strong class="subject">([^<]+)</strong>.*?'
+        r'<p class="desc">\s*(.*?)\s*</p>.*?'
+        r'<span class="d_day">\s*([0-9]+)일 남음\s*</span>.*?'
+        r'신청 <strong>([0-9]+)명</strong>\s*</span>\s*/ 모집\s*([0-9]+)명',
+        re.S,
+    )
+    items: list[dict] = []
+    for match in pattern.finditer(html):
+        href, image_url, area_block, subject, desc, d_day, applied, recruit = match.groups()
+        area_clean = _strip_tags(area_block)
+        region_primary = None
+        region_secondary = None
+        platform_type = "etc"
+
+        class_match = re.search(r'sns_icon\s+([a-zA-Z0-9_-]+)', area_block)
+        if class_match:
+            platform_type = MRBLOG_PLATFORM_MAP.get(class_match.group(1).lower(), "etc")
+        elif "릴스" in area_clean or "인스타" in area_clean:
+            platform_type = "instagram"
+        elif "블로그" in area_clean:
+            platform_type = "blog"
+        elif "유튜브" in area_clean:
+            platform_type = "youtube"
+
+        text_after_icon = _extract_first(r'sns_icon[^>]*></span>\s*([^<]+)', area_block, re.S)
+        if text_after_icon:
+            area_clean = _strip_tags(text_after_icon)
+        area_clean = (
+            area_clean.replace("릴스", "")
+            .replace("인스타그램", "")
+            .replace("블로그", "")
+            .replace("유튜브", "")
+            .strip()
+        )
+
+        parts = area_clean.split()
+        if parts:
+            region_primary = parts[0]
+            if len(parts) > 1:
+                region_secondary = " ".join(parts[1:])
+
+        campaign_type = "visit"
+        if "배송" in desc:
+            campaign_type = "delivery"
+        elif "숙박" in desc or "이용권" in desc:
+            campaign_type = "visit"
+
+        items.append(
+            {
+                "source_id": source_id,
+                "title": html_lib.unescape(subject).strip(),
+                "original_url": href,
+                "platform_type": platform_type,
+                "campaign_type": campaign_type,
+                "category_name": None,
+                "subcategory_name": None,
+                "region_primary_name": region_primary,
+                "region_secondary_name": region_secondary,
+                "benefit_text": _extract_primary_desc(desc) or _normalize_benefit_text(desc),
+                "recruit_count": int(recruit),
+                "apply_deadline": None,
+                "published_at": None,
+                "thumbnail_url": image_url,
+                "snippet": _normalize_benefit_text(desc),
+                "raw_status": "active" if int(d_day) >= 0 else "expired",
+                "status": "active" if int(d_day) >= 0 else "expired",
+                "requires_review": True,
+                "raw_payload": {
+                    "listing_desc": _normalize_benefit_text(desc),
+                    "applied_count": int(applied),
+                },
+            }
+        )
+    return items
+
+
 class MrBlogSourceAdapter(PlaceholderSourceAdapter):
     listing_url = "https://www.mrblog.net/"
 
     def fetch(self) -> list[dict]:
         listing_html = fetch_text_url(self.listing_url)
         return parse_mrblog_listing(listing_html, source_id=self.definition.source_id)
+
+
+class NolowaSourceAdapter(PlaceholderSourceAdapter):
+    def __init__(
+        self,
+        definition: SourceDefinition,
+        page_limit: int = 20,
+        detail_limit: int | None = 240,
+    ):
+        super().__init__(definition)
+        self.page_limit = page_limit
+        self.detail_limit = detail_limit
+
+    def fetch(self) -> list[dict]:
+        items: list[dict] = []
+        seen_urls: set[str] = set()
+        fetch_errors: list[str] = []
+
+        discovered_listing_urls = set(NOLOWA_BASE_LISTING_URLS)
+        first_pages: dict[str, str] = {}
+
+        for seed_url in NOLOWA_BASE_LISTING_URLS:
+            try:
+                listing_html = fetch_text_url(
+                    seed_url,
+                    headers=NOLOWA_BROWSER_HEADERS,
+                    timeout=NOLOWA_FETCH_TIMEOUT,
+                )
+            except Exception as exc:
+                fetch_errors.append(f"listing fetch failed: {seed_url} :: {_format_source_exception(exc)}")
+                continue
+            first_pages[seed_url] = listing_html
+            discovered_listing_urls.update(_extract_nolowa_listing_urls(listing_html, current_url=seed_url))
+
+        for listing_url in sorted(discovered_listing_urls):
+            first_html = first_pages.get(listing_url)
+            if first_html is None:
+                try:
+                    first_html = fetch_text_url(
+                        listing_url,
+                        headers=NOLOWA_BROWSER_HEADERS,
+                        timeout=NOLOWA_FETCH_TIMEOUT,
+                    )
+                except Exception as exc:
+                    fetch_errors.append(f"listing fetch failed: {listing_url} :: {_format_source_exception(exc)}")
+                    continue
+            max_page = min(self.page_limit, _extract_nolowa_listing_page_count(first_html, listing_url))
+            for page in range(1, max_page + 1):
+                page_url = _build_nolowa_listing_url(listing_url, page)
+                if page == 1:
+                    listing_html = first_html
+                else:
+                    try:
+                        listing_html = fetch_text_url(
+                            page_url,
+                            headers=NOLOWA_BROWSER_HEADERS,
+                            timeout=NOLOWA_FETCH_TIMEOUT,
+                        )
+                    except Exception as exc:
+                        fetch_errors.append(f"listing fetch failed: {page_url} :: {_format_source_exception(exc)}")
+                        break
+                batch = parse_nolowa_listing(listing_html, source_id=self.definition.source_id)
+                if not batch:
+                    break
+                new_count = 0
+                for item in batch:
+                    payload = dict(item.get("raw_payload") or {})
+                    payload["listing_url"] = page_url
+                    item["raw_payload"] = payload
+                    if item["original_url"] in seen_urls:
+                        continue
+                    seen_urls.add(item["original_url"])
+                    items.append(item)
+                    new_count += 1
+                if new_count == 0:
+                    break
+
+        prioritized = sorted(
+            items,
+            key=lambda item: (
+                0 if item.get("status") == "active" else 1,
+                0 if item.get("campaign_type") == "visit" else 1,
+                0 if item.get("campaign_type") == "content" else 1,
+                0 if item.get("region_primary_name") else 1,
+                item.get("raw_payload", {}).get("listing_d_day") or "d_day:999",
+                item.get("original_url") or "",
+            ),
+        )
+        detail_targets = prioritized if self.detail_limit is None else prioritized[: self.detail_limit]
+        detail_urls = {item["original_url"] for item in detail_targets}
+
+        enriched: list[dict] = []
+        for item in items:
+            if item["original_url"] not in detail_urls:
+                enriched.append(item)
+                continue
+            try:
+                detail_html = fetch_text_url(
+                    item["original_url"],
+                    headers={
+                        **NOLOWA_BROWSER_HEADERS,
+                        "Referer": item.get("raw_payload", {}).get("listing_url") or item["original_url"],
+                    },
+                    timeout=NOLOWA_FETCH_TIMEOUT,
+                )
+            except Exception as exc:
+                fetch_errors.append(f"detail fetch failed: {item['original_url']} :: {_format_source_exception(exc)}")
+                detail_html = None
+            enriched.append(enrich_nolowa_detail(item, detail_html) if detail_html else item)
+
+        print(
+            f"[nolowa] fetched listing_items={len(items)} "
+            f"listing_urls={len(discovered_listing_urls)} detail_targets={len(detail_urls)} errors={len(fetch_errors)}"
+        )
+        for message in fetch_errors[:20]:
+            print(f"[nolowa] {message}")
+        return enriched
 
 
 class SeoulOppaSourceAdapter(PlaceholderSourceAdapter):
@@ -2524,6 +2721,308 @@ def _fetch_gangnammatzip_listing_fragments(
         pages.append(fragment)
     return pages
 
+
+def _build_nolowa_listing_url(listing_url: str, page: int) -> str:
+    params = _extract_query_params(listing_url)
+    params["category_id"] = params.get("category_id") or "001"
+    params["sst"] = params.get("sst") or "it_datetime"
+    params["sod"] = params.get("sod") or "desc"
+    if page > 1:
+        params["page"] = str(page)
+    else:
+        params.pop("page", None)
+    return f"https://cometoplay.kr/item_list.php?{urlencode(params)}"
+
+
+def _extract_nolowa_listing_urls(html: str, current_url: str | None = None) -> list[str]:
+    urls = set(NOLOWA_BASE_LISTING_URLS)
+    if current_url:
+        urls.add(current_url)
+    for href in re.findall(r'href="(/?item_list\.php\?category_id=\d+[^"]*)"', html):
+        cleaned = html_lib.unescape(href).replace("&amp;", "&").strip()
+        if not cleaned:
+            continue
+        if cleaned.startswith("/"):
+            cleaned = f"https://cometoplay.kr{cleaned}"
+        elif cleaned.startswith("item_list.php"):
+            cleaned = f"https://cometoplay.kr/{cleaned}"
+        category_id = _extract_query_params(cleaned).get("category_id") or ""
+        if category_id.startswith(("001", "002", "004")):
+            urls.add(cleaned)
+    return sorted(urls)
+
+
+def _extract_nolowa_listing_page_count(html: str, listing_url: str) -> int:
+    category_id = _extract_query_params(listing_url).get("category_id") or ""
+    page_matches = [
+        int(value)
+        for value in re.findall(
+            rf"category_id={re.escape(category_id)}[^\"']*page=(\d+)",
+            html,
+        )
+    ]
+    return max(page_matches) if page_matches else 1
+
+
+def _clean_nolowa_title(title: str) -> tuple[str, str | None, str | None]:
+    annotations, cleaned = _split_4blog_title_annotations(title)
+    region_primary = None
+    region_secondary = None
+
+    for token in annotations:
+        normalized = token.strip()
+        compact = normalized.replace(" ", "")
+        if not normalized or compact in NOLOWA_NON_REGION_TOKENS:
+            continue
+        if "/" in normalized:
+            left, right = [part.strip() for part in normalized.split("/", 1)]
+            if _is_ringble_region_token(left):
+                region_primary = left or None
+                region_secondary = right or None
+                break
+        parts = normalized.split()
+        if len(parts) >= 2 and _is_ringble_region_token(parts[0]):
+            region_primary = parts[0]
+            region_secondary = " ".join(parts[1:]) or None
+            break
+        if _is_ringble_region_token(normalized):
+            region_primary = normalized
+            break
+
+    return cleaned or title.strip(), region_primary, region_secondary
+
+
+def _infer_nolowa_campaign_type(
+    category_id: str,
+    title: str,
+    snippet: str | None,
+    detail_html: str | None = None,
+) -> str:
+    combined = " ".join(part for part in [title, snippet or "", _strip_tags(detail_html or "")] if part)
+    if category_id == "001016":
+        return "delivery"
+    if category_id.startswith("004") or "기자단" in combined or "원고료" in combined:
+        return "content"
+    if category_id.startswith("002") or "쇼핑몰" in combined or "배송" in combined or "택배" in combined:
+        return "delivery"
+    if "구매평" in combined:
+        return "purchase"
+    return NOLOWA_CATEGORY_TYPE_MAP.get(category_id, NOLOWA_CATEGORY_TYPE_MAP.get(category_id[:3], "visit"))
+
+
+def _infer_nolowa_platform_type(icon_class: str | None, title_block: str | None, detail_html: str | None = None) -> str:
+    for raw in (icon_class, title_block):
+        normalized = str(raw or "").strip().lower()
+        if normalized in NOLOWA_PLATFORM_CLASS_MAP:
+            return NOLOWA_PLATFORM_CLASS_MAP[normalized]
+    detail_text = _strip_tags(detail_html or "")
+    if "인스타" in detail_text or "릴스" in detail_text or "클립" in detail_text:
+        return "instagram"
+    if "유튜브" in detail_text or "쇼츠" in detail_text:
+        return "youtube"
+    return "blog"
+
+
+def _parse_nolowa_mmdd_range(value: str | None) -> tuple[str | None, str | None]:
+    if not value:
+        return None, None
+    match = re.search(r"(\d{2})\.(\d{2})\s*[~\-]\s*(\d{2})\.(\d{2})", value)
+    if not match:
+        return None, None
+    sm, sd, em, ed = [int(part) for part in match.groups()]
+    today = date.today()
+    start_year = today.year
+    end_year = today.year
+    if sm < today.month - 6:
+        start_year += 1
+    if em < today.month - 6:
+        end_year += 1
+    return date(start_year, sm, sd).isoformat(), date(end_year, em, ed).isoformat()
+
+
+def _extract_nolowa_category_tokens(detail_html: str) -> list[str]:
+    block = _extract_first(r'<span class="tit_cate">(.*?)</span>', detail_html, re.S)
+    if not block:
+        return []
+    text = _strip_tags(block)
+    return [part.strip() for part in re.split(r"\s+", text) if part.strip()]
+
+
+def _extract_nolowa_exact_location(detail_html: str) -> str | None:
+    block = _extract_first(r'<li class="tit">업체주소</li>\s*<li[^>]*class="info">\s*(.*?)(?:<div id="map"|</li>)', detail_html, re.S)
+    if not block:
+        return None
+    return _strip_tags(block)
+
+
+def _extract_nolowa_lat_lon(detail_html: str) -> tuple[float | None, float | None]:
+    match = re.search(r"LatLng\(\s*([0-9.\-]+)\s*,\s*([0-9.\-]+)\s*\)", detail_html)
+    if not match:
+        return None, None
+    try:
+        return float(match.group(1)), float(match.group(2))
+    except Exception:
+        return None, None
+
+
+def parse_nolowa_listing(html: str, source_id: str | None = None) -> list[dict]:
+    pattern = re.compile(
+        r'<a href="(item\.php\?it_id=\d+&category_id=(\d+))"><img src="([^"]+)"[^>]*class="it_img"></a>.*?'
+        r'<a href="item\.php\?it_id=\d+&category_id=\d+">\s*'
+        r'<div class="it_info">\s*'
+        r'<span class="it_name">(.*?)</span>\s*'
+        r'<span class="it_description">(.*?)</span>.*?'
+        r'<div class="option_re">\s*'
+        r'<span class="txt_num">(.*?)</span>\s*'
+        r'(?:<i class="([^"]+)"></i>)?.*?'
+        r'신청 <b[^>]*>([\d,]+)</b>\s*명\s*/ 모집 <b[^>]*>([\d,]+)',
+        re.S,
+    )
+    items: list[dict] = []
+    for match in pattern.finditer(html):
+        relative_url, category_id, image_url, raw_title, raw_desc, d_day, icon_class, _applied, recruit = match.groups()
+        title, region_primary, region_secondary = _clean_nolowa_title(html_lib.unescape(_strip_tags(raw_title)))
+        desc = _normalize_benefit_text(_strip_tags(raw_desc))
+        canonical_url = f"https://cometoplay.kr/item.php?it_id={_extract_query_params(relative_url).get('it_id')}"
+        d_day_text = _normalize_benefit_text(d_day) or ''
+        status = 'expired' if '마감' in d_day_text else 'active'
+        d_day_match = re.search(r'(\d+)', d_day_text)
+        items.append(
+            {
+                'source_id': source_id,
+                'title': title,
+                'original_url': canonical_url,
+                'platform_type': _infer_nolowa_platform_type(icon_class, raw_desc),
+                'campaign_type': _infer_nolowa_campaign_type(category_id, title, desc),
+                'category_name': NOLOWA_CATEGORY_LABEL_MAP.get(category_id, NOLOWA_CATEGORY_LABEL_MAP.get(category_id[:3])),
+                'subcategory_name': None,
+                'region_primary_name': region_primary,
+                'region_secondary_name': region_secondary,
+                'benefit_text': None,
+                'recruit_count': int(recruit.replace(',', '')),
+                'apply_deadline': None,
+                'published_at': None,
+                'thumbnail_url': _normalize_prefixed_image_url('https://cometoplay.kr/', image_url),
+                'snippet': desc,
+                'raw_status': f"d_day:{d_day_match.group(1)}" if d_day_match else d_day_text.lower(),
+                'status': status,
+                'requires_review': True,
+                'raw_payload': {
+                    'listing_category_id': category_id,
+                    'listing_description': desc,
+                    'listing_d_day': d_day_text,
+                },
+            }
+        )
+    return items
+
+def enrich_nolowa_detail(item: dict, detail_html: str) -> dict:
+    enriched = dict(item)
+
+    title = _extract_first(r'<meta property="og:title" content="([^"]+)"', detail_html) or _extract_first(
+        r'<div class="itname [^"]*">(.*?)</div>',
+        detail_html,
+        re.S,
+    )
+    if title:
+        cleaned_title, region_primary, region_secondary = _clean_nolowa_title(html_lib.unescape(_strip_tags(title)))
+        enriched['title'] = cleaned_title or enriched.get('title')
+        if region_primary and not enriched.get('region_primary_name'):
+            enriched['region_primary_name'] = region_primary
+        if region_secondary and not enriched.get('region_secondary_name'):
+            enriched['region_secondary_name'] = region_secondary
+
+    tokens = _extract_nolowa_category_tokens(detail_html)
+    if tokens:
+        if tokens[0] == '지역' and len(tokens) >= 2:
+            enriched['category_name'] = tokens[1]
+            if len(tokens) >= 3:
+                enriched['subcategory_name'] = tokens[2]
+        elif tokens[0] == '제품' and len(tokens) >= 2:
+            enriched['category_name'] = tokens[1]
+        elif tokens[0] == '기자단':
+            enriched['category_name'] = '기자단'
+        elif tokens:
+            enriched['category_name'] = tokens[0]
+
+        if not enriched.get('region_primary_name'):
+            for token in tokens[2:]:
+                if '/' in token:
+                    left, right = [part.strip() for part in token.split('/', 1)]
+                    if _is_ringble_region_token(left):
+                        enriched['region_primary_name'] = left
+                        enriched['region_secondary_name'] = right or None
+                        break
+                elif _is_ringble_region_token(token):
+                    enriched['region_primary_name'] = token
+                    break
+
+    platform_match = re.search(r'<span class="(blog|insta|instagram|youtube|clip|reels)">([^<]+)</span>', detail_html, re.S)
+    platform_class = platform_match.group(1) if platform_match else None
+    platform_text = platform_match.group(2) if platform_match else _extract_first(r'<span class="blog">([^<]+)</span>', detail_html)
+    enriched['platform_type'] = _infer_nolowa_platform_type(platform_class, platform_text, detail_html)
+
+    apply_range = _extract_first(r'리뷰어 신청</em>\s*([^<]+)', detail_html)
+    published_at, apply_deadline = _parse_nolowa_mmdd_range(apply_range)
+    if published_at:
+        enriched['published_at'] = published_at
+    if apply_deadline:
+        enriched['apply_deadline'] = apply_deadline
+
+    benefit_block = _extract_first(r'<span class="tit_etc2">제공내역</span>\s*<span class="etc2[^"]*">(.*?)</span>', detail_html, re.S)
+    detail_note = _extract_first(r'<li class="tit">참고사항</li>\s*<li[^>]*class="info"[^>]*>(.*?)</li>', detail_html, re.S)
+    benefit_text = _combine_benefit_parts(
+        _normalize_benefit_text(_strip_tags(benefit_block)) if benefit_block else None,
+        item.get('benefit_text'),
+    )
+    if benefit_text:
+        enriched['benefit_text'] = benefit_text
+
+    recruit_match = re.search(r'신청인원 <b[^>]*>([\d,]+)</b>\s*/ 모집인원 <b>([\d,]+)', detail_html)
+    if recruit_match:
+        enriched['recruit_count'] = int(recruit_match.group(2).replace(',', ''))
+
+    description = _extract_first(r'<meta property="og:description" content="([^"]+)"', detail_html)
+    if description:
+        enriched['snippet'] = _normalize_benefit_text(description)
+    elif detail_note and not enriched.get('snippet'):
+        enriched['snippet'] = _extract_primary_desc(detail_note)
+
+    exact_location = _extract_nolowa_exact_location(detail_html)
+    if exact_location:
+        enriched['exact_location'] = exact_location
+        if not enriched.get('region_primary_name'):
+            parts = exact_location.split()
+            if parts:
+                enriched['region_primary_name'] = parts[0]
+                if len(parts) > 1:
+                    enriched['region_secondary_name'] = parts[1]
+
+    latitude, longitude = _extract_nolowa_lat_lon(detail_html)
+    if latitude is not None and longitude is not None:
+        enriched['latitude'] = latitude
+        enriched['longitude'] = longitude
+
+    if '접수마감' in detail_html:
+        enriched['raw_status'] = 'expired'
+        enriched['status'] = 'expired'
+
+    payload = dict(enriched.get('raw_payload') or {})
+    payload.update(
+        {
+            'detail_platform_text': platform_text,
+            'detail_apply_range': apply_range,
+            'detail_note': _normalize_benefit_text(detail_note),
+        }
+    )
+    enriched['raw_payload'] = payload
+    enriched['campaign_type'] = _infer_nolowa_campaign_type(
+        str(payload.get('listing_category_id') or ''),
+        enriched['title'],
+        enriched.get('snippet'),
+        detail_html=detail_html,
+    )
+    return enriched
 
 def _clean_bracket_title(title: str) -> tuple[str, str | None, str | None]:
     annotations, cleaned = _split_4blog_title_annotations(title)
@@ -3120,6 +3619,8 @@ def get_adapter(source_slug: str, source_file: str | None = None, report_mode: b
     definition = SEEDED_SOURCES[source_slug]
     if source_file:
         return FileSourceAdapter(definition, Path(source_file))
+    if source_slug == "nolowa":
+        return NolowaSourceAdapter(definition, page_limit=2 if report_mode else 20, detail_limit=24 if report_mode else 240)
     if source_slug == "modan":
         return ModanSourceAdapter(definition, page_limit=2 if report_mode else 20, detail_limit=24 if report_mode else 160)
     if source_slug == "chehumview":
