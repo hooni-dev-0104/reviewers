@@ -2260,35 +2260,34 @@ class NolowaSourceAdapter(PlaceholderSourceAdapter):
         items: list[dict] = []
         seen_urls: set[str] = set()
         fetch_errors: list[str] = []
-
-        discovered_listing_urls = set(NOLOWA_BASE_LISTING_URLS)
         first_pages: dict[str, str] = {}
 
-        for seed_url in NOLOWA_BASE_LISTING_URLS:
+        discovered_listing_urls: set[str] = set()
+        pending_listing_urls = list(NOLOWA_BASE_LISTING_URLS)
+
+        while pending_listing_urls:
+            listing_url = pending_listing_urls.pop(0)
+            if listing_url in discovered_listing_urls:
+                continue
             try:
-                listing_html = fetch_text_url(
-                    seed_url,
+                first_html = fetch_text_url(
+                    listing_url,
                     headers=NOLOWA_BROWSER_HEADERS,
                     timeout=NOLOWA_FETCH_TIMEOUT,
                 )
             except Exception as exc:
-                fetch_errors.append(f"listing fetch failed: {seed_url} :: {_format_source_exception(exc)}")
+                fetch_errors.append(f"listing fetch failed: {listing_url} :: {_format_source_exception(exc)}")
                 continue
-            first_pages[seed_url] = listing_html
-            discovered_listing_urls.update(_extract_nolowa_listing_urls(listing_html, current_url=seed_url))
+            discovered_listing_urls.add(listing_url)
+            first_pages[listing_url] = first_html
+            for nested_url in _extract_nolowa_listing_urls(first_html, current_url=listing_url):
+                if nested_url not in discovered_listing_urls and nested_url not in pending_listing_urls:
+                    pending_listing_urls.append(nested_url)
 
         for listing_url in sorted(discovered_listing_urls):
             first_html = first_pages.get(listing_url)
             if first_html is None:
-                try:
-                    first_html = fetch_text_url(
-                        listing_url,
-                        headers=NOLOWA_BROWSER_HEADERS,
-                        timeout=NOLOWA_FETCH_TIMEOUT,
-                    )
-                except Exception as exc:
-                    fetch_errors.append(f"listing fetch failed: {listing_url} :: {_format_source_exception(exc)}")
-                    continue
+                continue
             max_page = min(self.page_limit, _extract_nolowa_listing_page_count(first_html, listing_url))
             for page in range(1, max_page + 1):
                 page_url = _build_nolowa_listing_url(listing_url, page)
