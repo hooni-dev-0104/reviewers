@@ -228,6 +228,7 @@ SEOULOUPPA_BROWSER_HEADERS = {
 }
 
 SEOULOUPPA_FETCH_TIMEOUT = 20
+SEOULOUPPA_LISTING_MAX_PAGES = 6
 
 SEOULOUPPA_LISTING_URLS = (
     "https://www.seoulouba.co.kr/campaign/?qq=popular",
@@ -2643,7 +2644,7 @@ def _build_seouloppa_ajax_payload(listing_url: str, page: int, more: int | None 
 def _fetch_seouloppa_listing_fragments(
     listing_url: str,
     base_html: str | None = None,
-    max_pages: int = 3,
+    max_pages: int = SEOULOUPPA_LISTING_MAX_PAGES,
 ) -> list[str]:
     base_page = (
         base_html
@@ -3620,19 +3621,19 @@ def get_adapter(source_slug: str, source_file: str | None = None, report_mode: b
     if source_file:
         return FileSourceAdapter(definition, Path(source_file))
     if source_slug == "nolowa":
-        return NolowaSourceAdapter(definition, page_limit=2 if report_mode else 20, detail_limit=24 if report_mode else None)
+        return NolowaSourceAdapter(definition, page_limit=2 if report_mode else 40, detail_limit=24 if report_mode else None)
     if source_slug == "modan":
         return ModanSourceAdapter(definition, page_limit=2 if report_mode else 20, detail_limit=24 if report_mode else 160)
     if source_slug == "chehumview":
         return ChehumviewSourceAdapter(definition, page_limit=2 if report_mode else 20)
     if source_slug == "reviewplace":
-        return ReviewPlaceSourceAdapter(definition, page_limit=2 if report_mode else 20)
+        return ReviewPlaceSourceAdapter(definition, page_limit=2 if report_mode else 40)
     if source_slug == "revu":
         return RevuSourceAdapter(definition, page_limit=2 if report_mode else 100, page_size=35)
     if source_slug == "mrblog":
         return MrBlogSourceAdapter(definition)
     if source_slug == "reviewnote":
-        return ReviewNoteSourceAdapter(definition, page_limit=2 if report_mode else 20, page_size=50)
+        return ReviewNoteSourceAdapter(definition, page_limit=2 if report_mode else 40, page_size=50)
     if source_slug == "4blog":
         return FourBlogSourceAdapter(definition, page_limit=2 if report_mode else 50)
     if source_slug == "dinnerqueen":
@@ -3640,7 +3641,7 @@ def get_adapter(source_slug: str, source_file: str | None = None, report_mode: b
     if source_slug == "seouloppa":
         return SeoulOppaSourceAdapter(definition, detail_limit=12 if report_mode else 80)
     if source_slug == "ringble":
-        return RingbleSourceAdapter(definition, page_limit=2 if report_mode else 8, detail_limit=16 if report_mode else None)
+        return RingbleSourceAdapter(definition, page_limit=2 if report_mode else 16, detail_limit=16 if report_mode else None)
     if source_slug == "gangnammatzip":
         return GangnamMatzipSourceAdapter(definition, detail_limit=10 if report_mode else 120)
     return PlaceholderSourceAdapter(definition)

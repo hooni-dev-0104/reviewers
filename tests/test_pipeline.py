@@ -26,6 +26,7 @@ from crawler.sources.seeded import (
     SEEDED_SOURCES,
     SeoulOppaSourceAdapter,
     ReviewPlaceSourceAdapter,
+    SEOULOUPPA_LISTING_MAX_PAGES,
     _build_gangnammatzip_ajax_url,
     _build_nolowa_listing_url,
     _build_seouloppa_ajax_payload,
@@ -48,6 +49,7 @@ from crawler.sources.seeded import (
     parse_gangnammatzip_listing,
     parse_reviewnote_listing,
     parse_seouloppa_listing,
+    get_adapter,
     transform_chehumview_campaign,
     transform_revu_item,
     transform_reviewnote_api_item,
@@ -1197,6 +1199,18 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(_estimate_deadline_from_d_label("D-day", today=date(2026, 3, 23)), "2026-03-23")
         self.assertEqual(_estimate_deadline_from_d_label("D-3", today=date(2026, 3, 23)), "2026-03-26")
         self.assertEqual(_estimate_deadline_from_d_label("6일 남음", today=date(2026, 3, 23)), "2026-03-29")
+
+    def test_get_adapter_uses_expanded_collection_limits(self):
+        reviewnote = get_adapter("reviewnote")
+        reviewplace = get_adapter("reviewplace")
+        ringble = get_adapter("ringble")
+        nolowa = get_adapter("nolowa")
+
+        self.assertEqual(reviewnote.page_limit, 40)
+        self.assertEqual(reviewplace.page_limit, 40)
+        self.assertEqual(ringble.page_limit, 16)
+        self.assertEqual(nolowa.page_limit, 40)
+        self.assertEqual(SEOULOUPPA_LISTING_MAX_PAGES, 6)
 
     def test_seouloppa_adapter_does_not_truncate_list_to_detail_limit(self):
         listing_html = """
