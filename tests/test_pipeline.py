@@ -1302,7 +1302,7 @@ class PipelineTests(unittest.TestCase):
         </div>
         <div class="etc_list2">
           <span class="tit_etc2">제공내역</span>
-          <span class="etc2 font_1">목화탕수육(소)+홍춘짬뽕 (60,000원 상당)</span>
+          <span class="etc2 font_1" style="font-size:17px; font-weight:bold;">목화탕수육(소)+홍춘짬뽕 (60,000원 상당)</span>
         </div>
         <div class="etc_list">
           <span class="tit_etc">모집인원</span>

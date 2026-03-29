@@ -2969,7 +2969,7 @@ def enrich_nolowa_detail(item: dict, detail_html: str) -> dict:
     if apply_deadline:
         enriched['apply_deadline'] = apply_deadline
 
-    benefit_block = _extract_first(r'<span class="tit_etc2">제공내역</span>\s*<span class="etc2[^"]*">(.*?)</span>', detail_html, re.S)
+    benefit_block = _extract_first(r'<span class="tit_etc2">제공내역</span>\s*<span class="etc2[^"]*"[^>]*>(.*?)</span>', detail_html, re.S)
     detail_note = _extract_first(r'<li class="tit">참고사항</li>\s*<li[^>]*class="info"[^>]*>(.*?)</li>', detail_html, re.S)
     benefit_text = _combine_benefit_parts(
         _normalize_benefit_text(_strip_tags(benefit_block)) if benefit_block else None,
