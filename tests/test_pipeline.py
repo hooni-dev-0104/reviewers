@@ -1393,6 +1393,44 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(len(items), 3)
         self.assertEqual(len({item["original_url"] for item in items}), 3)
 
+    def test_nolowa_adapter_enriches_all_items_when_detail_limit_is_none(self):
+        listing = """
+        <div class="item_box_list"><ul>
+        <li>
+          <div class="thumb"><a href="item.php?it_id=11&category_id=001012"><img src="./data/list/thumb/11.jpg" class="it_img"></a></div>
+          <a href="item.php?it_id=11&category_id=001012"><div class="it_info"><span class="it_name">[서울 강남] A</span><span class="it_description">#맛집</span></div><div class="option_re"><span class="txt_num">D-day 3</span><i class="blog"></i><span class="peo_cnt">신청 <b>1</b> 명  / 모집 <b>5</b> 명</span></div></a>
+        </li>
+        <li>
+          <div class="thumb"><a href="item.php?it_id=12&category_id=001013"><img src="./data/list/thumb/12.jpg" class="it_img"></a></div>
+          <a href="item.php?it_id=12&category_id=001013"><div class="it_info"><span class="it_name">[서울 송파] B</span><span class="it_description">#뷰티</span></div><div class="option_re"><span class="txt_num">D-day 2</span><i class="blog"></i><span class="peo_cnt">신청 <b>0</b> 명  / 모집 <b>4</b> 명</span></div></a>
+        </li>
+        </ul></div>
+        """
+        empty_listing = "<div class='item_box_list'><ul></ul></div>"
+        detail_html = """
+        <meta property="og:title" content="[서울 강남] 테스트 캠페인" />
+        <meta property="og:description" content="#테스트" />
+        <span class="tit_cate">지역 맛집 서울 강남</span>
+        <span class="blog">네이버블로그</span>
+        <div class="review_wrap"><span class="box01"><em>리뷰어 신청</em> 03.27 ~ 04.01</span></div>
+        <div class="etc_list2"><span class="tit_etc2">제공내역</span><span class="etc2">골드세트(1인 45,000원) 2인 제공</span></div>
+        """
+
+        def fake_fetch_text_url(url, *args, **kwargs):
+          if "category_id=001" in url or "category_id=001012" in url or "category_id=001013" in url:
+            return listing
+          if "category_id=002" in url or "category_id=004" in url:
+            return empty_listing
+          if "item.php?it_id=" in url:
+            return detail_html
+          raise AssertionError(f"unexpected url {url}")
+
+        with mock.patch("crawler.sources.seeded.fetch_text_url", side_effect=fake_fetch_text_url):
+            items = NolowaSourceAdapter(SEEDED_SOURCES["nolowa"], page_limit=1, detail_limit=None).fetch()
+
+        self.assertGreaterEqual(len(items), 2)
+        self.assertTrue(all(item["benefit_text"] == "골드세트(1인 45,000원) 2인 제공" for item in items))
+
     def test_transform_reviewnote_api_item(self):
         item = transform_reviewnote_api_item(
             {

@@ -2249,7 +2249,7 @@ class NolowaSourceAdapter(PlaceholderSourceAdapter):
         self,
         definition: SourceDefinition,
         page_limit: int = 20,
-        detail_limit: int | None = 240,
+        detail_limit: int | None = None,
     ):
         super().__init__(definition)
         self.page_limit = page_limit
@@ -3620,7 +3620,7 @@ def get_adapter(source_slug: str, source_file: str | None = None, report_mode: b
     if source_file:
         return FileSourceAdapter(definition, Path(source_file))
     if source_slug == "nolowa":
-        return NolowaSourceAdapter(definition, page_limit=2 if report_mode else 20, detail_limit=24 if report_mode else 240)
+        return NolowaSourceAdapter(definition, page_limit=2 if report_mode else 20, detail_limit=24 if report_mode else None)
     if source_slug == "modan":
         return ModanSourceAdapter(definition, page_limit=2 if report_mode else 20, detail_limit=24 if report_mode else 160)
     if source_slug == "chehumview":
