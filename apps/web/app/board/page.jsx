@@ -33,7 +33,7 @@ export default async function BoardPage({ searchParams }) {
           </div>
           <div className="board-hero-side">
             <Link href="/board/new" className="board-write-link">글 남기기</Link>
-            <p className="board-hero-helper">닉네임만 적어도 되고, 비공개 글도 가능해요.</p>
+            <p className="board-hero-helper">닉네임만 적어도 되고 비공개 작성도 가능해요.</p>
           </div>
         </div>
 

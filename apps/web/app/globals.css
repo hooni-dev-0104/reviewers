@@ -252,7 +252,9 @@ a { color: inherit; text-decoration: none; }
   display: grid;
   gap: 12px;
   align-content: start;
-  justify-items: end;
+  justify-items: start;
+  width: fit-content;
+  margin-left: auto;
 }
 .board-write-link {
   display: inline-flex;
@@ -277,11 +279,12 @@ a { color: inherit; text-decoration: none; }
 }
 .board-hero-helper {
   margin: 0;
-  max-width: 15rem;
+  max-width: none;
   color: var(--muted);
   font-size: 0.9rem;
   line-height: 1.55;
-  text-align: right;
+  text-align: left;
+  white-space: nowrap;
 }
 .board-filter-bar {
   display: grid;
