@@ -2,8 +2,10 @@ import json
 import tempfile
 import unittest
 from datetime import date, timedelta
+from io import BytesIO
 from unittest import mock
 from pathlib import Path
+import urllib.error
 
 from crawler.config import AppConfig
 from crawler.pipeline import (
@@ -55,6 +57,7 @@ from crawler.sources.seeded import (
     transform_reviewnote_api_item,
     transform_4blog_item,
     transform_dinnerqueen_detail,
+    _fetch_revu_campaign_page,
 )
 
 
@@ -1579,6 +1582,24 @@ class PipelineTests(unittest.TestCase):
         self.assertIn("삼겹살 2인분", item["benefit_text"])
         self.assertIn("선택 2", item["benefit_text"])
         self.assertIn("생 오리고기 2인분", item["benefit_text"])
+
+    def test_fetch_revu_campaign_page_retries_on_429(self):
+        rate_limited = urllib.error.HTTPError(
+            url="https://api.weble.net/v1/campaigns?page=1",
+            code=429,
+            msg="Too Many Requests",
+            hdrs=None,
+            fp=BytesIO(b""),
+        )
+        with mock.patch("crawler.sources.seeded.fetch_json_with_headers", side_effect=[rate_limited, {"items": [], "_links": {}}]) as mocked, \
+             mock.patch("crawler.sources.seeded.time.sleep") as mocked_sleep:
+            payload = _fetch_revu_campaign_page(
+                "https://api.weble.net/v1/campaigns?page=1",
+                headers={"Authorization": "Bearer token"},
+            )
+        self.assertEqual(payload, {"items": [], "_links": {}})
+        self.assertEqual(mocked.call_count, 2)
+        mocked_sleep.assert_called_once()
 
     def test_parse_mrblog_listing(self):
         html = """

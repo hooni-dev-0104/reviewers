@@ -6,6 +6,8 @@ from html.parser import HTMLParser
 import json
 from pathlib import Path
 import re
+import time
+import urllib.error
 from urllib.parse import parse_qs, quote, urlencode, unquote, urljoin, urlsplit
 
 from crawler.models import SourceDefinition
@@ -1661,6 +1663,24 @@ def _infer_revu_campaign_type(categories: list[str]) -> str:
     return "etc"
 
 
+def _fetch_revu_campaign_page(url: str, headers: dict[str, str], max_attempts: int = 5) -> dict[str, Any]:
+    last_error: Exception | None = None
+    for attempt in range(max_attempts):
+        try:
+            return fetch_json_with_headers(url, headers=headers)
+        except urllib.error.HTTPError as exc:
+            last_error = exc
+            if exc.code != 429 or attempt == max_attempts - 1:
+                raise
+            time.sleep(min(2 ** attempt, 12))
+        except Exception as exc:
+            last_error = exc
+            raise
+    if last_error:
+        raise last_error
+    raise RuntimeError("REVU page fetch failed without a captured exception")
+
+
 def _extract_revu_campaign_option_text(options: list[dict[str, Any]] | None) -> str | None:
     if not isinstance(options, list):
         return None
@@ -2594,7 +2614,7 @@ class RevuSourceAdapter(PlaceholderSourceAdapter):
                     ("type", "play"),
                 ]
             )
-            data = fetch_json_with_headers(
+            data = _fetch_revu_campaign_page(
                 f"https://api.weble.net/v1/campaigns?{query}",
                 headers=headers,
             )
@@ -2605,6 +2625,7 @@ class RevuSourceAdapter(PlaceholderSourceAdapter):
             links = data.get("_links", {}) if isinstance(data, dict) else {}
             if not links.get("next"):
                 break
+            time.sleep(0.35)
         return items
 
 
