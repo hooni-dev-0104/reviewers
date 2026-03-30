@@ -2,9 +2,6 @@
 
 import { useMemo, useState } from 'react';
 
-import { Button } from '@/components/ui-kit';
-import { cn, inputClass, selectClass } from '@/lib/ui';
-
 const PLATFORM_OPTIONS = [
   ['all', '전체 플랫폼'],
   ['blog', '블로그'],
@@ -42,106 +39,93 @@ function normalizeSelection(value) {
 }
 
 export function FilterBar({ sources, searchParams }) {
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [platforms, setPlatforms] = useState(() => normalizeSelection(searchParams.platform).filter((value) => value !== 'all'));
   const [types, setTypes] = useState(() => normalizeSelection(searchParams.type).filter((value) => value !== 'all'));
   const [sourceValues, setSourceValues] = useState(() => normalizeSelection(searchParams.source).filter((value) => value !== 'all'));
-  const [showAdvanced, setShowAdvanced] = useState(() => Boolean(platforms.length || types.length || sourceValues.length || searchParams.deadline || searchParams.region || (searchParams.sort && searchParams.sort !== 'deadline')));
-
-  const activeFilterCount = useMemo(
-    () => platforms.length + types.length + sourceValues.length + Number(Boolean(searchParams.deadline && searchParams.deadline !== 'all')) + Number(Boolean(searchParams.region)) + Number(Boolean(searchParams.sort && searchParams.sort !== 'deadline')),
-    [platforms.length, types.length, sourceValues.length, searchParams.deadline, searchParams.region, searchParams.sort]
-  );
 
   return (
-    <form className="rounded-[32px] border border-slate-200/80 bg-white/92 p-6 shadow-[0_20px_70px_rgba(15,23,42,0.08)] ring-1 ring-slate-950/5 backdrop-blur sm:p-8">
+    <form className="filter-shell">
       <input type="hidden" name="platform" value={platforms.join(',')} />
       <input type="hidden" name="type" value={types.join(',')} />
       <input type="hidden" name="source" value={sourceValues.join(',')} />
 
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div className="space-y-3">
-            <span className="text-xs font-semibold uppercase tracking-[0.24em] text-indigo-600">Campaign explorer</span>
-            <div className="space-y-2">
-              <h2 className="text-[24px] font-semibold tracking-[-0.04em] text-slate-950 sm:text-[32px]">한 번에 좁혀보고 빠르게 결정하세요</h2>
-              <p className="max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">검색, 플랫폼, 마감, 지역을 같은 흐름에서 정리해 후보를 빠르게 좁히고 바로 상세 화면으로 이동할 수 있게 만들었습니다.</p>
-            </div>
-          </div>
-          <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-            활성 필터 <strong className="font-semibold text-slate-950">{activeFilterCount}</strong>
-          </div>
+      <div className="search-row search-row-primary">
+        <div className="search-stack search-stack-grow">
+          <label htmlFor="search">검색</label>
+          <input
+            id="search"
+            name="search"
+            defaultValue={searchParams.search || ''}
+            placeholder="브랜드명, 지역, 혜택으로 검색"
+          />
         </div>
-
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_160px]">
-          <label className="space-y-2">
-            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">검색</span>
-            <input
-              id="search"
-              name="search"
-              defaultValue={searchParams.search || ''}
-              placeholder="브랜드명, 지역, 혜택으로 검색"
-              className={inputClass}
-            />
-          </label>
-          <Button type="submit" variant="primary" size="lg" className="w-full self-end">
-            검색
-          </Button>
-        </div>
-
-        <div className="flex flex-col gap-4 rounded-[24px] border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-slate-950">상세 조건을 열어 더 정확하게 찾기</p>
-            <p className="text-sm leading-6 text-slate-500">플랫폼, 유형, 출처, 마감, 지역을 8px 그리드에 맞춰 정돈했습니다.</p>
-          </div>
-          <Button type="button" variant={showAdvanced ? 'subtle' : 'secondary'} size="sm" onClick={() => setShowAdvanced((value) => !value)}>
-            {showAdvanced ? '상세 필터 닫기' : '상세 필터 열기'}
-          </Button>
-        </div>
-
-        {showAdvanced ? (
-          <div className="grid gap-4 lg:grid-cols-3">
-            <MultiSelect label="플랫폼" options={PLATFORM_OPTIONS} values={platforms} onChange={setPlatforms} />
-            <MultiSelect label="유형" options={TYPE_OPTIONS} values={types} onChange={setTypes} />
-            <MultiSelect
-              label="출처"
-              options={[
-                ['all', '전체 출처'],
-                ...sources.map((source) => [source.slug, source.name])
-              ]}
-              values={sourceValues}
-              onChange={setSourceValues}
-            />
-            <Select name="deadline" label="마감" options={DEADLINE_OPTIONS} value={searchParams.deadline || 'all'} />
-            <Select name="sort" label="정렬" options={SORT_OPTIONS} value={searchParams.sort || 'deadline'} />
-            <label className="space-y-2">
-              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">지역</span>
-              <input
-                id="region"
-                name="region"
-                defaultValue={searchParams.region || ''}
-                placeholder="예: 서울, 강남, 수원"
-                className={inputClass}
-              />
-            </label>
-          </div>
-        ) : null}
+        <button type="submit" className="search-submit">검색</button>
       </div>
+
+      <div className="filter-toggle-row">
+        <button
+          type="button"
+          className="filter-toggle"
+          aria-expanded={showAdvanced}
+          onClick={() => setShowAdvanced((value) => !value)}
+        >
+          {showAdvanced ? '상세 필터 닫기' : '상세 필터 열기'}
+        </button>
+      </div>
+
+      {showAdvanced ? (
+        <div className="filter-grid">
+          <MultiSelect
+            label="플랫폼"
+            options={PLATFORM_OPTIONS}
+            values={platforms}
+            onChange={setPlatforms}
+          />
+          <MultiSelect
+            label="유형"
+            options={TYPE_OPTIONS}
+            values={types}
+            onChange={setTypes}
+          />
+          <MultiSelect
+            label="출처"
+            options={[
+              ['all', '전체 출처'],
+              ...sources.map((source) => [source.slug, source.name])
+            ]}
+            values={sourceValues}
+            onChange={setSourceValues}
+          />
+          <Select name="deadline" label="마감" options={DEADLINE_OPTIONS} value={searchParams.deadline || 'all'} />
+          <Select name="sort" label="정렬" options={SORT_OPTIONS} value={searchParams.sort || 'deadline'} />
+          <div className="search-stack">
+            <label htmlFor="region">지역</label>
+            <input
+              id="region"
+              name="region"
+              defaultValue={searchParams.region || ''}
+              placeholder="예: 서울, 강남, 수원"
+            />
+          </div>
+        </div>
+      ) : null}
     </form>
   );
 }
 
 function Select({ name, label, options, value }) {
   return (
-    <label className="space-y-2">
-      <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</span>
-      <select id={name} name={name} defaultValue={value} className={selectClass}>
+    <div className="search-stack">
+      <label htmlFor={name}>{label}</label>
+      <select id={name} name={name} defaultValue={value}>
         {options.map(([optionValue, optionLabel]) => (
           <option key={optionValue} value={optionValue}>
             {optionLabel}
           </option>
         ))}
       </select>
-    </label>
+    </div>
   );
 }
 
@@ -166,33 +150,27 @@ function MultiSelect({ label, options, values, onChange }) {
   }
 
   return (
-    <div className="space-y-3 rounded-[24px] border border-slate-200 bg-white p-4">
-      <label className="space-y-2">
-        <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</span>
-        <select defaultValue="all" onChange={handleSelectChange} className={selectClass}>
-          {options.map(([optionValue, optionLabel]) => (
-            <option key={optionValue} value={optionValue}>
-              {optionLabel}
-            </option>
-          ))}
-        </select>
-      </label>
-      <div className="flex min-h-10 flex-wrap gap-2">
-        {values.length ? values.map((value) => {
-          const labelText = options.find(([optionValue]) => optionValue === value)?.[1] || value;
-          return (
-            <button
-              key={value}
-              type="button"
-              className={cn('inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs font-medium text-indigo-700 transition hover:bg-indigo-100')}
-              onClick={() => handleRemove(value)}
-            >
-              {labelText}
-              <span aria-hidden="true">×</span>
-            </button>
-          );
-        }) : <span className="inline-flex items-center rounded-full border border-dashed border-slate-200 px-3 py-2 text-xs text-slate-400">선택된 조건 없음</span>}
-      </div>
+    <div className="search-stack checkbox-group-wrap">
+      <label>{label}</label>
+      <select defaultValue="all" onChange={handleSelectChange}>
+        {options.map(([optionValue, optionLabel]) => (
+          <option key={optionValue} value={optionValue}>
+            {optionLabel}
+          </option>
+        ))}
+      </select>
+      {values.length ? (
+        <div className="checkbox-group">
+          {values.map((value) => {
+            const labelText = options.find(([optionValue]) => optionValue === value)?.[1] || value;
+            return (
+              <button key={value} type="button" className="check-chip is-selected" onClick={() => handleRemove(value)}>
+                {labelText} ×
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
     </div>
   );
 }

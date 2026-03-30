@@ -3,7 +3,6 @@
 import { useState, useTransition } from 'react';
 
 import { ActiveFilters } from '@/components/active-filters';
-import { Button } from '@/components/ui-kit';
 import { CampaignGrid } from '@/components/campaign-grid';
 
 const PAGE_SIZE = 24;
@@ -60,16 +59,16 @@ export function CampaignFeed({
   }
 
   return (
-    <div className="space-y-6 sm:space-y-8">
+    <>
       <ActiveFilters searchParams={searchParams} resultCount={resultCount} />
       <CampaignGrid campaigns={campaigns} sponsor={sponsor} />
       {hasMore ? (
-        <div className="flex justify-center">
-          <Button type="button" variant="secondary" size="lg" className="min-w-[220px]" onClick={handleLoadMore} disabled={isPending}>
+        <div className="load-more-row">
+          <button type="button" className="load-more-button" onClick={handleLoadMore} disabled={isPending}>
             {isPending ? '불러오는 중…' : '캠페인 더 보기'}
-          </Button>
+          </button>
         </div>
       ) : null}
-    </div>
+    </>
   );
 }

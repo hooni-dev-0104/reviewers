@@ -4,8 +4,6 @@ import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { useAppClient } from '@/components/app-client-providers';
-import { Button, Surface } from '@/components/ui-kit';
-import { cn, inputClass } from '@/lib/ui';
 
 export function AccountForm() {
   const router = useRouter();
@@ -47,46 +45,29 @@ export function AccountForm() {
   }
 
   return (
-    <Surface className="space-y-6 p-6 sm:p-8">
-      <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 p-2">
-        {['login', 'signup'].map((value) => {
-          const active = mode === value;
-          return (
-            <button
-              key={value}
-              type="button"
-              className={cn(
-                'inline-flex min-h-10 items-center justify-center rounded-full px-4 text-sm font-medium transition',
-                active ? 'bg-slate-950 text-white' : 'text-slate-600 hover:bg-white hover:text-slate-950'
-              )}
-              onClick={() => setMode(value)}
-            >
-              {value === 'login' ? '로그인' : '회원가입'}
-            </button>
-          );
-        })}
+    <div className="account-form-shell">
+      <div className="account-mode-row">
+        <button type="button" className={mode === 'login' ? 'mode-active' : ''} onClick={() => setMode('login')}>로그인</button>
+        <button type="button" className={mode === 'signup' ? 'mode-active' : ''} onClick={() => setMode('signup')}>회원가입</button>
       </div>
-
-      <form className="grid gap-4" onSubmit={onSubmit}>
+      <form className="account-form" onSubmit={onSubmit}>
         {mode === 'signup' ? (
-          <label className="space-y-2">
-            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">닉네임</span>
-            <input id="displayName" name="displayName" placeholder="리뷰콕에서 표시할 이름" autoComplete="nickname" className={inputClass} />
-          </label>
+          <div className="search-stack">
+            <label htmlFor="displayName">닉네임</label>
+            <input id="displayName" name="displayName" placeholder="리뷰콕에서 표시할 이름" autoComplete="nickname" />
+          </div>
         ) : null}
-        <label className="space-y-2">
-          <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">이메일</span>
-          <input id="email" name="email" type="email" placeholder="you@example.com" autoComplete="email" required className={inputClass} />
-        </label>
-        <label className="space-y-2">
-          <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">비밀번호</span>
-          <input id="password" name="password" type="password" placeholder="8자 이상" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} required className={inputClass} />
-        </label>
-        {error ? <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p> : null}
-        <Button type="submit" variant="primary" size="lg" className="w-full" disabled={pending}>
-          {pending ? '처리 중…' : mode === 'login' ? '로그인' : '회원가입'}
-        </Button>
+        <div className="search-stack">
+          <label htmlFor="email">이메일</label>
+          <input id="email" name="email" type="email" placeholder="you@example.com" autoComplete="email" required />
+        </div>
+        <div className="search-stack">
+          <label htmlFor="password">비밀번호</label>
+          <input id="password" name="password" type="password" placeholder="8자 이상" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} required />
+        </div>
+        {error ? <p className="form-error">{error}</p> : null}
+        <button type="submit" disabled={pending}>{pending ? '처리 중…' : mode === 'login' ? '로그인' : '회원가입'}</button>
       </form>
-    </Surface>
+    </div>
   );
 }

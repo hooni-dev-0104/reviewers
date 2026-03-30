@@ -3,8 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 
-import { Badge, ButtonLink, EmptyState, Surface } from '@/components/ui-kit';
-import { cn } from '@/lib/ui';
 import { formatDeadline, formatRegion, formatSourceName, formatText, getInternalMapLaunchUrl } from '@/lib/format';
 
 const LEAFLET_JS_URL = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
@@ -80,89 +78,66 @@ export function MapExplorer({ campaigns = [] }) {
 
   if (!campaigns.length) {
     return (
-      <EmptyState
-        title="지도로 볼 수 있는 체험단이 아직 없어요"
-        description="정확한 위치가 확인된 방문형 캠페인부터 이 탭에 보여드릴게요."
-      />
+      <section className="map-empty-state">
+        <h2>지도로 볼 수 있는 체험단이 아직 없어요</h2>
+        <p>정확한 위치가 확인된 방문형 캠페인부터 이 탭에 보여드릴게요.</p>
+      </section>
     );
   }
 
   const kakaoUrl = selectedCampaign ? getInternalMapLaunchUrl(selectedCampaign, 'kakao') : null;
 
   return (
-    <section className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.7fr)]">
-      <Surface className="space-y-5 p-5 sm:p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-2">
-            <span className="text-xs font-semibold uppercase tracking-[0.24em] text-indigo-600">
-              {selectedCampaign ? '선택한 장소' : '지도 둘러보기'}
-            </span>
-            <h2 className="text-[24px] font-semibold tracking-[-0.04em] text-slate-950 sm:text-[32px]">
-              {selectedCampaign ? formatText(selectedCampaign.title) : '캠페인을 눌러 상세 위치를 확인해보세요'}
-            </h2>
-            {selectedCampaign ? <p className="text-sm leading-6 text-slate-600">{selectedCampaign.exact_location}</p> : null}
+    <section className="map-layout">
+      <div className="map-canvas-panel">
+        <div className="map-canvas-head">
+          <div>
+            <span className="eyebrow">{selectedCampaign ? '선택한 장소' : '지도 둘러보기'}</span>
+            <h2>{selectedCampaign ? formatText(selectedCampaign.title) : '캠페인을 눌러 상세 위치를 확인해보세요'}</h2>
+            {selectedCampaign ? <p>{selectedCampaign.exact_location}</p> : null}
           </div>
-          {selectedCampaign && kakaoUrl ? (
-            <a
-              href={kakaoUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex h-12 items-center justify-center rounded-full border border-slate-200 bg-white px-5 text-sm font-medium text-slate-700 transition hover:-translate-y-0.5 hover:bg-slate-50"
-            >
-              카카오맵
-            </a>
+          {selectedCampaign ? (
+            <div className="detail-map-links">
+              <a href={kakaoUrl} target="_blank" rel="noreferrer">카카오맵</a>
+            </div>
           ) : null}
         </div>
 
-        <div ref={mapContainerRef} className="min-h-[440px] overflow-hidden rounded-[28px] border border-slate-200 bg-slate-100" />
-      </Surface>
+        <div ref={mapContainerRef} className="map-surface" />
+      </div>
 
-      <Surface className="space-y-5 p-5 sm:p-6">
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between gap-3">
-            <div className="space-y-1">
-              <span className="text-xs font-semibold uppercase tracking-[0.24em] text-indigo-600">현재 지도 안 캠페인</span>
-              <strong className="block text-[28px] font-semibold tracking-[-0.04em] text-slate-950">{visibleCampaigns.length}개</strong>
-            </div>
-            <Badge>전체 {campaigns.length}개</Badge>
+      <div className="map-list-panel">
+        <div className="map-list-head">
+          <div>
+            <span className="eyebrow">현재 지도 안 캠페인</span>
+            <strong>{visibleCampaigns.length}개</strong>
           </div>
-          <p className="text-sm leading-6 text-slate-600">리스트와 지도를 동시에 확인하며 모바일에서도 위치 기반 탐색이 흐트러지지 않도록 설계했습니다.</p>
+          <span className="map-count-pill">전체 {campaigns.length}개</span>
         </div>
 
-        <div className="grid max-h-[560px] gap-3 overflow-y-auto pr-1">
-          {visibleCampaigns.map((campaign) => {
-            const active = selectedCampaign?.id === campaign.id;
-            return (
-              <article
-                key={campaign.id}
-                className={cn(
-                  'rounded-[24px] border p-4 transition',
-                  active
-                    ? 'border-indigo-200 bg-indigo-50/70'
-                    : 'border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white'
-                )}
+        <div className="map-card-list">
+          {visibleCampaigns.map((campaign) => (
+            <article
+              key={campaign.id}
+              className={`map-list-card ${selectedCampaign?.id === campaign.id ? 'active' : ''}`}
+            >
+              <button
+                type="button"
+                className="map-list-select"
+                onClick={() => setSelectedId(campaign.id)}
               >
-                <button type="button" className="w-full space-y-3 text-left" onClick={() => setSelectedId(campaign.id)}>
-                  <div className="flex flex-wrap gap-2">
-                    <Badge>{formatSourceName(campaign.sources)}</Badge>
-                    <Badge>{formatRegion(campaign)}</Badge>
-                  </div>
-                  <div className="space-y-2">
-                    <h3 className="text-lg font-semibold tracking-[-0.03em] text-slate-950">{formatText(campaign.title)}</h3>
-                    <p className="text-sm leading-6 text-slate-600">{campaign.exact_location}</p>
-                    <small className="block text-xs leading-5 text-slate-500">{formatRegion(campaign)} · {formatDeadline(campaign.apply_deadline)}</small>
-                  </div>
-                </button>
-                <div className="mt-4">
-                  <ButtonLink href={`/campaign/${campaign.id}`} variant={active ? 'primary' : 'secondary'} size="sm" className="w-full">
-                    상세 보기
-                  </ButtonLink>
-                </div>
-              </article>
-            );
-          })}
+                <span className="source-chip">{formatSourceName(campaign.sources)}</span>
+                <h3>{formatText(campaign.title)}</h3>
+                <p>{campaign.exact_location}</p>
+                <small>{formatRegion(campaign)} · {formatDeadline(campaign.apply_deadline)}</small>
+              </button>
+              <Link href={`/campaign/${campaign.id}`}>
+                상세 보기
+              </Link>
+            </article>
+          ))}
         </div>
-      </Surface>
+      </div>
     </section>
   );
 }

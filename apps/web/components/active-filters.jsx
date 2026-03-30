@@ -1,4 +1,4 @@
-import { ButtonLink, Badge, Surface } from '@/components/ui-kit';
+import Link from 'next/link';
 
 function normalizeSelection(value) {
   if (Array.isArray(value)) {
@@ -57,25 +57,15 @@ export function ActiveFilters({ searchParams = {}, resultCount }) {
   ].filter(Boolean);
 
   return (
-    <Surface className="flex flex-col gap-5 p-6 sm:flex-row sm:items-end sm:justify-between sm:p-8">
-      <div className="space-y-3">
-        <span className="text-xs font-semibold uppercase tracking-[0.24em] text-indigo-600">Result overview</span>
-        <div className="space-y-2">
-          <strong className="block text-[28px] font-semibold tracking-[-0.04em] text-slate-950 sm:text-[36px]">
-            {resultCount.toLocaleString('ko-KR')}개 캠페인
-          </strong>
-          <p className="text-sm leading-6 text-slate-600 sm:text-base">핵심 정보 중심 카드로 정렬해 비교 효율을 높였습니다. 조건이 많아질수록 아래 배지에서 빠르게 확인하세요.</p>
-        </div>
+    <div className="results-toolbar">
+      <div>
+        <strong>{resultCount.toLocaleString('ko-KR')}개</strong>
+        <span>지금 조건에 맞는 캠페인</span>
       </div>
-
-      <div className="flex max-w-3xl flex-wrap items-center gap-3 sm:justify-end">
-        {entries.length ? entries.map(([label, value]) => (
-          <Badge key={`${label}-${value}`} tone="brand" className="max-w-full text-left">
-            <span className="truncate">{label} · {value}</span>
-          </Badge>
-        )) : <Badge>현재는 전체 탐색 상태예요</Badge>}
-        <ButtonLink href="/" variant="secondary" size="sm">초기화</ButtonLink>
+      <div className="active-chip-row">
+        {entries.length ? entries.map(([label, value]) => <span key={`${label}-${value}`} className="active-filter-chip">{label} · {value}</span>) : <span className="active-filter-empty">조건을 넓히면 더 많이 보여요.</span>}
+        {entries.length ? <Link className="reset-link" href="/">초기화</Link> : null}
       </div>
-    </Surface>
+    </div>
   );
 }

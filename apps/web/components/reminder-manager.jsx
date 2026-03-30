@@ -4,8 +4,6 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { useAppClient } from '@/components/app-client-providers';
-import { Button, Surface } from '@/components/ui-kit';
-import { cn } from '@/lib/ui';
 
 const OPTIONS = [3, 24, 72];
 
@@ -54,37 +52,21 @@ export function ReminderManager({ campaignId }) {
   }
 
   if (loading) {
-    return <Surface className="space-y-2 p-5"><span className="text-sm text-slate-500">마감 리마인드를 확인하는 중…</span></Surface>;
+    return <div className="reminder-box"><span>마감 리마인드를 확인하는 중…</span></div>;
   }
 
   return (
-    <Surface className="space-y-4 p-5">
-      <div className="space-y-2">
-        <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Deadline reminder</span>
-        <strong className="block text-xl font-semibold tracking-[-0.03em] text-slate-950">마감 리마인드</strong>
-        <p className="text-sm leading-6 text-slate-600">{session ? '로그인한 계정에 맞춰 마감 알림 시점을 저장해요.' : '로그인하면 마감 리마인드를 저장할 수 있어요.'}</p>
-      </div>
-      <div className="flex flex-wrap gap-2">
+    <div className="reminder-box">
+      <strong>마감 리마인드</strong>
+      <span>{session ? '로그인한 계정에 맞춰 마감 알림 시점을 저장해요.' : '로그인하면 마감 리마인드를 저장할 수 있어요.'}</span>
+      <div className="reminder-options">
         {OPTIONS.map((hours) => (
-          <button
-            key={hours}
-            type="button"
-            className={cn(
-              'inline-flex h-10 items-center justify-center rounded-full border px-4 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50',
-              value === hours ? 'border-indigo-100 bg-indigo-50 text-indigo-700' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-            )}
-            onClick={() => saveReminder(hours)}
-            disabled={pending}
-          >
+          <button key={hours} type="button" className={value === hours ? 'reminder-active' : ''} onClick={() => saveReminder(hours)} disabled={pending}>
             {hours}시간 전
           </button>
         ))}
-        {value ? (
-          <Button type="button" variant="ghost" size="sm" className="border border-slate-200" onClick={clearReminder} disabled={pending}>
-            리마인드 해제
-          </Button>
-        ) : null}
+        {value ? <button type="button" onClick={clearReminder} disabled={pending}>리마인드 해제</button> : null}
       </div>
-    </Surface>
+    </div>
   );
 }

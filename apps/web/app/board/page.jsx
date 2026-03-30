@@ -1,5 +1,6 @@
+import Link from 'next/link';
+
 import { BoardPostList } from '@/components/board-post-list';
-import { ButtonLink, PageHero, Surface } from '@/components/ui-kit';
 import { SiteShell } from '@/components/site-shell';
 import { VisitorWidget } from '@/components/visitor-widget';
 import { listBoardPosts } from '@/lib/board';
@@ -18,43 +19,50 @@ export default async function BoardPage({ searchParams }) {
 
   return (
     <SiteShell campaignCount={campaignCount} visitorWidget={<VisitorWidget initialCounts={counts} />}>
-      <PageHero
-        eyebrow="Community feedback"
-        title="문의, 요청, 사용 후기를 같은 톤으로 정리한 게시판"
-        description="과한 장식 대신 읽기 쉬운 카드와 분명한 공개 상태 배지로 게시글 구조를 정리했습니다."
-        actions={[
-          <ButtonLink key="write" href="/board/new" variant="primary" size="lg">글 남기기</ButtonLink>,
-          <ButtonLink key="list" href="/" variant="secondary" size="lg">캠페인 보기</ButtonLink>
-        ]}
-        stats={[
-          { label: '전체 글', value: posts.length.toLocaleString('ko-KR'), hint: '최근 남겨진 의견 포함' },
-          { label: '공개 필터', value: visibility === 'all' ? '전체' : visibility === 'public' ? '공개' : '비공개', hint: '현재 선택된 범위' },
-          { label: '응답 흐름', value: '간결한 읽기', hint: '모바일에서도 읽기 쉬운 구조' }
-        ]}
-      />
-
-      <Surface className="space-y-6 p-5 sm:p-8">
-        <div className="inline-flex flex-wrap rounded-full border border-slate-200 bg-slate-50 p-2">
-          {[
-            ['all', '전체'],
-            ['public', '공개'],
-            ['private', '비공개']
-          ].map(([value, label]) => {
-            const active = visibility === value;
-            return (
-              <ButtonLink
-                key={value}
-                href={value === 'all' ? '/board' : `/board?visibility=${value}`}
-                variant={active ? 'primary' : 'ghost'}
-                size="sm"
-              >
-                {label}
-              </ButtonLink>
-            );
-          })}
+      <section className="trust-page saved-page board-page-shell">
+        <div className="board-hero-card">
+          <div className="board-hero-copy">
+            <span className="eyebrow">게시판</span>
+            <h1 className="board-hero-title">편하게 의견을 남겨주세요.</h1>
+            <p className="board-hero-description">요구사항, 문의, 사용 후기를 편하게 남겨주세요. 짧은 응원 한마디도 좋아요.</p>
+            <div className="board-topic-chips" aria-label="게시판에서 남길 수 있는 이야기">
+              <span>요청사항</span>
+              <span>문의</span>
+              <span>응원 한마디</span>
+            </div>
+          </div>
+          <div className="board-hero-side">
+            <Link href="/board/new" className="board-write-link">글 남기기</Link>
+            <p className="board-hero-helper">닉네임만 적어도 되고 비공개 작성도 가능해요.</p>
+          </div>
         </div>
+
+        <div className="board-filter-bar" role="tablist" aria-label="게시글 공개 범위 필터">
+          <Link
+            href="/board?visibility=all"
+            className={`board-filter-link${visibility === 'all' ? ' is-active' : ''}`}
+            aria-current={visibility === 'all' ? 'page' : undefined}
+          >
+            전체
+          </Link>
+          <Link
+            href="/board?visibility=public"
+            className={`board-filter-link${visibility === 'public' ? ' is-active' : ''}`}
+            aria-current={visibility === 'public' ? 'page' : undefined}
+          >
+            공개
+          </Link>
+          <Link
+            href="/board?visibility=private"
+            className={`board-filter-link${visibility === 'private' ? ' is-active' : ''}`}
+            aria-current={visibility === 'private' ? 'page' : undefined}
+          >
+            비공개
+          </Link>
+        </div>
+
         <BoardPostList posts={posts} />
-      </Surface>
+      </section>
     </SiteShell>
   );
 }

@@ -1,5 +1,4 @@
 import { SavedCampaignsView } from '@/components/saved-campaigns-view';
-import { PageHero } from '@/components/ui-kit';
 import { SiteShell } from '@/components/site-shell';
 import { VisitorWidget } from '@/components/visitor-widget';
 import { getCampaignCount, getVisitorCounts } from '@/lib/supabase';
@@ -11,17 +10,22 @@ export default async function SavedPage() {
 
   return (
     <SiteShell campaignCount={campaignCount} visitorWidget={<VisitorWidget initialCounts={counts} />}>
-      <PageHero
-        eyebrow="Saved workflow"
-        title="나중에 다시 볼 캠페인을 깔끔하게 저장하고 비교하세요"
-        description="저장 목록을 별도 화면으로 분리하고 핵심 메타데이터만 남겨 다시 보는 흐름을 단순화했습니다."
-        stats={[
-          { label: '사용 목적', value: '다시 비교', hint: '혜택과 마감을 재검토' },
-          { label: '리스트 구조', value: '핵심 메타 중심', hint: '소스 / 유형 / 일정' },
-          { label: 'CTA', value: '상세 + 원문', hint: '두 단계 행동 분리' }
-        ]}
-      />
-      <SavedCampaignsView />
+      <section className="trust-page saved-page">
+        <span className="eyebrow">저장한 캠페인</span>
+        <h1>나중에 다시 볼 체험단을 모아두자.</h1>
+        <p>마음에 들었던 캠페인을 여기 모아두고, 마감 전에 다시 비교해볼 수 있어요.</p>
+        <div className="decision-checklist">
+          <div className="guidance-card">
+            <strong>오늘 다시 볼 항목</strong>
+            <span>마감이 가까운 카드부터 원문으로 넘어가면 우선순위 정리가 쉬워져요.</span>
+          </div>
+          <div className="guidance-card">
+            <strong>비교용 저장</strong>
+            <span>혜택이나 위치가 헷갈리는 캠페인을 저장해두고 차분히 다시 비교하세요.</span>
+          </div>
+        </div>
+        <SavedCampaignsView />
+      </section>
     </SiteShell>
   );
 }
