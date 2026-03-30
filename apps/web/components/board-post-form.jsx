@@ -3,6 +3,9 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
+import { Button, Surface } from '@/components/ui-kit';
+import { inputClass, textareaClass } from '@/lib/ui';
+
 export function BoardPostForm() {
   const router = useRouter();
   const [visibility, setVisibility] = useState('public');
@@ -45,80 +48,48 @@ export function BoardPostForm() {
   }
 
   return (
-    <form className="board-form-shell board-form-card" onSubmit={handleSubmit}>
-      <div className="board-form-grid">
-        <label className="search-stack board-field">
-          <span>닉네임</span>
-          <input
-            value={nickname}
-            onChange={(event) => setNickname(event.target.value)}
-            maxLength={20}
-            placeholder="예: 리뷰콕 사용자"
-            required
-          />
-          <small className="board-field-hint">답변을 구분할 수 있는 닉네임이면 충분해요.</small>
+    <Surface as="form" className="grid gap-4 p-6 sm:p-8" onSubmit={handleSubmit}>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <label className="space-y-2">
+          <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">닉네임</span>
+          <input value={nickname} onChange={(event) => setNickname(event.target.value)} maxLength={20} placeholder="예: 리뷰콕 사용자" required className={inputClass} />
         </label>
-        <label className="search-stack board-field">
-          <span>공개 여부</span>
-          <select value={visibility} onChange={(event) => setVisibility(event.target.value)}>
+        <label className="space-y-2">
+          <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">공개 여부</span>
+          <select value={visibility} onChange={(event) => setVisibility(event.target.value)} className={inputClass}>
             <option value="public">공개 글</option>
             <option value="private">비공개 글</option>
           </select>
-          <small className="board-field-hint">
-            {visibility === 'private' ? '작성한 닉네임과 비밀번호로만 본문을 볼 수 있어요.' : '누구나 바로 읽을 수 있는 글이에요.'}
-          </small>
         </label>
       </div>
 
-      <label className="search-stack board-field">
-        <span>제목</span>
-        <input
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-          maxLength={120}
-          placeholder="무엇을 남기고 싶은지 한 줄로 적어주세요."
-          required
-        />
+      <label className="space-y-2">
+        <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">제목</span>
+        <input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120} placeholder="무엇을 남기고 싶은지 한 줄로 적어주세요." required className={inputClass} />
       </label>
 
-      <label className="search-stack board-field">
-        <span>본문</span>
-        <textarea
-          className="board-textarea"
-          value={body}
-          onChange={(event) => setBody(event.target.value)}
-          rows={10}
-          maxLength={5000}
-          placeholder="문의 내용, 요청사항, 사용 후기, 응원 한마디를 편하게 적어주세요."
-          required
-        />
-        <small className="board-field-hint">상황이나 원하는 결과를 함께 적어주면 더 빠르게 확인할 수 있어요.</small>
+      <label className="space-y-2">
+        <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">본문</span>
+        <textarea value={body} onChange={(event) => setBody(event.target.value)} rows={10} maxLength={5000} placeholder="문의 내용, 요청사항, 사용 후기, 응원 한마디를 편하게 적어주세요." required className={textareaClass} />
       </label>
 
       {visibility === 'private' ? (
-        <label className="search-stack board-field board-conditional-field">
-          <span>비밀번호</span>
-          <input
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            minLength={4}
-            maxLength={64}
-            placeholder="열람할 때 사용할 비밀번호"
-            required
-          />
-          <small className="board-field-hint">최소 4자 이상 입력해 주세요.</small>
+        <label className="space-y-2">
+          <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">비밀번호</span>
+          <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} minLength={4} maxLength={64} placeholder="열람할 때 사용할 비밀번호" required className={inputClass} />
         </label>
       ) : null}
 
-      <input type="text" name="website" autoComplete="off" tabIndex={-1} className="board-honeypot" />
+      <input type="text" name="website" autoComplete="off" tabIndex={-1} className="hidden" />
 
-      {error ? <p className="form-error">{error}</p> : null}
+      {error ? <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p> : null}
 
-      <div className="board-form-actions">
-        <button type="submit" className="board-submit-button" disabled={pending}>{pending ? '작성 중…' : '게시하기'}</button>
-        <p className="board-submit-note">작성이 끝나면 바로 상세 페이지로 이동해요.</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm leading-6 text-slate-500">작성이 끝나면 바로 상세 페이지로 이동해요.</p>
+        <Button type="submit" variant="primary" size="lg" disabled={pending}>
+          {pending ? '작성 중…' : '게시하기'}
+        </Button>
       </div>
-    </form>
+    </Surface>
   );
 }

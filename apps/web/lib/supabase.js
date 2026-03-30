@@ -474,7 +474,7 @@ export async function getVisitorCounts() {
 
 export async function recordVisitor({ visitorId, path }) {
   const today = getKstToday();
-  await supabaseFetch('/site_daily_visitors', {
+  await supabaseFetch('/site_daily_visitors?on_conflict=visit_date,visitor_id', {
     method: 'POST',
     headers: { Prefer: 'resolution=ignore-duplicates,return=minimal' },
     body: JSON.stringify([{ visitor_id: visitorId, visit_date: today, path }])

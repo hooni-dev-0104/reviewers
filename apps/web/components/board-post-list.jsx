@@ -1,59 +1,52 @@
 import Link from 'next/link';
 
 import { formatBoardDate } from '@/lib/board';
+import { Badge, ButtonLink, EmptyState, Surface } from '@/components/ui-kit';
 
 export function BoardPostList({ posts = [], basePath = '/board', showDelete = false }) {
   const showWriteCta = basePath === '/board' && !showDelete;
 
   if (!posts.length) {
     return (
-      <section className="empty-state board-empty-state">
-        <div className="board-empty-badge" aria-hidden="true">✍️</div>
-        <div className="board-empty-copy">
-          <p className="board-empty-title">아직 게시글이 없어요.</p>
-          <span>첫 번째 문의나 의견을 남겨주세요. 짧은 응원 한마디도 큰 힘이 돼요.</span>
-        </div>
-        {showWriteCta ? (
-          <div className="board-empty-actions">
-            <Link href="/board/new" className="board-empty-link">
-              첫 글 남기기
-            </Link>
-            <small>원하는 공개 범위로 바로 작성할 수 있어요.</small>
-          </div>
-        ) : null}
-      </section>
+      <EmptyState
+        title="아직 게시글이 없어요"
+        description="첫 번째 문의나 의견을 남겨주세요. 짧은 응원 한마디도 큰 힘이 돼요."
+        actions={showWriteCta ? [<ButtonLink key="write" href="/board/new" variant="primary">첫 글 남기기</ButtonLink>] : undefined}
+      />
     );
   }
 
   return (
-    <section className="board-list">
+    <section className="grid gap-4">
       {posts.map((post) => (
-        <article key={post.id} className="board-row">
-          <div className="board-row-head">
-            <div className="board-row-head-main">
-            <span className={`badge ${post.visibility === 'private' ? 'badge-warn' : 'badge-ok'}`}>
-                {post.visibility === 'private' ? '비공개' : '공개'}
-              </span>
-              <h3>
-                <Link href={`${basePath}/${post.id}`} className="board-row-title-link">{post.title}</Link>
+        <Surface key={post.id} className="space-y-4 p-5 sm:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                <Badge tone={post.visibility === 'private' ? 'warn' : 'success'}>
+                  {post.visibility === 'private' ? '비공개' : '공개'}
+                </Badge>
+                <Badge>{post.nickname}</Badge>
+                <Badge>{formatBoardDate(post.created_at)}</Badge>
+              </div>
+              <h3 className="text-xl font-semibold tracking-[-0.03em] text-slate-950">
+                <Link href={`${basePath}/${post.id}`}>{post.title}</Link>
               </h3>
             </div>
             {showDelete ? (
               <form action={`/api/ops/board/${post.id}/delete`} method="post">
-                <button type="submit" className="board-delete-button">삭제</button>
+                <button type="submit" className="inline-flex h-10 items-center justify-center rounded-full border border-rose-200 bg-rose-50 px-4 text-sm font-medium text-rose-700 transition hover:bg-rose-100">
+                  삭제
+                </button>
               </form>
             ) : null}
           </div>
-          <div className="board-row-meta">
-            <span>{post.nickname}</span>
-            <span>{formatBoardDate(post.created_at)}</span>
-          </div>
-          {post.visibility === 'public' && post.body ? (
-            <p className="board-row-preview">{post.body}</p>
-          ) : (
-            <p className="board-row-preview board-row-preview-muted">비공개 글입니다. 제목은 공개되고 본문은 잠겨 있어요.</p>
-          )}
-        </article>
+          <p className="text-sm leading-7 text-slate-600">
+            {post.visibility === 'public' && post.body
+              ? post.body
+              : '비공개 글입니다. 제목은 공개되고 본문은 잠겨 있어요.'}
+          </p>
+        </Surface>
       ))}
     </section>
   );

@@ -2,6 +2,9 @@
 
 import { useState } from 'react';
 
+import { Button, Surface } from '@/components/ui-kit';
+import { inputClass } from '@/lib/ui';
+
 export function PrivatePostGate({ postId, post }) {
   const [nickname, setNickname] = useState('');
   const [password, setPassword] = useState('');
@@ -34,37 +37,45 @@ export function PrivatePostGate({ postId, post }) {
 
   if (body != null) {
     return (
-      <article className="info-panel board-detail-body-card">
-        <h2>본문</h2>
-        <div className="board-body">{body}</div>
-      </article>
+      <Surface className="space-y-4 p-6 sm:p-8">
+        <div className="space-y-2">
+          <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">본문</span>
+          <div className="board-body rounded-[24px] border border-slate-200 bg-slate-50 p-4 text-sm leading-7 text-slate-700">{body}</div>
+        </div>
+      </Surface>
     );
   }
 
   return (
-    <article className="info-panel board-private-gate">
-      <span className="badge badge-warn">비공개 글</span>
-      <h2>본문을 확인해 보세요</h2>
-      <p className="board-private-description">작성한 닉네임과 비밀번호를 입력하면 본문을 바로 열 수 있어요.</p>
-      <div className="board-locked-meta board-private-preview">
-        <strong>제목</strong>
+    <Surface className="space-y-5 p-6 sm:p-8">
+      <div className="space-y-2">
+        <span className="inline-flex rounded-full border border-amber-100 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">비공개 글</span>
+        <h2 className="text-[28px] font-semibold tracking-[-0.04em] text-slate-950">본문을 확인해 보세요</h2>
+        <p className="text-sm leading-7 text-slate-600">작성한 닉네임과 비밀번호를 입력하면 본문을 바로 열 수 있어요.</p>
+      </div>
+
+      <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+        <strong className="block text-slate-950">제목</strong>
         <span>{post.title}</span>
       </div>
-      <form className="board-form-shell board-private-form" onSubmit={handleUnlock}>
-        <label className="search-stack board-field">
-          <span>닉네임</span>
-          <input value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder="작성한 닉네임" required />
+
+      <form className="grid gap-4" onSubmit={handleUnlock}>
+        <label className="space-y-2">
+          <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">닉네임</span>
+          <input value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder="작성한 닉네임" required className={inputClass} />
         </label>
-        <label className="search-stack board-field">
-          <span>비밀번호</span>
-          <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="비밀번호" required />
+        <label className="space-y-2">
+          <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">비밀번호</span>
+          <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="비밀번호" required className={inputClass} />
         </label>
-        {error ? <p className="form-error">{error}</p> : null}
-        <div className="board-form-actions board-private-actions">
-          <button type="submit" className="board-submit-button" disabled={pending}>{pending ? '확인 중…' : '본문 확인하기'}</button>
-          <p className="board-submit-note">입력한 정보가 맞으면 이 화면에서 바로 본문이 열려요.</p>
+        {error ? <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p> : null}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm leading-6 text-slate-500">입력한 정보가 맞으면 이 화면에서 바로 본문이 열려요.</p>
+          <Button type="submit" variant="primary" size="lg" disabled={pending}>
+            {pending ? '확인 중…' : '본문 확인하기'}
+          </Button>
         </div>
       </form>
-    </article>
+    </Surface>
   );
 }

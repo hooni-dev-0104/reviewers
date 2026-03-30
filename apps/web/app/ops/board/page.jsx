@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 
 import { BoardPostList } from '@/components/board-post-list';
+import { PageHero } from '@/components/ui-kit';
 import { SiteShell } from '@/components/site-shell';
 import { VisitorWidget } from '@/components/visitor-widget';
 import { isOpsAuthenticated } from '@/lib/ops';
@@ -23,12 +24,17 @@ export default async function OpsBoardPage() {
 
   return (
     <SiteShell campaignCount={campaignCount} visitorWidget={<VisitorWidget initialCounts={counts} />}>
-      <section className="trust-page saved-page">
-        <span className="eyebrow">Ops 게시판</span>
-        <h1>관리자 전용 게시글 열람</h1>
-        <p>비공개 글도 본문까지 바로 확인할 수 있는 숨겨진 관리자 화면입니다.</p>
-        <BoardPostList posts={posts} basePath="/ops/board" showDelete />
-      </section>
+      <PageHero
+        eyebrow="Ops board"
+        title="관리자 전용 게시글 열람"
+        description="비공개 글도 본문까지 바로 확인할 수 있는 관리자 전용 화면입니다."
+        stats={[
+          { label: '전체 글', value: posts.length.toLocaleString('ko-KR'), hint: '운영 검토 대상' },
+          { label: '권한', value: '관리자', hint: '비공개 본문 확인 가능' },
+          { label: '행동', value: '열람 + 삭제', hint: '운영 대응 흐름' }
+        ]}
+      />
+      <BoardPostList posts={posts} basePath="/ops/board" showDelete />
     </SiteShell>
   );
 }
