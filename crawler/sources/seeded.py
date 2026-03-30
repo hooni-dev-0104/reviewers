@@ -1703,6 +1703,55 @@ def _extract_revu_campaign_option_text(options: list[dict[str, Any]] | None) -> 
     return " / ".join(values) if values else None
 
 
+def _extract_revu_reward_detail(detail: dict[str, Any] | None) -> str | None:
+    if not isinstance(detail, dict):
+        return None
+
+    candidates = []
+
+    replace_work = detail.get("replaceDictionaryWork")
+    if isinstance(replace_work, dict):
+        candidates.append(replace_work.get("blogRewardDetail"))
+        candidates.append(replace_work.get("제공내역"))
+
+    blog_data = detail.get("campaignBlogData")
+    if isinstance(blog_data, dict):
+        candidates.append(blog_data.get("blogRewardDetail"))
+        candidates.append(blog_data.get("제공내역"))
+
+    replace_dictionary = blog_data.get("replaceDictionary") if isinstance(blog_data, dict) else None
+    if isinstance(replace_dictionary, str) and replace_dictionary.strip():
+        try:
+            parsed = json.loads(replace_dictionary)
+        except Exception:
+            parsed = None
+        if isinstance(parsed, dict):
+            candidates.append(parsed.get("제공내역"))
+
+    candidates.append(detail.get("reward"))
+
+    for value in candidates:
+        normalized = _normalize_benefit_text(value)
+        if normalized:
+            return normalized
+    return None
+
+
+def enrich_revu_item_from_detail(item: dict[str, Any], detail: dict[str, Any] | None) -> dict[str, Any]:
+    enriched = dict(item)
+    reward_detail = _extract_revu_reward_detail(detail)
+    if reward_detail:
+        enriched["benefit_text"] = reward_detail
+        if not enriched.get("snippet") or enriched.get("snippet") == item.get("title"):
+            enriched["snippet"] = reward_detail
+
+    payload = dict(enriched.get("raw_payload") or {})
+    if reward_detail:
+        payload["reward_detail"] = reward_detail
+    enriched["raw_payload"] = payload
+    return enriched
+
+
 def transform_revu_item(item: dict, source_id: str | None = None) -> dict:
     categories = item.get("category") or []
     if not isinstance(categories, list):
@@ -2626,7 +2675,23 @@ class RevuSourceAdapter(PlaceholderSourceAdapter):
             if not links.get("next"):
                 break
             time.sleep(0.35)
-        return items
+
+        enriched_items: list[dict] = []
+        for item in items:
+            benefit_text = str(item.get("benefit_text") or "").strip()
+            needs_detail = not benefit_text or benefit_text.startswith("제공내역 중 택")
+            if not needs_detail:
+                enriched_items.append(item)
+                continue
+            campaign_id = str(item.get("original_url", "")).rstrip("/").split("/")[-1]
+            try:
+                detail = _fetch_revu_campaign_page(f"https://api.weble.net/campaigns/{campaign_id}", headers=headers)
+            except Exception:
+                enriched_items.append(item)
+                continue
+            enriched_items.append(enrich_revu_item_from_detail(item, detail))
+            time.sleep(0.2)
+        return enriched_items
 
 
 
