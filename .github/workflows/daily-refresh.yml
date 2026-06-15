@@ -46,7 +46,6 @@ jobs:
   refresh:
     needs: preflight
     if: needs.preflight.outputs.refresh_mode == 'run'
-    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
