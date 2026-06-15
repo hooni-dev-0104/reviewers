@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 
+import { Badge, Button } from '@/components/ui';
+
 export function PrivatePostGate({ postId, post }) {
   const [nickname, setNickname] = useState('');
   const [password, setPassword] = useState('');
@@ -43,7 +45,7 @@ export function PrivatePostGate({ postId, post }) {
 
   return (
     <article className="info-panel board-private-gate">
-      <span className="badge badge-warn">비공개 글</span>
+      <Badge tone="warning" showIcon>비공개 글</Badge>
       <h2>본문을 확인해 보세요</h2>
       <p className="board-private-description">작성한 닉네임과 비밀번호를 입력하면 본문을 바로 열 수 있어요.</p>
       <div className="board-locked-meta board-private-preview">
@@ -51,17 +53,17 @@ export function PrivatePostGate({ postId, post }) {
         <span>{post.title}</span>
       </div>
       <form className="board-form-shell board-private-form" onSubmit={handleUnlock}>
-        <label className="search-stack board-field">
-          <span>닉네임</span>
-          <input value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder="작성한 닉네임" required />
+        <label className="rk-field board-field" htmlFor="privateNickname">
+          <span className="rk-field__label">닉네임</span>
+          <input id="privateNickname" className="rk-input" value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder="작성한 닉네임" required />
         </label>
-        <label className="search-stack board-field">
-          <span>비밀번호</span>
-          <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="비밀번호" required />
+        <label className="rk-field board-field" htmlFor="privatePassword">
+          <span className="rk-field__label">비밀번호</span>
+          <input id="privatePassword" className="rk-input" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="비밀번호" required />
         </label>
         {error ? <p className="form-error">{error}</p> : null}
         <div className="board-form-actions board-private-actions">
-          <button type="submit" className="board-submit-button" disabled={pending}>{pending ? '확인 중…' : '본문 확인하기'}</button>
+          <Button type="submit" className="board-submit-button" disabled={pending}>{pending ? '확인 중…' : '본문 확인하기'}</Button>
           <p className="board-submit-note">입력한 정보가 맞으면 이 화면에서 바로 본문이 열려요.</p>
         </div>
       </form>

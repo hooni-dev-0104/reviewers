@@ -1,5 +1,7 @@
 import Link from 'next/link';
 
+import { Badge } from '@/components/ui';
+
 function normalizeSelection(value) {
   if (Array.isArray(value)) {
     return value.flatMap((item) => String(item).split(',')).map((item) => item.trim()).filter(Boolean);
@@ -57,14 +59,18 @@ export function ActiveFilters({ searchParams = {}, resultCount }) {
   ].filter(Boolean);
 
   return (
-    <div className="results-toolbar">
-      <div>
+    <div className="rk-results">
+      <div className="rk-results__count">
         <strong>{resultCount.toLocaleString('ko-KR')}개</strong>
-        <span>지금 조건에 맞는 캠페인</span>
+        <span> · 선택한 조건에 맞는 캠페인</span>
       </div>
-      <div className="active-chip-row">
-        {entries.length ? entries.map(([label, value]) => <span key={`${label}-${value}`} className="active-filter-chip">{label} · {value}</span>) : <span className="active-filter-empty">조건을 넓히면 더 많이 보여요.</span>}
-        {entries.length ? <Link className="reset-link" href="/">초기화</Link> : null}
+      <div className="rk-results__chips">
+        {entries.length ? (
+          entries.map(([label, value]) => <Badge key={`${label}-${value}`} tone="neutral">{label} · {value}</Badge>)
+        ) : (
+          <span className="active-filter-empty">조건을 넓히면 더 많이 보여드릴게요.</span>
+        )}
+        {entries.length ? <Link className="rk-results__reset" href="/">조건 초기화</Link> : null}
       </div>
     </div>
   );

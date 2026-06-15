@@ -1,6 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
+
+import { Button, FilterChip, SearchField, Select } from '@/components/ui';
 
 const PLATFORM_OPTIONS = [
   ['all', '전체 플랫폼'],
@@ -45,33 +47,34 @@ export function FilterBar({ sources, searchParams }) {
   const [sourceValues, setSourceValues] = useState(() => normalizeSelection(searchParams.source).filter((value) => value !== 'all'));
 
   return (
-    <form className="filter-shell">
+    <form className="filter-shell rk-filter-shell">
       <input type="hidden" name="platform" value={platforms.join(',')} />
       <input type="hidden" name="type" value={types.join(',')} />
       <input type="hidden" name="source" value={sourceValues.join(',')} />
 
       <div className="search-row search-row-primary">
-        <div className="search-stack search-stack-grow">
-          <label htmlFor="search">검색</label>
-          <input
-            id="search"
-            name="search"
-            defaultValue={searchParams.search || ''}
-            placeholder="브랜드명, 지역, 혜택으로 검색"
-          />
-        </div>
-        <button type="submit" className="search-submit">검색</button>
+        <SearchField
+          id="search"
+          name="search"
+          label="검색"
+          defaultValue={searchParams.search || ''}
+          placeholder="브랜드, 지역, 혜택으로 검색"
+          className="search-stack-grow"
+        />
+        <Button type="submit" className="search-submit">검색</Button>
       </div>
 
       <div className="filter-toggle-row">
-        <button
+        <Button
           type="button"
+          variant="secondary"
+          size="sm"
           className="filter-toggle"
           aria-expanded={showAdvanced}
           onClick={() => setShowAdvanced((value) => !value)}
         >
           {showAdvanced ? '상세 필터 닫기' : '상세 필터 열기'}
-        </button>
+        </Button>
       </div>
 
       {showAdvanced ? (
@@ -97,35 +100,33 @@ export function FilterBar({ sources, searchParams }) {
             values={sourceValues}
             onChange={setSourceValues}
           />
-          <Select name="deadline" label="마감" options={DEADLINE_OPTIONS} value={searchParams.deadline || 'all'} />
-          <Select name="sort" label="정렬" options={SORT_OPTIONS} value={searchParams.sort || 'deadline'} />
-          <div className="search-stack">
-            <label htmlFor="region">지역</label>
+          <SelectField name="deadline" label="마감" options={DEADLINE_OPTIONS} value={searchParams.deadline || 'all'} />
+          <SelectField name="sort" label="정렬" options={SORT_OPTIONS} value={searchParams.sort || 'deadline'} />
+          <label className="rk-field" htmlFor="region">
+            <span className="rk-field__label">지역</span>
             <input
               id="region"
               name="region"
+              className="rk-input"
               defaultValue={searchParams.region || ''}
               placeholder="예: 서울, 강남, 수원"
             />
-          </div>
+          </label>
         </div>
       ) : null}
     </form>
   );
 }
 
-function Select({ name, label, options, value }) {
+function SelectField({ name, label, options, value }) {
   return (
-    <div className="search-stack">
-      <label htmlFor={name}>{label}</label>
-      <select id={name} name={name} defaultValue={value}>
-        {options.map(([optionValue, optionLabel]) => (
-          <option key={optionValue} value={optionValue}>
-            {optionLabel}
-          </option>
-        ))}
-      </select>
-    </div>
+    <Select id={name} name={name} label={label} defaultValue={value}>
+      {options.map(([optionValue, optionLabel]) => (
+        <option key={optionValue} value={optionValue}>
+          {optionLabel}
+        </option>
+      ))}
+    </Select>
   );
 }
 
@@ -150,23 +151,29 @@ function MultiSelect({ label, options, values, onChange }) {
   }
 
   return (
-    <div className="search-stack checkbox-group-wrap">
-      <label>{label}</label>
-      <select defaultValue="all" onChange={handleSelectChange}>
+    <div className="rk-field checkbox-group-wrap">
+      <label className="rk-field__label" htmlFor={`filter-${label}`}>{label}</label>
+      <Select id={`filter-${label}`} defaultValue="all" onChange={handleSelectChange}>
         {options.map(([optionValue, optionLabel]) => (
           <option key={optionValue} value={optionValue}>
             {optionLabel}
           </option>
         ))}
-      </select>
+      </Select>
       {values.length ? (
         <div className="checkbox-group">
           {values.map((value) => {
             const labelText = options.find(([optionValue]) => optionValue === value)?.[1] || value;
             return (
-              <button key={value} type="button" className="check-chip is-selected" onClick={() => handleRemove(value)}>
-                {labelText} ×
-              </button>
+              <FilterChip
+                key={value}
+                selected
+                removable
+                aria-label={`${labelText} 필터 제거`}
+                onClick={() => handleRemove(value)}
+              >
+                {labelText}
+              </FilterChip>
             );
           })}
         </div>

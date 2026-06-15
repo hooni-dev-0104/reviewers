@@ -3,6 +3,8 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
+import { Button, Select } from '@/components/ui';
+
 export function BoardPostForm() {
   const router = useRouter();
   const [visibility, setVisibility] = useState('public');
@@ -47,9 +49,11 @@ export function BoardPostForm() {
   return (
     <form className="board-form-shell board-form-card" onSubmit={handleSubmit}>
       <div className="board-form-grid">
-        <label className="search-stack board-field">
-          <span>닉네임</span>
+        <label className="rk-field board-field" htmlFor="boardNickname">
+          <span className="rk-field__label">닉네임</span>
           <input
+            id="boardNickname"
+            className="rk-input"
             value={nickname}
             onChange={(event) => setNickname(event.target.value)}
             maxLength={20}
@@ -58,21 +62,20 @@ export function BoardPostForm() {
           />
           <small className="board-field-hint">답변을 구분할 수 있는 닉네임이면 충분해요.</small>
         </label>
-        <label className="search-stack board-field">
-          <span>공개 여부</span>
-          <select value={visibility} onChange={(event) => setVisibility(event.target.value)}>
-            <option value="public">공개 글</option>
-            <option value="private">비공개 글</option>
-          </select>
-          <small className="board-field-hint">
-            {visibility === 'private' ? '작성한 닉네임과 비밀번호로만 본문을 볼 수 있어요.' : '누구나 바로 읽을 수 있는 글이에요.'}
-          </small>
-        </label>
+        <Select id="boardVisibility" label="공개 여부" value={visibility} onChange={(event) => setVisibility(event.target.value)} className="board-field">
+          <option value="public">공개 글</option>
+          <option value="private">비공개 글</option>
+        </Select>
       </div>
+      <p className="board-field-hint">
+        {visibility === 'private' ? '작성한 닉네임과 비밀번호로만 본문을 볼 수 있어요.' : '누구나 바로 읽을 수 있는 글이에요.'}
+      </p>
 
-      <label className="search-stack board-field">
-        <span>제목</span>
+      <label className="rk-field board-field" htmlFor="boardTitle">
+        <span className="rk-field__label">제목</span>
         <input
+          id="boardTitle"
+          className="rk-input"
           value={title}
           onChange={(event) => setTitle(event.target.value)}
           maxLength={120}
@@ -81,10 +84,11 @@ export function BoardPostForm() {
         />
       </label>
 
-      <label className="search-stack board-field">
-        <span>본문</span>
+      <label className="rk-field board-field" htmlFor="boardBody">
+        <span className="rk-field__label">본문</span>
         <textarea
-          className="board-textarea"
+          id="boardBody"
+          className="rk-input board-textarea"
           value={body}
           onChange={(event) => setBody(event.target.value)}
           rows={10}
@@ -96,9 +100,11 @@ export function BoardPostForm() {
       </label>
 
       {visibility === 'private' ? (
-        <label className="search-stack board-field board-conditional-field">
-          <span>비밀번호</span>
+        <label className="rk-field board-field board-conditional-field" htmlFor="boardPassword">
+          <span className="rk-field__label">비밀번호</span>
           <input
+            id="boardPassword"
+            className="rk-input"
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
@@ -116,7 +122,7 @@ export function BoardPostForm() {
       {error ? <p className="form-error">{error}</p> : null}
 
       <div className="board-form-actions">
-        <button type="submit" className="board-submit-button" disabled={pending}>{pending ? '작성 중…' : '게시하기'}</button>
+        <Button type="submit" className="board-submit-button" disabled={pending}>{pending ? '작성 중…' : '게시하기'}</Button>
         <p className="board-submit-note">작성이 끝나면 바로 상세 페이지로 이동해요.</p>
       </div>
     </form>

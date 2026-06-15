@@ -1,27 +1,20 @@
 import Link from 'next/link';
 
 import { formatBoardDate } from '@/lib/board';
+import { Badge, Button, ButtonLink, EmptyState } from '@/components/ui';
 
 export function BoardPostList({ posts = [], basePath = '/board', showDelete = false }) {
   const showWriteCta = basePath === '/board' && !showDelete;
 
   if (!posts.length) {
     return (
-      <section className="empty-state board-empty-state">
-        <div className="board-empty-badge" aria-hidden="true">✍️</div>
-        <div className="board-empty-copy">
-          <p className="board-empty-title">아직 게시글이 없어요.</p>
-          <span>첫 번째 문의나 의견을 남겨주세요. 짧은 응원 한마디도 큰 힘이 돼요.</span>
-        </div>
-        {showWriteCta ? (
-          <div className="board-empty-actions">
-            <Link href="/board/new" className="board-empty-link">
-              첫 글 남기기
-            </Link>
-            <small>원하는 공개 범위로 바로 작성할 수 있어요.</small>
-          </div>
-        ) : null}
-      </section>
+      <EmptyState
+        icon="pen-line"
+        title="아직 게시글이 없어요"
+        body="첫 번째 문의나 의견을 남겨주세요. 짧은 응원 한마디도 큰 힘이 돼요."
+        className="board-empty-state"
+        action={showWriteCta ? <ButtonLink href="/board/new" variant="quiet" size="sm">첫 글 남기기</ButtonLink> : null}
+      />
     );
   }
 
@@ -31,16 +24,16 @@ export function BoardPostList({ posts = [], basePath = '/board', showDelete = fa
         <article key={post.id} className="board-row">
           <div className="board-row-head">
             <div className="board-row-head-main">
-            <span className={`badge ${post.visibility === 'private' ? 'badge-warn' : 'badge-ok'}`}>
+              <Badge tone={post.visibility === 'private' ? 'warning' : 'success'} showIcon>
                 {post.visibility === 'private' ? '비공개' : '공개'}
-              </span>
+              </Badge>
               <h3>
                 <Link href={`${basePath}/${post.id}`} className="board-row-title-link">{post.title}</Link>
               </h3>
             </div>
             {showDelete ? (
               <form action={`/api/ops/board/${post.id}/delete`} method="post">
-                <button type="submit" className="board-delete-button">삭제</button>
+                <Button type="submit" variant="danger" size="sm" className="board-delete-button">삭제</Button>
               </form>
             ) : null}
           </div>
