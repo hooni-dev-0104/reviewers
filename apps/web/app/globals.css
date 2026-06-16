@@ -2457,3 +2457,122 @@ input.rk-input, select.rk-select {
   .map-embed-frame { min-height: 300px; border-radius: 16px; }
   .map-card-list { max-height: none; }
 }
+
+/* =========================================================================
+   DESIGN CONSOLIDATION
+   Unify every surface on the blue token system. Removes leftover purple and
+   orange gradients, heavy colored shadows, and oversized radii so the whole
+   product reads as one coherent design language.
+   ========================================================================= */
+
+/* --- Neutral button baseline (kills the legacy purple-gradient default) --- */
+button {
+  background: var(--c-surface);
+  color: var(--text-body);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  box-shadow: none;
+}
+button:hover:not(:disabled) {
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+  box-shadow: none;
+  transform: none;
+}
+
+/* --- Primary call-to-action buttons: solid blue, consistent radius --- */
+.hero-actions a:first-child,
+.primary-action,
+.search-submit,
+.load-more-button,
+.board-write-link,
+.board-submit-button,
+.board-empty-link {
+  background: var(--action-primary);
+  color: var(--text-on-primary);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  box-shadow: none;
+}
+.hero-actions a:first-child:hover,
+.primary-action:hover,
+.search-submit:hover:not(:disabled),
+.load-more-button:hover:not(:disabled),
+.board-write-link:hover,
+.board-submit-button:hover:not(:disabled),
+.board-empty-link:hover {
+  background: var(--action-primary-hover);
+  color: var(--text-on-primary);
+  border-color: transparent;
+  box-shadow: none;
+  transform: none;
+}
+.mode-active {
+  background: var(--action-primary) !important;
+  color: var(--text-on-primary) !important;
+  box-shadow: none !important;
+}
+
+/* --- Secondary / neutral links --- */
+.board-secondary-link {
+  background: var(--c-surface);
+  color: var(--text-body);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  box-shadow: none;
+}
+.board-secondary-link:hover {
+  background: var(--bg-hover);
+  transform: none;
+}
+
+/* --- Toggle / filter chips: blue selected state instead of orange --- */
+.board-filter-link {
+  border-radius: var(--radius-control);
+}
+.board-filter-link.is-active {
+  background: var(--c-primary-weak);
+  border-color: var(--c-primary-weak-2);
+  color: var(--c-primary-text);
+  box-shadow: none;
+}
+.board-filter-link:hover {
+  transform: none;
+}
+.check-chip.is-selected {
+  background: var(--c-primary-weak);
+  border-color: var(--c-primary-weak-2);
+  color: var(--c-primary-text);
+}
+
+/* --- Form fields --- */
+input,
+select {
+  border-radius: var(--radius-control);
+  background: var(--c-surface);
+}
+
+/* --- Map markers & cards: solid blue, soft token shadows --- */
+.map-pin,
+.map-cluster {
+  background: var(--action-primary);
+  box-shadow: var(--shadow-sm);
+}
+.map-pin.active {
+  box-shadow: var(--shadow-md);
+}
+.map-list-card.active {
+  border-color: var(--c-primary-weak-2);
+  box-shadow: var(--shadow-sm);
+}
+
+/* --- Tame remaining oversized container radii for a calmer, unified feel --- */
+.board-hero-card,
+.board-filter-bar,
+.board-form-shell,
+.board-side-guide,
+.board-empty-state,
+.board-row,
+.account-form-shell {
+  border-radius: var(--radius-card);
+}
