@@ -1,4 +1,35 @@
 const ICON_PATHS = {
+  home: (
+    <>
+      <path d="m3 11 9-8 9 8" />
+      <path d="M5 10v10h14V10" />
+      <path d="M10 20v-6h4v6" />
+    </>
+  ),
+  bell: (
+    <>
+      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+      <path d="M10 21h4" />
+    </>
+  ),
+  'message-square': (
+    <>
+      <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" />
+    </>
+  ),
+  sliders: (
+    <>
+      <path d="M4 6h10" />
+      <path d="M18 6h2" />
+      <path d="M4 12h2" />
+      <path d="M10 12h10" />
+      <path d="M4 18h8" />
+      <path d="M16 18h4" />
+      <circle cx="16" cy="6" r="2" />
+      <circle cx="8" cy="12" r="2" />
+      <circle cx="14" cy="18" r="2" />
+    </>
+  ),
   search: (
     <>
       <circle cx="11" cy="11" r="7" />

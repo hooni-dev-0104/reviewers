@@ -40,17 +40,38 @@ function normalizeSelection(value) {
   return String(value || '').split(',').map((item) => item.trim()).filter(Boolean);
 }
 
+function toggleValue(values, value) {
+  return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
+}
+
+function platformIcon(value) {
+  return {
+    blog: 'pen-line',
+    instagram: 'instagram',
+    youtube: 'youtube',
+    mixed: 'layout-grid'
+  }[value] || 'layout-grid';
+}
+
 export function FilterBar({ sources, searchParams }) {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [platforms, setPlatforms] = useState(() => normalizeSelection(searchParams.platform).filter((value) => value !== 'all'));
   const [types, setTypes] = useState(() => normalizeSelection(searchParams.type).filter((value) => value !== 'all'));
   const [sourceValues, setSourceValues] = useState(() => normalizeSelection(searchParams.source).filter((value) => value !== 'all'));
+  const [deadline, setDeadline] = useState(searchParams.deadline || 'all');
+  const [sort, setSort] = useState(searchParams.sort || 'deadline');
+
+  function setDeadlineQuickValue(value) {
+    setDeadline((current) => (current === value ? 'all' : value));
+  }
 
   return (
     <form className="filter-shell rk-filter-shell">
       <input type="hidden" name="platform" value={platforms.join(',')} />
       <input type="hidden" name="type" value={types.join(',')} />
       <input type="hidden" name="source" value={sourceValues.join(',')} />
+      <input type="hidden" name="deadline" value={deadline} />
+      <input type="hidden" name="sort" value={sort} />
 
       <div className="search-row search-row-primary">
         <SearchField
@@ -62,6 +83,29 @@ export function FilterBar({ sources, searchParams }) {
           className="search-stack-grow"
         />
         <Button type="submit" className="search-submit">검색</Button>
+      </div>
+
+      <div className="rk-chiprow filter-quick-row" aria-label="빠른 필터">
+        {PLATFORM_OPTIONS.filter(([value]) => value !== 'all').map(([value, label]) => (
+          <FilterChip
+            key={value}
+            icon={platformIcon(value)}
+            selected={platforms.includes(value)}
+            onClick={() => setPlatforms(toggleValue(platforms, value))}
+          >
+            {label}
+          </FilterChip>
+        ))}
+        {DEADLINE_OPTIONS.filter(([value]) => value !== 'all').map(([value, label]) => (
+          <FilterChip
+            key={value}
+            icon="clock"
+            selected={deadline === value}
+            onClick={() => setDeadlineQuickValue(value)}
+          >
+            {label}
+          </FilterChip>
+        ))}
       </div>
 
       <div className="filter-toggle-row">
@@ -100,8 +144,8 @@ export function FilterBar({ sources, searchParams }) {
             values={sourceValues}
             onChange={setSourceValues}
           />
-          <SelectField name="deadline" label="마감" options={DEADLINE_OPTIONS} value={searchParams.deadline || 'all'} />
-          <SelectField name="sort" label="정렬" options={SORT_OPTIONS} value={searchParams.sort || 'deadline'} />
+          <SelectField name="deadline" label="마감" options={DEADLINE_OPTIONS} value={deadline} onChange={setDeadline} />
+          <SelectField name="sort" label="정렬" options={SORT_OPTIONS} value={sort} onChange={setSort} />
           <label className="rk-field" htmlFor="region">
             <span className="rk-field__label">지역</span>
             <input
@@ -118,9 +162,9 @@ export function FilterBar({ sources, searchParams }) {
   );
 }
 
-function SelectField({ name, label, options, value }) {
+function SelectField({ name, label, options, value, onChange }) {
   return (
-    <Select id={name} name={name} label={label} defaultValue={value}>
+    <Select id={name} label={label} value={value} onChange={(event) => onChange?.(event.target.value)}>
       {options.map(([optionValue, optionLabel]) => (
         <option key={optionValue} value={optionValue}>
           {optionLabel}

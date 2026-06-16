@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { BottomNav } from '@/components/bottom-nav';
 import { TopTabs } from '@/components/top-tabs';
 
 export function SiteShell({ children, visitorWidget, campaignCount }) {
@@ -18,6 +19,9 @@ export function SiteShell({ children, visitorWidget, campaignCount }) {
 
       <main>{children}</main>
 
+      <div className="rk-nav-wrap">
+        <BottomNav />
+      </div>
     </div>
   );
 }

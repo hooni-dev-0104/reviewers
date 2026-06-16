@@ -101,6 +101,13 @@
   --sp-9: 64px;
   --container-wide: 1200px;
   --touch-min: 44px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --bp-sm: 480px;
+  --bp-md: 768px;
+  --bp-lg: 1080px;
+  --container-app: 480px;
+  --container-feed-wide: 940px;
   --radius-xs: 2px;
   --radius-sm: 4px;
   --radius-md: 6px;
@@ -377,6 +384,50 @@ button, input, select, textarea { font: inherit; }
   animation: rk-shimmer 1.4s ease-in-out infinite;
 }
 @keyframes rk-shimmer { 100% { transform: translateX(100%); } }
+
+.rk-bottomnav {
+  display: flex;
+  align-items: stretch;
+  min-height: 56px;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border);
+}
+.rk-bottomnav__item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 56px;
+  padding: var(--sp-1) 0;
+  border: none;
+  background: none;
+  color: var(--text-subtle);
+  font-size: 10px;
+  font-weight: var(--fw-semibold);
+  transition: color var(--dur) var(--ease-out), background var(--dur) var(--ease-out);
+}
+.rk-bottomnav__item.is-active {
+  color: var(--c-primary-text);
+  background: linear-gradient(180deg, var(--c-primary-weak), transparent);
+}
+.rk-bottomnav__item:hover { color: var(--text-body); }
+.rk-bottomnav__item.is-active:hover { color: var(--c-primary-text); }
+.rk-nav-wrap { display: none; }
+.rk-chiprow {
+  display: flex;
+  gap: var(--sp-2);
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+.rk-chiprow::-webkit-scrollbar { height: 0; }
+.rk-chiprow > * {
+  flex: none;
+  scroll-snap-align: start;
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -1811,7 +1862,11 @@ input, select {
   border-color: var(--border);
   box-shadow: var(--elev-card);
 }
-.page-shell { background: var(--bg-app); }
+.page-shell {
+  background: var(--bg-app);
+  min-height: 100vh;
+  min-height: 100dvh;
+}
 .topbar, .footer-bar {
   border-radius: var(--radius-card);
   box-shadow: var(--elev-raised);
@@ -2456,4 +2511,230 @@ input.rk-input, select.rk-select {
   .map-canvas-head h2 { font-size: 1.08rem; }
   .map-embed-frame { min-height: 300px; border-radius: 16px; }
   .map-card-list { max-height: none; }
+}
+
+/* Mobile-web refinement from the updated ReviewKok design system. */
+@media (max-width: 760px) {
+  html,
+  body {
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+
+  .page-shell {
+    min-height: 100dvh;
+    padding: 0;
+    padding-bottom: calc(70px + var(--safe-bottom));
+    background: var(--bg-app);
+  }
+
+  .topbar-shell {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    padding: var(--safe-top) 0 0;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .topbar {
+    width: 100%;
+    max-width: none;
+    min-height: 56px;
+    display: flex;
+    align-items: center;
+    padding: 0 var(--sp-4);
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: var(--bg-surface);
+  }
+
+  .topbar-brand-group {
+    display: flex;
+    width: auto;
+    min-width: 0;
+  }
+
+  .brand-mark {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 1.18rem;
+    line-height: 1;
+  }
+
+  .brand-mark::before {
+    content: '콕';
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-lg);
+    background: var(--c-primary);
+    color: #fff;
+    font-size: 0.92rem;
+    font-weight: var(--fw-extrabold);
+    letter-spacing: var(--tracking-tight);
+  }
+
+  .top-tabs {
+    display: none !important;
+  }
+
+  .topbar-side {
+    margin-left: auto;
+  }
+
+  main {
+    min-width: 0;
+  }
+
+  .explore-panel,
+  .trust-page,
+  .detail-shell {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: var(--sp-4);
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: var(--bg-app);
+  }
+
+  .filter-shell {
+    position: sticky;
+    top: calc(56px + var(--safe-top));
+    z-index: 30;
+    margin: calc(var(--sp-4) * -1) calc(var(--sp-4) * -1) var(--sp-4);
+    padding: var(--sp-3) var(--sp-4);
+    border-width: 0 0 1px;
+    border-radius: 0;
+    box-shadow: none;
+    background: var(--bg-app);
+  }
+
+  .filter-quick-row {
+    margin-inline: calc(var(--sp-4) * -1);
+    padding-inline: var(--sp-4);
+  }
+
+  .search-row-primary {
+    margin-bottom: 0;
+  }
+
+  .rk-field__label {
+    font-size: var(--text-xs);
+  }
+
+  .rk-input,
+  .rk-select {
+    min-height: 44px;
+    border-radius: var(--radius-control);
+    background: var(--bg-surface);
+    font-size: var(--text-base);
+  }
+
+  .filter-toggle-row {
+    justify-content: stretch;
+  }
+
+  .filter-toggle,
+  .search-submit {
+    min-height: 44px;
+  }
+
+  .campaign-grid {
+    gap: var(--sp-3);
+  }
+
+  .rk-cc {
+    border-radius: var(--radius-card);
+    padding: var(--sp-3);
+    gap: var(--sp-3);
+  }
+
+  .rk-cc__thumb {
+    width: 92px;
+    height: 92px;
+  }
+
+  .rk-cc__link h3 {
+    font-size: var(--text-md);
+    line-height: var(--lh-snug);
+  }
+
+  .rk-cc__link p {
+    font-size: var(--text-sm);
+    -webkit-line-clamp: 2;
+  }
+
+  .rk-cc__benefit {
+    font-size: var(--text-sm);
+  }
+
+  .rk-results {
+    margin: 0 0 var(--sp-3);
+  }
+
+  .rk-nav-wrap {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+    display: block;
+    padding-bottom: var(--safe-bottom);
+    background: var(--bg-surface);
+    box-shadow: 0 -8px 24px rgba(27, 26, 23, 0.08);
+  }
+
+  .rk-bottomnav {
+    min-height: 58px;
+  }
+
+  .rk-bottomnav__item {
+    min-height: 58px;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1079px) {
+  .page-shell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .topbar-shell,
+  main {
+    width: min(100%, var(--container-app));
+  }
+
+  .explore-panel,
+  .trust-page,
+  .detail-shell {
+    width: 100%;
+    margin-inline: auto;
+  }
+
+  .campaign-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 1080px) {
+  .campaign-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-width: var(--container-feed-wide);
+    margin-inline: auto;
+  }
+
+  .rk-results,
+  .filter-shell {
+    max-width: var(--container-feed-wide);
+    margin-left: auto;
+    margin-right: auto;
+  }
 }
