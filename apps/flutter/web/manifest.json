@@ -3,9 +3,9 @@
     "short_name": "리뷰콕",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#F7F6F3",
+    "theme_color": "#2B5FE3",
+    "description": "체험단 캠페인을 목록, 지도, 게시판 흐름으로 탐색하는 리뷰콕 Flutter 앱.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

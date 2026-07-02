@@ -104,7 +104,7 @@ flutter build apk --release \
   --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY
 ```
 
-The Flutter app currently connects directly to Supabase public REST for campaign discovery. Saved campaigns are stored locally per device. Account-backed saves, reminders, board writes, ops pages, image proxying, and server-only snapshot enrichment still require a backend replacement such as Supabase Edge Functions before the legacy Next.js API routes can be retired.
+The Flutter app currently connects directly to Supabase public REST for campaign discovery and public board reads. Saved campaigns are stored locally per device. Account-backed saves, reminders, board writes/private unlocks/deletes, ops pages, image proxying, and server-only snapshot enrichment still require a backend replacement such as Supabase Edge Functions before the legacy Next.js API routes can be retired.
 
 ### Legacy Next.js app (`apps/web`)
 
