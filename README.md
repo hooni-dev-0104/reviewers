@@ -11,7 +11,8 @@ Stdlib-first Python scaffold for a Korean experience-campaign crawler built arou
 - dry-run friendly pipeline
 - local file-backed source adapter for offline development
 - placeholder seeded adapters for real sites
-- Next.js applicant-facing frontend in `apps/web`
+- Flutter applicant-facing app in `apps/flutter` for web, iOS, and Android
+- Legacy Next.js frontend remains in `apps/web` during the migration window
 - unit tests using `unittest`
 
 ## Seeded MVP sources
@@ -67,36 +68,53 @@ python3 -m crawler.cli run-report --all-public --output docs/public-source-quali
 
 This runs a dry-run over the current public parser set and emits a markdown report.
 
-## Frontend app (`apps/web`)
+## Flutter app (`apps/flutter`)
 
-The repository now includes a Vercel-ready Next.js app for applicant-facing discovery.
+The primary applicant-facing client is now a Flutter app that targets web, iOS, and Android.
 
-### Required Vercel / frontend env
+### Required Flutter env
 
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_PUBLIC_ANON_KEY
-NEXT_PUBLIC_KAKAO_MAP_APP_KEY=YOUR_KAKAO_JAVASCRIPT_KEY
-NEXT_PUBLIC_VWORLD_API_KEY=YOUR_VWORLD_API_KEY
-VWORLD_API_KEY=YOUR_VWORLD_API_KEY
-SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY
-NEXT_PUBLIC_SITE_URL=https://reviewkok.vercel.app
-OPS_DASHBOARD_KEY=YOUR_OPS_DASHBOARD_PASSWORD
+SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+SUPABASE_ANON_KEY=YOUR_PUBLIC_ANON_KEY
 ```
 
 ### Local run
+
+```bash
+cd apps/flutter
+flutter pub get
+flutter run -d chrome \
+  --dart-define=SUPABASE_URL=$SUPABASE_URL \
+  --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY
+```
+
+### Platform builds
+
+```bash
+cd apps/flutter
+flutter build web --release \
+  --dart-define=SUPABASE_URL=$SUPABASE_URL \
+  --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY
+flutter build ios --release --no-codesign \
+  --dart-define=SUPABASE_URL=$SUPABASE_URL \
+  --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY
+flutter build apk --release \
+  --dart-define=SUPABASE_URL=$SUPABASE_URL \
+  --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY
+```
+
+The Flutter app currently connects directly to Supabase public REST for campaign discovery. Saved campaigns are stored locally per device. Account-backed saves, reminders, board writes, ops pages, image proxying, and server-only snapshot enrichment still require a backend replacement such as Supabase Edge Functions before the legacy Next.js API routes can be retired.
+
+### Legacy Next.js app (`apps/web`)
+
+The previous Vercel-ready Next.js app is still present for reference and for server/API behavior that has not yet moved to Flutter-safe backends.
 
 ```bash
 cd apps/web
 npm install
 npm run dev
 ```
-
-### Vercel notes
-
-- Set the Vercel project root directory to `apps/web`
-- Keep crawler + scheduled refresh on GitHub Actions
-- Apply the updated `supabase_crawler_schema.sql` so visitor counts, account saves, reminders, and sponsor slots all exist
 
 ### GitHub Actions production deploy
 
