@@ -40,7 +40,12 @@ class _BoardScreenState extends State<BoardScreen> {
     return RefreshIndicator(
       onRefresh: () async => _reload(),
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+        padding: const EdgeInsets.fromLTRB(
+          RkSpace.x4,
+          RkSpace.x2,
+          RkSpace.x4,
+          96,
+        ),
         children: [
           const AppHero(
             eyebrow: '게시판',
@@ -48,11 +53,11 @@ class _BoardScreenState extends State<BoardScreen> {
             body:
                 '요구사항, 문의, 사용 후기를 보는 흐름을 Flutter로 옮겼습니다. 글 작성과 비공개 글 열람은 안전한 서버 API 이관 후 연결합니다.',
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: RkSpace.x4),
           BoardWriteStatusCard(repository: widget.repository),
-          const SizedBox(height: 12),
+          const SizedBox(height: RkSpace.x3),
           BoardVisibilityTabs(selected: _visibility, onChanged: _setVisibility),
-          const SizedBox(height: 12),
+          const SizedBox(height: RkSpace.x3),
           FutureBuilder<List<BoardPost>>(
             future: _future,
             builder: (context, snapshot) {
@@ -128,7 +133,7 @@ class BoardPostTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(RkSpace.x4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -141,12 +146,12 @@ class BoardPostTile extends StatelessWidget {
                       ? Icons.lock_outline
                       : Icons.public_outlined,
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: RkSpace.x2),
                 Expanded(
                   child: Text(
                     post.nickname,
                     style: const TextStyle(
-                      color: Color(0xFF6B665D),
+                      color: RkColor.ink500,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -154,24 +159,22 @@ class BoardPostTile extends StatelessWidget {
                 Text(
                   formatBoardDate(post.createdAt),
                   style: const TextStyle(
-                    color: Color(0xFF6B665D),
+                    color: RkColor.ink500,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: RkSpace.x3),
             Text(post.title, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
+            const SizedBox(height: RkSpace.x2),
             Text(
               post.preview,
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color: post.isPrivate
-                    ? const Color(0xFF8A5410)
-                    : const Color(0xFF36332D),
+                color: post.isPrivate ? RkColor.warningText : RkColor.ink700,
               ),
             ),
           ],
@@ -190,12 +193,12 @@ class BoardWriteStatusCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(RkSpace.x4),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.construction_outlined, color: Color(0xFF2B5FE3)),
-            const SizedBox(width: 12),
+            const Icon(Icons.construction_outlined, color: RkColor.primaryText),
+            const SizedBox(width: RkSpace.x3),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -204,11 +207,12 @@ class BoardWriteStatusCard extends StatelessWidget {
                     '쓰기 기능 이관 대기',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: RkSpace.x1),
                   Text(
                     repository.isConfigured
                         ? '공개 목록은 Supabase에서 읽고, 작성/비밀번호 확인은 Edge Function 또는 서버 API로 분리해 연결할 예정입니다.'
                         : '환경값이 없으면 게시글 목록도 읽을 수 없습니다. 실행 시 SUPABASE_URL과 SUPABASE_ANON_KEY를 전달하세요.',
+                    style: const TextStyle(color: RkColor.ink500),
                   ),
                 ],
               ),

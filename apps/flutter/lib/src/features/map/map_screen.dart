@@ -28,14 +28,19 @@ class _MapScreenState extends State<MapScreen> {
     return RefreshIndicator(
       onRefresh: () async => _reload(),
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+        padding: const EdgeInsets.fromLTRB(
+          RkSpace.x4,
+          RkSpace.x2,
+          RkSpace.x4,
+          96,
+        ),
         children: [
           AppHero(
             eyebrow: '체험단 지도',
             title: '방문형 캠페인을 지역 기준으로 살펴보세요.',
             body: '모바일에서는 카카오맵/네이버 지도 검색으로 이어지는 경량 지도 흐름을 제공합니다.',
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: RkSpace.x4),
           FutureBuilder<List<Campaign>>(
             future: _future,
             builder: (context, snapshot) {
@@ -60,7 +65,7 @@ class _MapScreenState extends State<MapScreen> {
               return Column(
                 children: [
                   MapOverviewPanel(campaigns: items),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: RkSpace.x3),
                   for (final campaign in items) ...[
                     MapCampaignTile(
                       campaign: campaign,
@@ -94,26 +99,28 @@ class MapOverviewPanel extends StatelessWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(RkSpace.x4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                const Icon(Icons.travel_explore, color: Color(0xFF2B5FE3)),
-                const SizedBox(width: 8),
+                const Icon(Icons.travel_explore, color: RkColor.primaryText),
+                const SizedBox(width: RkSpace.x2),
                 Text(
                   '지도 후보 ${formatCount(campaigns.length)}개',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
+                const Spacer(),
+                const StatusPill(label: '방문형', tone: PillTone.accent),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: RkSpace.x2),
             Text(
               regions.isEmpty
                   ? '정확한 위치가 있는 방문형 캠페인을 마감순으로 보여줍니다.'
                   : '${regions.take(6).join(', ')} 지역의 방문형 캠페인을 마감순으로 보여줍니다.',
-              style: const TextStyle(color: Color(0xFF6B665D)),
+              style: const TextStyle(color: RkColor.ink500),
             ),
           ],
         ),

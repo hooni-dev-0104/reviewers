@@ -81,9 +81,7 @@ class _ReviewersHomeState extends State<ReviewersHome> {
     final hasDetail = _selectedCampaign != null;
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
+        shape: const Border(bottom: BorderSide(color: RkColor.line)),
         titleSpacing: 16,
         title: Row(
           children: [
@@ -94,7 +92,11 @@ class _ReviewersHomeState extends State<ReviewersHome> {
               }),
               child: const Text(
                 '리뷰콕',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+                style: TextStyle(
+                  color: RkColor.ink900,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ),
             const SizedBox(width: 16),
@@ -148,18 +150,24 @@ class _ReviewersHomeState extends State<ReviewersHome> {
       ),
       bottomNavigationBar: hasDetail
           ? null
-          : NavigationBar(
-              selectedIndex: AppSection.values.indexOf(_section),
-              onDestinationSelected: (index) =>
-                  setState(() => _section = AppSection.values[index]),
-              destinations: [
-                for (final section in AppSection.values)
-                  NavigationDestination(
-                    icon: Icon(section.icon),
-                    selectedIcon: Icon(section.selectedIcon),
-                    label: section.bottomLabel,
-                  ),
-              ],
+          : Container(
+              decoration: const BoxDecoration(
+                color: RkColor.surface,
+                border: Border(top: BorderSide(color: RkColor.line)),
+              ),
+              child: NavigationBar(
+                selectedIndex: AppSection.values.indexOf(_section),
+                onDestinationSelected: (index) =>
+                    setState(() => _section = AppSection.values[index]),
+                destinations: [
+                  for (final section in AppSection.values)
+                    NavigationDestination(
+                      icon: Icon(section.icon),
+                      selectedIcon: Icon(section.selectedIcon),
+                      label: section.bottomLabel,
+                    ),
+                ],
+              ),
             ),
     );
   }

@@ -83,7 +83,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
     return RefreshIndicator(
       onRefresh: () async => _reload(),
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+        padding: const EdgeInsets.fromLTRB(
+          RkSpace.x4,
+          RkSpace.x2,
+          RkSpace.x4,
+          96,
+        ),
         children: [
           AppHero(
             eyebrow: '체험단 탐색',
@@ -91,7 +96,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             body:
                 '기존 웹의 캠페인 목록과 필터 흐름을 Flutter web, iOS, Android에서 같은 방식으로 볼 수 있게 옮겼습니다.',
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: RkSpace.x4),
           FilterPanel(
             filters: _filters,
             sources: _sources,
@@ -106,17 +111,41 @@ class _ExploreScreenState extends State<ExploreScreen> {
             },
             onSubmit: _applyTextFilters,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: RkSpace.x4),
           FutureBuilder<int>(
             future: _countFuture,
             builder: (context, snapshot) {
               final text = snapshot.hasData
                   ? '${formatCount(snapshot.data!)}개 캠페인'
                   : '캠페인 불러오는 중';
-              return Text(text, style: Theme.of(context).textTheme.titleMedium);
+              return Container(
+                padding: const EdgeInsets.all(RkSpace.x3),
+                decoration: BoxDecoration(
+                  color: RkColor.sunken,
+                  border: Border.all(color: RkColor.line),
+                  borderRadius: BorderRadius.circular(RkRadius.lg),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.fact_check_outlined,
+                      size: 18,
+                      color: RkColor.primaryText,
+                    ),
+                    const SizedBox(width: RkSpace.x2),
+                    Expanded(
+                      child: Text(
+                        text,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                    const StatusPill(label: '활성 목록', tone: PillTone.accent),
+                  ],
+                ),
+              );
             },
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: RkSpace.x3),
           FutureBuilder<List<Campaign>>(
             future: _campaignsFuture,
             builder: (context, snapshot) {
@@ -149,7 +178,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       onSaved: () => _toggleSaved(campaign),
                       onOpen: () => widget.onOpen(campaign),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: RkSpace.x3),
                   ],
                 ],
               );

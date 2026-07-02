@@ -14,9 +14,10 @@ class AppHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Container(
+      decoration: rkSurfaceDecoration(color: RkColor.surface, raised: true),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(RkSpace.x5),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -25,13 +26,18 @@ class AppHero extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w900,
-                color: Color(0xFF2B5FE3),
+                color: RkColor.primaryText,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: RkSpace.x2),
             Text(title, style: Theme.of(context).textTheme.headlineLarge),
-            const SizedBox(height: 8),
-            Text(body, style: Theme.of(context).textTheme.bodyLarge),
+            const SizedBox(height: RkSpace.x2),
+            Text(
+              body,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(color: RkColor.ink500),
+            ),
           ],
         ),
       ),
@@ -84,18 +90,18 @@ class ImageFallback extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFFEAF0FE),
+      color: RkColor.primaryWeak,
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 32, color: const Color(0xFF1D49B8)),
-            const SizedBox(height: 8),
+            Icon(icon, size: 32, color: RkColor.primaryText),
+            const SizedBox(height: RkSpace.x2),
             Text(
               label,
               style: const TextStyle(
                 fontWeight: FontWeight.w800,
-                color: Color(0xFF1D49B8),
+                color: RkColor.primaryText,
               ),
             ),
           ],
@@ -114,23 +120,23 @@ class BenefitBox extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(RkSpace.x3),
       decoration: BoxDecoration(
-        color: const Color(0xFFFCF1E4),
-        border: Border.all(color: const Color(0xFFF0DDC7)),
-        borderRadius: BorderRadius.circular(8),
+        color: RkColor.rewardWeak,
+        border: Border.all(color: RkColor.rewardLine),
+        borderRadius: BorderRadius.circular(RkRadius.lg),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.card_giftcard, size: 18, color: Color(0xFF935A23)),
-          const SizedBox(width: 8),
+          const Icon(Icons.card_giftcard, size: 18, color: RkColor.rewardText),
+          const SizedBox(width: RkSpace.x2),
           Expanded(
             child: Text(
               text,
               style: const TextStyle(
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF935A23),
+                color: RkColor.rewardText,
               ),
             ),
           ),
@@ -151,21 +157,21 @@ class MetaChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xFFE7E4DD)),
-        color: const Color(0xFFFAF9F6),
+        borderRadius: BorderRadius.circular(RkRadius.pill),
+        border: Border.all(color: RkColor.line),
+        color: RkColor.sunken,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 15, color: const Color(0xFF6B665D)),
-          const SizedBox(width: 4),
+          Icon(icon, size: 15, color: RkColor.ink500),
+          const SizedBox(width: RkSpace.x1),
           Text(
             label,
             style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF6B665D),
+              color: RkColor.ink500,
             ),
           ),
         ],
@@ -190,32 +196,33 @@ class StatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = switch (tone) {
-      PillTone.ok => (const Color(0xFFE2F3EA), const Color(0xFF0C6E49)),
-      PillTone.warning => (const Color(0xFFFAEFD8), const Color(0xFF8A5410)),
-      PillTone.danger => (const Color(0xFFFCEAE8), const Color(0xFFB42820)),
-      PillTone.accent => (const Color(0xFFEAF0FE), const Color(0xFF1D49B8)),
-      PillTone.muted => (const Color(0xFFF1EFEA), const Color(0xFF6B665D)),
+    final toneColors = switch (tone) {
+      PillTone.ok => RkTone.success,
+      PillTone.warning => RkTone.warning,
+      PillTone.danger => RkTone.urgent,
+      PillTone.accent => RkTone.trust,
+      PillTone.muted => RkTone.neutral,
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
-        color: colors.$1,
-        borderRadius: BorderRadius.circular(999),
+        color: toneColors.background,
+        border: Border.all(color: toneColors.border),
+        borderRadius: BorderRadius.circular(RkRadius.pill),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 14, color: colors.$2),
-            const SizedBox(width: 4),
+            Icon(icon, size: 14, color: toneColors.foreground),
+            const SizedBox(width: RkSpace.x1),
           ],
           Text(
             label,
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w900,
-              color: colors.$2,
+              color: toneColors.foreground,
             ),
           ),
         ],
@@ -231,27 +238,35 @@ class SourcePill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 7,
-          height: 7,
-          decoration: const BoxDecoration(
-            color: Color(0xFF2B5FE3),
-            shape: BoxShape.circle,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: RkColor.primaryWeak,
+        border: Border.all(color: RkColor.primaryWeak2),
+        borderRadius: BorderRadius.circular(RkRadius.pill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: const BoxDecoration(
+              color: RkColor.primary,
+              shape: BoxShape.circle,
+            ),
           ),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          source,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF6B665D),
+          const SizedBox(width: 6),
+          Text(
+            source,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: RkColor.primaryText,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -262,6 +277,7 @@ class SummaryTile extends StatelessWidget {
     required this.value,
     this.helper,
     this.highlight = false,
+    this.tone,
     super.key,
   });
 
@@ -269,17 +285,30 @@ class SummaryTile extends StatelessWidget {
   final String value;
   final String? helper;
   final bool highlight;
+  final PillTone? tone;
 
   @override
   Widget build(BuildContext context) {
+    final toneColors = switch (tone) {
+      PillTone.ok => RkTone.success,
+      PillTone.warning => RkTone.warning,
+      PillTone.danger => RkTone.urgent,
+      PillTone.accent => RkTone.trust,
+      PillTone.muted => RkTone.neutral,
+      null => null,
+    };
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(RkSpace.x3),
       decoration: BoxDecoration(
-        color: highlight ? const Color(0xFFFCF1E4) : const Color(0xFFFAF9F6),
-        borderRadius: BorderRadius.circular(8),
+        color: highlight
+            ? RkColor.rewardWeak
+            : toneColors?.background ?? RkColor.sunken,
+        borderRadius: BorderRadius.circular(RkRadius.lg),
         border: Border.all(
-          color: highlight ? const Color(0xFFF0DDC7) : const Color(0xFFE7E4DD),
+          color: highlight
+              ? RkColor.rewardLine
+              : toneColors?.border ?? RkColor.line,
         ),
       ),
       child: Column(
@@ -290,19 +319,25 @@ class SummaryTile extends StatelessWidget {
             style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w800,
-              color: Color(0xFF6B665D),
+              color: RkColor.ink500,
             ),
           ),
           const SizedBox(height: 6),
           Text(
             value,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+            style: TextStyle(
+              color: highlight
+                  ? RkColor.rewardText
+                  : toneColors?.foreground ?? RkColor.ink900,
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+            ),
           ),
           if (helper != null) ...[
             const SizedBox(height: 4),
             Text(
               helper!,
-              style: const TextStyle(fontSize: 12, color: Color(0xFF6B665D)),
+              style: const TextStyle(fontSize: 12, color: RkColor.ink500),
             ),
           ],
         ],
@@ -327,12 +362,12 @@ class InfoPanel extends StatelessWidget {
     ];
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(RkSpace.x4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('상세정보', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 12),
+            const SizedBox(height: RkSpace.x3),
             for (final row in rows)
               Padding(
                 padding: const EdgeInsets.only(bottom: 10),
@@ -345,7 +380,7 @@ class InfoPanel extends StatelessWidget {
                         row.$1,
                         style: const TextStyle(
                           fontWeight: FontWeight.w800,
-                          color: Color(0xFF6B665D),
+                          color: RkColor.ink500,
                         ),
                       ),
                     ),
@@ -368,9 +403,9 @@ class DecisionChecklist extends StatelessWidget {
     return const Column(
       children: [
         GuidanceCard(title: '혜택이 보여요?', body: '제공 범위가 흐리면 원문에서 한 번 더 보세요.'),
-        SizedBox(height: 8),
+        SizedBox(height: RkSpace.x2),
         GuidanceCard(title: '마감이 임박했나요?', body: '오늘·내일 마감이면 바로 원문을 여는 편이 좋아요.'),
-        SizedBox(height: 8),
+        SizedBox(height: RkSpace.x2),
         GuidanceCard(
           title: '방문 조건이 맞나요?',
           body: '지역이 비어 있으면 매장 위치와 예약 조건을 원문에서 확인하세요.',
@@ -393,8 +428,8 @@ class GuidanceCard extends StatelessWidget {
         padding: const EdgeInsets.all(14),
         child: Row(
           children: [
-            const Icon(Icons.check_circle_outline, color: Color(0xFF138A5E)),
-            const SizedBox(width: 12),
+            const Icon(Icons.check_circle_outline, color: RkColor.success),
+            const SizedBox(width: RkSpace.x3),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -404,7 +439,7 @@ class GuidanceCard extends StatelessWidget {
                     style: const TextStyle(fontWeight: FontWeight.w900),
                   ),
                   const SizedBox(height: 2),
-                  Text(body, style: const TextStyle(color: Color(0xFF6B665D))),
+                  Text(body, style: const TextStyle(color: RkColor.ink500)),
                 ],
               ),
             ),
@@ -429,14 +464,29 @@ class RelatedCampaignRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: RkSpace.x4,
+          vertical: RkSpace.x2,
+        ),
         onTap: onTap,
         title: Text(
           campaign.cleanTitle,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontWeight: FontWeight.w800),
         ),
-        subtitle: Text('${campaign.regionLabel} · ${campaign.deadlineLabel}'),
-        trailing: const Icon(Icons.chevron_right),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: RkSpace.x2),
+          child: Wrap(
+            spacing: RkSpace.x2,
+            runSpacing: RkSpace.x2,
+            children: [
+              MetaChip(icon: Icons.place_outlined, label: campaign.regionLabel),
+              MetaChip(icon: Icons.schedule, label: campaign.deadlineLabel),
+            ],
+          ),
+        ),
+        trailing: const Icon(Icons.chevron_right, color: RkColor.ink400),
       ),
     );
   }
@@ -456,22 +506,34 @@ class MapCampaignTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(RkSpace.x4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SourcePill(source: campaign.sourceName),
-            const SizedBox(height: 8),
+            Row(
+              children: [
+                SourcePill(source: campaign.sourceName),
+                const Spacer(),
+                StatusPill(
+                  label: campaign.deadlineState.label,
+                  tone: campaign.deadlineState.tone,
+                  icon: Icons.schedule,
+                ),
+              ],
+            ),
+            const SizedBox(height: RkSpace.x3),
             Text(
               campaign.cleanTitle,
               style: Theme.of(context).textTheme.titleMedium,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: RkSpace.x2),
             Text(
               campaign.exactLocation ?? campaign.regionLabel,
-              style: const TextStyle(color: Color(0xFF6B665D)),
+              style: const TextStyle(color: RkColor.ink500),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: RkSpace.x3),
+            BenefitBox(text: campaign.benefitText ?? '혜택 정보 미공개'),
+            const SizedBox(height: RkSpace.x3),
             Row(
               children: [
                 Expanded(
@@ -481,7 +543,7 @@ class MapCampaignTile extends StatelessWidget {
                     label: const Text('상세'),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: RkSpace.x2),
                 Expanded(
                   child: FilledButton.icon(
                     onPressed: () => openMapSearch(campaign),
@@ -514,18 +576,20 @@ class SavedCampaignTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: ListTile(
-        contentPadding: const EdgeInsets.all(14),
+        contentPadding: const EdgeInsets.all(RkSpace.x4),
         title: Text(
           campaign.cleanTitle,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontWeight: FontWeight.w800),
         ),
         subtitle: Padding(
-          padding: const EdgeInsets.only(top: 8),
+          padding: const EdgeInsets.only(top: RkSpace.x2),
           child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: RkSpace.x2,
+            runSpacing: RkSpace.x2,
             children: [
+              SourcePill(source: campaign.sourceName),
               MetaChip(
                 icon: campaign.platformIcon,
                 label: campaign.platformLabel,
@@ -537,7 +601,7 @@ class SavedCampaignTile extends StatelessWidget {
         ),
         trailing: IconButton(
           onPressed: onRemove,
-          icon: const Icon(Icons.delete_outline),
+          icon: const Icon(Icons.delete_outline, color: RkColor.warningText),
           tooltip: '저장 삭제',
         ),
         onTap: onOpen,
@@ -562,19 +626,19 @@ class BoardNoticeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(RkSpace.x4),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: const Color(0xFF2B5FE3)),
-            const SizedBox(width: 12),
+            Icon(icon, color: RkColor.primaryText),
+            const SizedBox(width: RkSpace.x3),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(title, style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 4),
-                  Text(body),
+                  const SizedBox(height: RkSpace.x1),
+                  Text(body, style: const TextStyle(color: RkColor.ink500)),
                 ],
               ),
             ),
@@ -597,14 +661,10 @@ class CampaignSkeletonList extends StatelessWidget {
         for (var i = 0; i < itemCount; i++) ...[
           Container(
             height: 180,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFE7E4DD)),
-            ),
+            decoration: rkSurfaceDecoration(color: RkColor.surface),
             child: const Center(child: CircularProgressIndicator()),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: RkSpace.x3),
         ],
       ],
     );
@@ -625,13 +685,26 @@ class EmptyPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: RkColor.sunken,
+        border: Border.all(color: RkColor.lineStrong, style: BorderStyle.solid),
+        borderRadius: BorderRadius.circular(RkRadius.lg),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(RkSpace.x5),
         child: Column(
           children: [
-            Icon(icon, size: 36, color: const Color(0xFF97928A)),
-            const SizedBox(height: 12),
+            Container(
+              width: 48,
+              height: 48,
+              decoration: const BoxDecoration(
+                color: RkColor.primaryWeak,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 28, color: RkColor.primaryText),
+            ),
+            const SizedBox(height: RkSpace.x3),
             Text(
               title,
               style: Theme.of(context).textTheme.titleMedium,
@@ -641,7 +714,7 @@ class EmptyPanel extends StatelessWidget {
             Text(
               body,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Color(0xFF6B665D)),
+              style: const TextStyle(color: RkColor.ink500),
             ),
           ],
         ),
@@ -666,14 +739,14 @@ class ErrorPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(RkSpace.x4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(message, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Text(detail, style: const TextStyle(color: Color(0xFFB42820))),
-            const SizedBox(height: 12),
+            const SizedBox(height: RkSpace.x2),
+            Text(detail, style: const TextStyle(color: RkColor.dangerText)),
+            const SizedBox(height: RkSpace.x3),
             OutlinedButton.icon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh),

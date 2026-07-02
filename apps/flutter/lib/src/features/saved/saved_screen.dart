@@ -47,14 +47,19 @@ class _SavedScreenState extends State<SavedScreen> {
     return RefreshIndicator(
       onRefresh: () async => _reload(),
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+        padding: const EdgeInsets.fromLTRB(
+          RkSpace.x4,
+          RkSpace.x2,
+          RkSpace.x4,
+          96,
+        ),
         children: [
           AppHero(
             eyebrow: '저장한 캠페인',
             title: '나중에 다시 볼 체험단을 모아두세요.',
             body: 'Flutter 전환 버전에서는 계정 서버 없이 기기별 로컬 저장으로 먼저 제공합니다.',
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: RkSpace.x4),
           FutureBuilder<List<Campaign>>(
             future: _future,
             builder: (context, snapshot) {

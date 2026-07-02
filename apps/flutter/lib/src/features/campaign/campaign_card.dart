@@ -19,28 +19,38 @@ class CampaignCard extends StatelessWidget {
     final deadlineState = campaign.deadlineState;
     return Card(
       child: InkWell(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(RkRadius.lg),
         onTap: onOpen,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             CampaignImage(campaign: campaign, height: 160),
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(RkSpace.x4),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SourcePill(source: campaign.sourceName),
-                      const SizedBox(width: 8),
-                      StatusPill(
-                        label: campaign.confidenceLabel,
-                        tone: campaign.requiresReview
-                            ? PillTone.warning
-                            : PillTone.ok,
+                      Expanded(
+                        child: Wrap(
+                          spacing: RkSpace.x2,
+                          runSpacing: RkSpace.x2,
+                          children: [
+                            SourcePill(source: campaign.sourceName),
+                            StatusPill(
+                              label: campaign.confidenceLabel,
+                              tone: campaign.requiresReview
+                                  ? PillTone.warning
+                                  : PillTone.accent,
+                              icon: campaign.requiresReview
+                                  ? Icons.report_problem_outlined
+                                  : Icons.verified_outlined,
+                            ),
+                          ],
+                        ),
                       ),
-                      const Spacer(),
                       IconButton(
                         tooltip: saved ? '저장 해제' : '저장',
                         onPressed: onSaved,
@@ -50,24 +60,45 @@ class CampaignCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: RkSpace.x3),
                   Text(
                     campaign.cleanTitle,
                     style: Theme.of(context).textTheme.titleLarge,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: RkSpace.x2),
                   Text(
                     campaign.summary,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: const Color(0xFF6B665D),
-                    ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(color: RkColor.ink500),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: RkSpace.x3),
+                  BenefitBox(text: campaign.benefitText ?? '혜택 정보 미공개'),
+                  const SizedBox(height: RkSpace.x3),
                   Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
+                    spacing: RkSpace.x2,
+                    runSpacing: RkSpace.x2,
+                    children: [
+                      StatusPill(
+                        label:
+                            '${campaign.deadlineLabel} · ${deadlineState.label}',
+                        tone: deadlineState.tone,
+                        icon: Icons.schedule,
+                      ),
+                      MetaChip(
+                        icon: Icons.group_outlined,
+                        label: campaign.recruitLabel,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: RkSpace.x3),
+                  Wrap(
+                    spacing: RkSpace.x2,
+                    runSpacing: RkSpace.x2,
                     children: [
                       MetaChip(
                         icon: campaign.platformIcon,
@@ -80,24 +111,6 @@ class CampaignCard extends StatelessWidget {
                       MetaChip(
                         icon: Icons.place_outlined,
                         label: campaign.regionLabel,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  BenefitBox(text: campaign.benefitText ?? '혜택 정보 미공개'),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      StatusPill(
-                        label:
-                            '${campaign.deadlineLabel} · ${deadlineState.label}',
-                        tone: deadlineState.tone,
-                        icon: Icons.schedule,
-                      ),
-                      const SizedBox(width: 8),
-                      MetaChip(
-                        icon: Icons.group_outlined,
-                        label: campaign.recruitLabel,
                       ),
                     ],
                   ),

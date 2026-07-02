@@ -26,10 +26,25 @@ class FilterPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(RkSpace.x4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Row(
+              children: [
+                const Icon(Icons.tune, size: 20, color: RkColor.primaryText),
+                const SizedBox(width: RkSpace.x2),
+                Text('필터', style: Theme.of(context).textTheme.titleMedium),
+                const Spacer(),
+                Text(
+                  '마감·혜택 우선',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelLarge?.copyWith(color: RkColor.ink500),
+                ),
+              ],
+            ),
+            const SizedBox(height: RkSpace.x3),
             Row(
               children: [
                 Expanded(
@@ -44,14 +59,14 @@ class FilterPanel extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: RkSpace.x2),
                 FilledButton(onPressed: onSubmit, child: const Text('검색')),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: RkSpace.x3),
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: RkSpace.x2,
+              runSpacing: RkSpace.x2,
               children: [
                 for (final option in platformOptions)
                   ChoiceChip(
@@ -76,7 +91,7 @@ class FilterPanel extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: RkSpace.x2),
             Align(
               alignment: Alignment.centerLeft,
               child: OutlinedButton.icon(
@@ -86,10 +101,12 @@ class FilterPanel extends StatelessWidget {
               ),
             ),
             if (showAdvanced) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: RkSpace.x3),
+              const Divider(height: 1, color: RkColor.line),
+              const SizedBox(height: RkSpace.x3),
               Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                spacing: RkSpace.x2,
+                runSpacing: RkSpace.x2,
                 children: [
                   for (final option in typeOptions)
                     FilterChip(
@@ -100,7 +117,7 @@ class FilterPanel extends StatelessWidget {
                     ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: RkSpace.x3),
               Row(
                 children: [
                   Expanded(
@@ -120,7 +137,7 @@ class FilterPanel extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: RkSpace.x2),
                   Expanded(
                     child: DropdownButtonFormField<String>(
                       initialValue: filters.deadline,
@@ -139,7 +156,7 @@ class FilterPanel extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: RkSpace.x3),
               TextField(
                 controller: regionController,
                 textInputAction: TextInputAction.search,
@@ -151,12 +168,12 @@ class FilterPanel extends StatelessWidget {
                 ),
               ),
               if (sources.isNotEmpty) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: RkSpace.x3),
                 Text('출처', style: Theme.of(context).textTheme.labelLarge),
-                const SizedBox(height: 8),
+                const SizedBox(height: RkSpace.x2),
                 Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                  spacing: RkSpace.x2,
+                  runSpacing: RkSpace.x2,
                   children: [
                     for (final source in sources)
                       FilterChip(

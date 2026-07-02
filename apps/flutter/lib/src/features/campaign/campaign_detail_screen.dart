@@ -47,7 +47,12 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
     final deadlineState = campaign.deadlineState;
     final saved = _savedIds.contains(campaign.id);
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+      padding: const EdgeInsets.fromLTRB(
+        RkSpace.x4,
+        RkSpace.x2,
+        RkSpace.x4,
+        RkSpace.x6,
+      ),
       children: [
         Align(
           alignment: Alignment.centerLeft,
@@ -58,24 +63,34 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
           ),
         ),
         CampaignImage(campaign: campaign, height: 220),
-        const SizedBox(height: 12),
+        const SizedBox(height: RkSpace.x3),
         Card(
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(RkSpace.x4),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SourcePill(source: campaign.sourceName),
-                    const SizedBox(width: 8),
-                    StatusPill(
-                      label: campaign.confidenceLabel,
-                      tone: campaign.requiresReview
-                          ? PillTone.warning
-                          : PillTone.ok,
+                    Expanded(
+                      child: Wrap(
+                        spacing: RkSpace.x2,
+                        runSpacing: RkSpace.x2,
+                        children: [
+                          SourcePill(source: campaign.sourceName),
+                          StatusPill(
+                            label: campaign.confidenceLabel,
+                            tone: campaign.requiresReview
+                                ? PillTone.warning
+                                : PillTone.accent,
+                            icon: campaign.requiresReview
+                                ? Icons.report_problem_outlined
+                                : Icons.verified_outlined,
+                          ),
+                        ],
+                      ),
                     ),
-                    const Spacer(),
                     IconButton(
                       tooltip: saved ? '저장 해제' : '저장',
                       onPressed: _toggleSaved,
@@ -85,13 +100,13 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: RkSpace.x3),
                 const Text(
                   '핵심 정보 먼저 보기',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF2B5FE3),
+                    color: RkColor.primaryText,
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -99,12 +114,15 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                   campaign.cleanTitle,
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
-                const SizedBox(height: 8),
-                Text(campaign.summary),
-                const SizedBox(height: 16),
+                const SizedBox(height: RkSpace.x2),
+                Text(
+                  campaign.summary,
+                  style: const TextStyle(color: RkColor.ink500),
+                ),
+                const SizedBox(height: RkSpace.x4),
                 Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                  spacing: RkSpace.x2,
+                  runSpacing: RkSpace.x2,
                   children: [
                     MetaChip(
                       icon: campaign.platformIcon,
@@ -120,7 +138,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: RkSpace.x4),
                 LayoutBuilder(
                   builder: (context, constraints) {
                     final narrow = constraints.maxWidth < 560;
@@ -134,6 +152,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                         label: '마감일',
                         value: campaign.deadlineLabel,
                         helper: deadlineState.label,
+                        tone: deadlineState.tone,
                       ),
                       SummaryTile(label: '모집 인원', value: campaign.recruitLabel),
                     ];
@@ -142,7 +161,9 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                         children: cards
                             .map(
                               (card) => Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.only(
+                                  bottom: RkSpace.x2,
+                                ),
                                 child: card,
                               ),
                             )
@@ -154,7 +175,9 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                           .map(
                             (card) => Expanded(
                               child: Padding(
-                                padding: const EdgeInsets.only(right: 8),
+                                padding: const EdgeInsets.only(
+                                  right: RkSpace.x2,
+                                ),
                                 child: card,
                               ),
                             ),
@@ -163,7 +186,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                     );
                   },
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: RkSpace.x4),
                 Row(
                   children: [
                     Expanded(
@@ -175,7 +198,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                         label: const Text('원문 보기'),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: RkSpace.x2),
                     OutlinedButton.icon(
                       onPressed: () => openMapSearch(campaign),
                       icon: const Icon(Icons.map_outlined),
@@ -187,13 +210,13 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: RkSpace.x4),
         InfoPanel(campaign: campaign),
-        const SizedBox(height: 16),
+        const SizedBox(height: RkSpace.x4),
         const DecisionChecklist(),
-        const SizedBox(height: 16),
+        const SizedBox(height: RkSpace.x4),
         Text('같이 볼 만한 캠페인', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 12),
+        const SizedBox(height: RkSpace.x3),
         FutureBuilder<List<Campaign>>(
           future: _relatedFuture,
           builder: (context, snapshot) {
@@ -215,7 +238,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                     campaign: item,
                     onTap: () => widget.onOpen(item),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: RkSpace.x2),
                 ],
               ],
             );

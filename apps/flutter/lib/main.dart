@@ -24,6 +24,7 @@ part 'src/features/explore/explore_screen.dart';
 part 'src/features/explore/filter_panel.dart';
 part 'src/features/map/map_screen.dart';
 part 'src/features/saved/saved_screen.dart';
+part 'src/shared/design/reviewkok_design_system.dart';
 part 'src/shared/widgets/common_widgets.dart';
 
 const _supabaseUrl = String.fromEnvironment(
