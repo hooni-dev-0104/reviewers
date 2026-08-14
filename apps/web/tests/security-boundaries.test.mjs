@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import { requirePublicSupabaseKey } from '../lib/env-safety.js';
 import { campaignQueryAllowlist, sanitizeCampaignQuery, sanitizePostgrestText, sanitizeUuidList } from '../lib/query-safety.js';
-import { buildRateLimitKey, getClientIp, RATE_LIMIT_POLICIES } from '../lib/rate-limit-policy.js';
+import { buildRateLimitKey, consumeInMemoryRateLimit, getClientIp, RATE_LIMIT_POLICIES } from '../lib/rate-limit-policy.js';
 import { normalizeAllowedMapDetailUrl } from '../lib/url-safety.js';
 
 test('public Supabase requests fail closed without an anon key', () => {
@@ -72,4 +72,16 @@ test('rate-limit keys are scoped hashes and client IP uses the trusted forwardin
     blockSeconds: 900
   });
   assert.equal(RATE_LIMIT_POLICIES.unlock.limit, 10);
+});
+
+test('in-memory fallback keeps auth available while the database migration is pending', () => {
+  const buckets = new Map();
+  const policy = { limit: 2, windowSeconds: 60, blockSeconds: 120 };
+  assert.equal(consumeInMemoryRateLimit(buckets, 'login:key', policy, 1000).allowed, true);
+  assert.equal(consumeInMemoryRateLimit(buckets, 'login:key', policy, 2000).allowed, true);
+  const blocked = consumeInMemoryRateLimit(buckets, 'login:key', policy, 3000);
+  assert.equal(blocked.allowed, false);
+  assert.equal(blocked.retryAfter, 120);
+  assert.equal(consumeInMemoryRateLimit(buckets, 'login:key', policy, 61001).allowed, false);
+  assert.equal(consumeInMemoryRateLimit(buckets, 'login:key', policy, 123001).allowed, true);
 });

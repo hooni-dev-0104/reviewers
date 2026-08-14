@@ -24,3 +24,25 @@ export function buildRateLimitKey(scope, ip, identifier = '') {
     .update(`${scope}\0${String(ip || 'unknown')}\0${String(identifier || '').trim().toLowerCase()}`)
     .digest('hex');
 }
+
+export function consumeInMemoryRateLimit(store, key, policy, now = Date.now()) {
+  let bucket = store.get(key);
+  if (bucket?.blockedUntil > now) {
+    store.set(key, bucket);
+    return { allowed: false, retryAfter: Math.max(1, Math.ceil((bucket.blockedUntil - now) / 1000)) };
+  }
+  if (!bucket || bucket.windowStartedAt + policy.windowSeconds * 1000 <= now) {
+    bucket = { windowStartedAt: now, attemptCount: 0, blockedUntil: 0 };
+  }
+  bucket.attemptCount += 1;
+  if (bucket.attemptCount > policy.limit) {
+    bucket.blockedUntil = now + policy.blockSeconds * 1000;
+  }
+  store.set(key, bucket);
+  return {
+    allowed: bucket.blockedUntil === 0,
+    retryAfter: bucket.blockedUntil
+      ? policy.blockSeconds
+      : Math.max(1, Math.ceil((bucket.windowStartedAt + policy.windowSeconds * 1000 - now) / 1000))
+  };
+}
