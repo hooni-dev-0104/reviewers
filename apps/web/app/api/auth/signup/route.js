@@ -2,8 +2,13 @@ import { NextResponse } from 'next/server';
 
 import { createSession, hashPassword, normalizeEmail, setSessionCookie, validatePassword } from '@/lib/auth';
 import { insertRows, selectOne } from '@/lib/server-data';
+import { consumeRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
 export async function POST(request) {
+  const limit = await consumeRateLimit(request, 'signup');
+  if (!limit.allowed) {
+    return rateLimitResponse(limit.retryAfter);
+  }
   const body = await request.json();
   const email = normalizeEmail(body.email);
   const password = String(body.password || '');

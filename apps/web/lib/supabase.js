@@ -3,6 +3,8 @@ import 'server-only';
 import { cache } from 'react';
 
 import { requireEnv } from '@/lib/env';
+import { requirePublicSupabaseKey } from '@/lib/env-safety';
+import { sanitizeCampaignQuery, sanitizePostgrestText, sanitizeUuidList } from '@/lib/query-safety';
 
 const CAMPAIGN_SELECT = [
   'id',
@@ -88,7 +90,10 @@ function isCanonicalAlias(value) {
 }
 
 function buildRegionCondition(token) {
-  return `or(region_primary_name.ilike.*${token}*,region_secondary_name.ilike.*${token}*)`;
+  const safeToken = sanitizePostgrestText(token, 40);
+  return safeToken
+    ? `or(region_primary_name.ilike.*${safeToken}*,region_secondary_name.ilike.*${safeToken}*)`
+    : null;
 }
 
 
@@ -100,7 +105,7 @@ function normalizeMultiValue(value) {
 }
 
 function publicHeaders() {
-  const key = requireEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY');
+  const key = requirePublicSupabaseKey();
   return {
     apikey: key,
     Authorization: `Bearer ${key}`,
@@ -136,10 +141,11 @@ async function supabaseFetch(path, init = {}, { service = false } = {}) {
 }
 
 function applyCampaignFilters(params, searchParams, { forCount = false } = {}) {
-  const { search, platform, type, source, region, regionPrimary, regionSecondary, deadline, trust, sort = 'deadline', limit = 24, offset = 0 } = searchParams;
-  const platformValues = normalizeMultiValue(platform).filter((value) => value !== 'all');
-  const typeValues = normalizeMultiValue(type).filter((value) => value !== 'all');
-  const sourceValues = normalizeMultiValue(source).filter((value) => value !== 'all');
+  const safeQuery = sanitizeCampaignQuery(searchParams, ACTIVE_SOURCE_SLUGS);
+  const { search, region, regionPrimary, regionSecondary, deadline, trust, sort, limit, offset } = safeQuery;
+  const platformValues = safeQuery.platform;
+  const typeValues = safeQuery.type;
+  const sourceValues = safeQuery.source;
   const andConditions = [];
 
   params.set('select', CAMPAIGN_SELECT);
@@ -151,9 +157,8 @@ function applyCampaignFilters(params, searchParams, { forCount = false } = {}) {
   }
 
   if (search) {
-    const escaped = search.replaceAll(',', ' ');
     andConditions.push(
-      `or(title.ilike.*${escaped}*,benefit_text.ilike.*${escaped}*,category_name.ilike.*${escaped}*,region_primary_name.ilike.*${escaped}*,region_secondary_name.ilike.*${escaped}*,snippet.ilike.*${escaped}*)`
+      `or(title.ilike.*${search}*,benefit_text.ilike.*${search}*,category_name.ilike.*${search}*,region_primary_name.ilike.*${search}*,region_secondary_name.ilike.*${search}*,snippet.ilike.*${search}*)`
     );
   }
   if (platformValues.length === 1) {
@@ -173,7 +178,10 @@ function applyCampaignFilters(params, searchParams, { forCount = false } = {}) {
   }
   if (regionPrimary && regionPrimary !== 'all') {
     if (regionSecondary && regionSecondary !== 'all') {
-      andConditions.push(buildRegionCondition(regionSecondary));
+      const regionCondition = buildRegionCondition(regionSecondary);
+      if (regionCondition) {
+        andConditions.push(regionCondition);
+      }
     } else {
       const tokens = REGION_EQUIVALENTS[regionPrimary] || [regionPrimary];
       andConditions.push(`or(${tokens.flatMap((token) => [
@@ -182,7 +190,10 @@ function applyCampaignFilters(params, searchParams, { forCount = false } = {}) {
       ]).join(',')})`);
     }
   } else if (region && region !== 'all') {
-    andConditions.push(`or(region_primary_name.ilike.*${region}*,region_secondary_name.ilike.*${region}*)`);
+    const regionCondition = buildRegionCondition(region);
+    if (regionCondition) {
+      andConditions.push(regionCondition);
+    }
   }
   if (trust === 'stable') {
     params.set('requires_review', 'eq.false');
@@ -264,9 +275,13 @@ export async function getCampaignSearchCount(searchParams = {}) {
 }
 
 export const getCampaignById = cache(async function getCampaignById(id) {
+  const [safeId] = sanitizeUuidList([id], 1);
+  if (!safeId) {
+    return null;
+  }
   const params = new URLSearchParams({
     select: CAMPAIGN_SELECT,
-    id: `eq.${id}`,
+    id: `eq.${safeId}`,
     limit: '1'
   });
   const response = await supabaseFetch(`/campaigns?${params.toString()}`);
@@ -276,13 +291,14 @@ export const getCampaignById = cache(async function getCampaignById(id) {
 });
 
 export async function getCampaignSnapshotRawPayload(id) {
-  if (!id) {
+  const [safeId] = sanitizeUuidList([id], 1);
+  if (!safeId) {
     return null;
   }
 
   const params = new URLSearchParams({
     select: 'raw_payload',
-    campaign_id: `eq.${id}`,
+    campaign_id: `eq.${safeId}`,
     order: 'crawled_at.desc',
     limit: '1'
   });
@@ -292,13 +308,14 @@ export async function getCampaignSnapshotRawPayload(id) {
 }
 
 export async function getCampaignExactLocation(id) {
-  if (!id) {
+  const [safeId] = sanitizeUuidList([id], 1);
+  if (!safeId) {
     return null;
   }
 
   const params = new URLSearchParams({
     select: 'raw_payload',
-    campaign_id: `eq.${id}`,
+    campaign_id: `eq.${safeId}`,
     order: 'crawled_at.desc',
     limit: '1'
   });
@@ -310,7 +327,7 @@ export async function getCampaignExactLocation(id) {
 }
 
 export async function getCampaignsByIds(ids = []) {
-  const filteredIds = ids.filter(Boolean);
+  const filteredIds = sanitizeUuidList(ids, 50);
   if (!filteredIds.length) {
     return [];
   }
@@ -371,7 +388,7 @@ async function attachLocationData(campaigns = []) {
 }
 
 async function getCampaignLocationDataByIds(ids = []) {
-  const filteredIds = [...new Set(ids.filter(Boolean))];
+  const filteredIds = sanitizeUuidList(ids, 240);
   if (!filteredIds.length) {
     return new Map();
   }

@@ -97,3 +97,12 @@ export async function countRows(table, params = {}) {
   const contentRange = response.headers.get('content-range') || '*/0';
   return Number(contentRange.split('/')[1] || 0);
 }
+
+export async function rpc(functionName, args = {}) {
+  const response = await serviceFetch(`/rpc/${encodeURIComponent(functionName)}`, {
+    method: 'POST',
+    body: JSON.stringify(args)
+  });
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
+}

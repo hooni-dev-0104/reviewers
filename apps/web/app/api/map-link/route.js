@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { getCampaignById, getCampaignExactLocation } from '@/lib/supabase';
+import { normalizeAllowedMapDetailUrl } from '@/lib/url-safety';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +25,8 @@ export async function GET(request) {
   const target = query ? buildProviderSearchUrl(provider, query) : null;
 
   if (!target) {
-    return NextResponse.redirect(campaign.original_url, { status: 302 });
+    const safeOriginalUrl = normalizeAllowedMapDetailUrl(campaign.sources?.slug, campaign.original_url);
+    return NextResponse.redirect(safeOriginalUrl || new URL('/', request.url), { status: 302 });
   }
 
   return NextResponse.redirect(target, { status: 302 });
@@ -45,7 +47,10 @@ async function resolveExactLocation(campaign) {
   }
 
   try {
-    const detailUrl = normalizeDetailUrl(sourceSlug, campaign.original_url);
+    const detailUrl = normalizeAllowedMapDetailUrl(sourceSlug, campaign.original_url);
+    if (!detailUrl) {
+      return null;
+    }
     const response = await fetch(detailUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; ReviewKokMapResolver/1.0; +https://reviewkok.vercel.app)'
@@ -63,15 +68,6 @@ async function resolveExactLocation(campaign) {
   } catch {
     return null;
   }
-}
-
-function normalizeDetailUrl(sourceSlug, originalUrl) {
-  if (sourceSlug === 'gangnammatzip') {
-    return originalUrl
-      .replace('https://강남맛집.net', 'https://gangnam-review.net')
-      .replace('https://xn--939au0g4vj8sq.net', 'https://gangnam-review.net');
-  }
-  return originalUrl;
 }
 
 function extractExactLocationFromHtml(sourceSlug, html) {
