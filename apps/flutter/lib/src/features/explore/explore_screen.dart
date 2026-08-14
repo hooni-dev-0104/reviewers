@@ -94,7 +94,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             eyebrow: '체험단 탐색',
             title: '혜택, 마감, 지역부터 빠르게 비교하세요.',
             body:
-                '기존 웹의 캠페인 목록과 필터 흐름을 Flutter web, iOS, Android에서 같은 방식으로 볼 수 있게 옮겼습니다.',
+                '체험단을 한눈에 훑고, 마감이 급한 항목부터 바로 좁혀 볼 수 있게 정리했습니다.',
           ),
           const SizedBox(height: RkSpace.x4),
           FilterPanel(
@@ -169,8 +169,52 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   body: '검색어나 필터를 줄이면 더 많은 체험단을 볼 수 있어요.',
                 );
               }
+              final mapReadyCount =
+                  campaigns.where((campaign) => campaign.hasMapHint).length;
+              final reviewCount =
+                  campaigns.where((campaign) => campaign.requiresReview).length;
+
               return Column(
                 children: [
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final tileWidth = (constraints.maxWidth - RkSpace.x2 * 2) / 3;
+                      return Wrap(
+                        spacing: RkSpace.x2,
+                        runSpacing: RkSpace.x2,
+                        children: [
+                          SizedBox(
+                            width: tileWidth,
+                            child: SummaryTile(
+                              label: '현재 결과',
+                              value: formatCount(campaigns.length),
+                              helper: '이번 조건에서',
+                              tone: PillTone.accent,
+                            ),
+                          ),
+                          SizedBox(
+                            width: tileWidth,
+                            child: SummaryTile(
+                              label: '지도 후보',
+                              value: formatCount(mapReadyCount),
+                              helper: '방문형만 표시',
+                              tone: PillTone.ok,
+                            ),
+                          ),
+                          SizedBox(
+                            width: tileWidth,
+                            child: SummaryTile(
+                              label: '검토 필요',
+                              value: formatCount(reviewCount),
+                              helper: '원문 확인 추천',
+                              tone: PillTone.warning,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: RkSpace.x3),
                   for (final campaign in campaigns) ...[
                     CampaignCard(
                       campaign: campaign,
