@@ -37,6 +37,9 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
+      - name: Install Project Dependencies
+        run: npm ci
+
       - name: Validate Vercel secrets
         run: |
           test -n "$VERCEL_TOKEN" || (echo "Missing GitHub secret: VERCEL_TOKEN" && exit 1)
