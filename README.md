@@ -1,27 +1,35 @@
 # Korean Experience Campaign Aggregator MVP
 
-Stdlib-first Python scaffold for a Korean experience-campaign crawler built around the current Supabase schema.
+ReviewKok is a Korean experience-campaign aggregator with a Python crawler, Supabase data plane, Vercel-hosted Next.js service, and Flutter clients for web, iOS, and Android.
 
 ## What is included
 
 - environment/config loading
-- seeded source catalog for the 5 MVP sites
+- scheduled source catalog for 11 active integrations
 - normalized campaign dataclass model
 - Supabase PostgREST client with campaign/job/error helpers
 - dry-run friendly pipeline
 - local file-backed source adapter for offline development
-- placeholder seeded adapters for real sites
+- live HTTP/API adapters with guarded source refreshes
 - Flutter applicant-facing app in `apps/flutter` for web, iOS, and Android
 - Legacy Next.js frontend remains in `apps/web` during the migration window
 - unit tests using `unittest`
 
-## Seeded MVP sources
+## Scheduled sources
 
 - 리뷰노트 (`reviewnote`)
 - 레뷰 (`revu`)
 - 디너의여왕 (`dinnerqueen`)
-- 미블 (`mrblog`)
 - 포블로그 (`4blog`)
+- 체험뷰 (`chehumview`)
+- 모두의체험단 (`modan`)
+- 놀러와체험단 (`nolowa`)
+- 리뷰플레이스 (`reviewplace`)
+- 서울오빠 (`seouloppa`)
+- 링블 (`ringble`)
+- 강남맛집 (`gangnammatzip`)
+
+미블 (`mrblog`) 어댑터는 보존되어 있지만 현재 예약 실행 대상에서는 제외됩니다.
 
 ## Quick start
 
@@ -125,7 +133,7 @@ Required GitHub secrets:
 ```bash
 VERCEL_TOKEN=YOUR_VERCEL_TOKEN
 VERCEL_ORG_ID=team_ZtzXXpuCkVLHkJ4c7RUR2FZr
-VERCEL_PROJECT_ID=prj_YAHDuzPjm2Zx7qiQ0FlUVlSrf2be
+VERCEL_PROJECT_ID=prj_tLzC42DeU7sExm7r9x2HLywkkNXv
 ```
 
 The workflow file is `.github/workflows/vercel-production.yml`.
@@ -150,9 +158,9 @@ The workflow file is `.github/workflows/vercel-production.yml`.
 
 ## Notes
 
-- Real network scraping for the 5 seeded platforms is intentionally **not implemented** in this scaffold.
+- Scheduled adapters perform real public-page/API collection. A `blocked` source policy skips collection, and an empty refresh never deletes existing campaigns.
 - Production writes require `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
 - The canonical upsert key follows the schema: `(source_id, original_url)`.
-- The included GitHub Actions workflow is configured for an hourly-style schedule and calls `run-scheduled --all --write --delete-before-refresh`.
-- The recommended current scheduled set is: `4blog`, `dinnerqueen`, `reviewnote`, and `revu` (auth-required).
+- The scheduled workflow runs four times per day and refreshes sources independently so one failure does not discard other results.
+- The current scheduled set is `4blog`, `chehumview`, `dinnerqueen`, `gangnammatzip`, `modan`, `nolowa`, `reviewnote`, `reviewplace`, `revu`, `ringble`, and `seouloppa`.
 - REVU can be authenticated with either `REVU_ACCESS_TOKEN` or `REVU_USERNAME` + `REVU_PASSWORD`.
