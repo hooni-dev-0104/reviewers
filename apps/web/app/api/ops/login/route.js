@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 
 import { signOpsCookie, verifyOpsKey } from '@/lib/auth';
 
+const COOKIE_SECURE = process.env.NODE_ENV === 'production';
+
 export async function POST(request) {
   if (!process.env.OPS_DASHBOARD_KEY) {
     return NextResponse.redirect(new URL('/ops', request.url));
@@ -18,7 +20,7 @@ export async function POST(request) {
     name: 'rv_ops',
     value: signOpsCookie(),
     httpOnly: true,
-    secure: true,
+    secure: COOKIE_SECURE,
     sameSite: 'lax',
     path: '/',
     maxAge: 60 * 60 * 8

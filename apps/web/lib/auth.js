@@ -8,6 +8,7 @@ import { requireEnv } from '@/lib/env';
 
 const SESSION_COOKIE = 'rv_session';
 const SESSION_MAX_AGE = 60 * 60 * 24 * 30;
+const COOKIE_SECURE = process.env.NODE_ENV === 'production';
 
 export function hashPassword(password, salt = crypto.randomBytes(16).toString('hex')) {
   const digest = crypto.scryptSync(password, salt, 64).toString('hex');
@@ -63,7 +64,7 @@ export async function setSessionCookie(token) {
     name: SESSION_COOKIE,
     value: token,
     httpOnly: true,
-    secure: true,
+    secure: COOKIE_SECURE,
     sameSite: 'lax',
     path: '/',
     maxAge: SESSION_MAX_AGE

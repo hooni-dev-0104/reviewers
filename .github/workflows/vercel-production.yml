@@ -16,6 +16,9 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -42,6 +45,9 @@ jobs:
 
       - name: Pull Vercel Environment Information
         run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Install Web Dependencies
+        run: npm ci
 
       - name: Build Project Artifacts
         run: vercel build --prod --token="$VERCEL_TOKEN"

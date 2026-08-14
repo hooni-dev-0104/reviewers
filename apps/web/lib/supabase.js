@@ -1,3 +1,5 @@
+import 'server-only';
+
 import { cache } from 'react';
 
 import { requireEnv } from '@/lib/env';
@@ -98,7 +100,7 @@ function normalizeMultiValue(value) {
 }
 
 function publicHeaders() {
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || requireEnv('SUPABASE_SERVICE_ROLE_KEY');
+  const key = requireEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY');
   return {
     apikey: key,
     Authorization: `Bearer ${key}`,

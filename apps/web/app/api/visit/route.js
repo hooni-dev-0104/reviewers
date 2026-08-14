@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 
 import { getVisitorCounts, recordVisitor } from '@/lib/supabase';
 
+const COOKIE_SECURE = process.env.NODE_ENV === 'production';
+
 export async function POST(request) {
   const cookieStore = await cookies();
   const existingVisitorId = cookieStore.get('rv_vid')?.value;
@@ -17,7 +19,7 @@ export async function POST(request) {
       value: visitorId,
       httpOnly: true,
       sameSite: 'lax',
-      secure: true,
+      secure: COOKIE_SECURE,
       path: '/',
       maxAge: 60 * 60 * 24 * 365
     });
