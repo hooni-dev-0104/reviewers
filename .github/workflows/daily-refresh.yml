@@ -52,37 +52,37 @@ jobs:
         include:
           - source: 4blog
             runner: ubuntu-latest
-            timeout_minutes: 20
+            timeout_minutes: 35
           - source: dinnerqueen
             runner: ubuntu-latest
             timeout_minutes: 25
           - source: reviewnote
             runner: ubuntu-latest
-            timeout_minutes: 15
+            timeout_minutes: 20
           - source: modan
             runner: macos-14
-            timeout_minutes: 30
+            timeout_minutes: 35
           - source: reviewplace
             runner: ubuntu-latest
-            timeout_minutes: 20
+            timeout_minutes: 35
           - source: revu
             runner: ubuntu-latest
-            timeout_minutes: 15
+            timeout_minutes: 20
           - source: chehumview
             runner: ubuntu-latest
-            timeout_minutes: 20
+            timeout_minutes: 35
           - source: seouloppa
             runner: ubuntu-latest
-            timeout_minutes: 45
+            timeout_minutes: 60
           - source: ringble
             runner: ubuntu-latest
-            timeout_minutes: 30
+            timeout_minutes: 45
           - source: nolowa
             runner: ubuntu-latest
-            timeout_minutes: 30
+            timeout_minutes: 40
           - source: gangnammatzip
             runner: ubuntu-latest
-            timeout_minutes: 25
+            timeout_minutes: 35
     name: refresh-${{ matrix.source }}
     timeout-minutes: ${{ matrix.timeout_minutes }}
     runs-on: ${{ matrix.runner }}

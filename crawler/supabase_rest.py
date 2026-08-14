@@ -139,6 +139,21 @@ class SupabasePostgrestClient:
         result = self._request(spec)
         return result[0] if result else None
 
+    def get_source_policy(self, source_id: str | None) -> dict[str, Any] | None:
+        if not source_id:
+            return None
+        query = urllib.parse.urlencode({"source_id": f"eq.{source_id}", "select": "*", "limit": "1"})
+        spec = RequestSpec(
+            method="GET",
+            url=f"{self.config.supabase_url}/rest/v1/source_policies?{query}",
+            headers={
+                "apikey": self.config.supabase_service_role_key,
+                "Authorization": f"Bearer {self.config.supabase_service_role_key}",
+            },
+        )
+        result = self._request(spec)
+        return result[0] if result else None
+
     def upsert_source(self, definition: SourceDefinition, priority: int = 100, notes: str | None = None) -> dict[str, Any] | None:
         query = urllib.parse.urlencode({"on_conflict": "slug"})
         payload = {
@@ -213,6 +228,7 @@ class SupabasePostgrestClient:
         return self._request(spec)
 
     def create_crawl_job(self, source_id: str | None, metadata: dict[str, Any] | None = None) -> Any:
+        started_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         spec = RequestSpec(
             method="POST",
             url=f"{self.config.supabase_url}/rest/v1/{self.config.crawl_jobs_table}",
@@ -226,6 +242,7 @@ class SupabasePostgrestClient:
                 {
                     "source_id": source_id,
                     "job_status": "running",
+                    "started_at": started_at,
                     "metadata": metadata or {},
                 }
             ).encode("utf-8"),

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, timedelta
 import html as html_lib
 from html.parser import HTMLParser
@@ -199,6 +200,8 @@ REVU_MEDIA_MAP = {
     "clip": "instagram",
 }
 
+DETAIL_FETCH_MAX_WORKERS = 4
+
 
 
 
@@ -380,14 +383,7 @@ MODAN_BROWSER_HEADERS = {
 }
 
 MODAN_BOARD_CONFIGS = (
-    ("matzip", "맛집", "visit"),
-    ("beauty", "뷰티/건강", "visit"),
-    ("lodging", "숙박", "visit"),
-    ("product", "제품/서비스", None),
-    ("delivery", "배송", "delivery"),
-    ("culture", "문화/스포츠", "visit"),
-    ("various", "기타", None),
-    ("reporters", "기자단", "content"),
+    ("campaigns", "전체", None),
 )
 
 MODAN_SECTION_MARKERS = (
@@ -1319,6 +1315,11 @@ def enrich_ringble_detail(item: dict, detail_html: str) -> dict:
 
 
 def _build_modan_listing_url(board_path: str, page: int) -> str:
+    normalized = board_path.strip("/")
+    if normalized.startswith("campaigns"):
+        base_url = f"https://modan.kr/{normalized}"
+        separator = "&" if "?" in base_url else "?"
+        return f"{base_url}{separator}page={page}"
     return f"https://www.modan.kr/{board_path.strip('/')}/?&page={page}&sort=recent"
 
 
@@ -1397,6 +1398,11 @@ def _infer_modan_campaign_type(
     if "구매평" in text:
         return "purchase"
     if (
+        "맛집" in text
+        or "방문형" in text
+        ):
+        return "visit"
+    if (
         board_path == "delivery"
         or "택배/배송" in text
         or "배송 제품 체험" in text
@@ -1404,7 +1410,14 @@ def _infer_modan_campaign_type(
         or "택배 발송" in text
     ):
         return "delivery"
-    if exact_location or board_path in {"matzip", "beauty", "lodging", "culture"} or "방문일" in text:
+    if (
+        exact_location
+        or board_path in {"matzip", "beauty", "lodging", "culture"}
+        or "방문일" in text
+        or "맛집" in text
+        or "숙박" in text
+        or "체험 모집" in text
+    ):
         return "visit"
     return default_campaign_type or "delivery"
 
@@ -1415,6 +1428,139 @@ def _normalize_modan_regions(primary: str | None, secondary: str | None) -> tupl
         if first in FOUR_BLOG_LOCATION_PREFIXES:
             return first, second or None
     return primary, secondary
+
+
+def _run_detail_fetches(
+    targets: list[dict[str, Any]],
+    fetch_detail,
+    key_fn=None,
+) -> dict[str, Any]:
+    if not targets:
+        return {}
+    results: dict[str, Any] = {}
+    max_workers = min(DETAIL_FETCH_MAX_WORKERS, len(targets))
+    key_fn = key_fn or (lambda item: item["original_url"])
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_map = {executor.submit(fetch_detail, item): key_fn(item) for item in targets}
+        for future in as_completed(future_map):
+            results[future_map[future]] = future.result()
+    return results
+
+
+def _extract_json_ld_payloads(html: str) -> list[Any]:
+    payloads: list[Any] = []
+    for raw_block in re.findall(r'<script type="application/ld\+json">(.*?)</script>', html, re.S):
+        block = html_lib.unescape(raw_block).strip()
+        if not block:
+            continue
+        try:
+            payloads.append(json.loads(block))
+        except Exception:
+            continue
+    return payloads
+
+
+def _normalize_modan_thumbnail_url(url: str | None) -> str | None:
+    if not url:
+        return None
+    cleaned = html_lib.unescape(url.strip())
+    if cleaned.startswith("http://") or cleaned.startswith("https://"):
+        return cleaned
+    if cleaned.startswith("/"):
+        return urljoin("https://modan.kr", cleaned)
+    return cleaned
+
+
+def _build_modan_card_map(html: str) -> dict[str, dict[str, Any]]:
+    card_map: dict[str, dict[str, Any]] = {}
+    for block in re.findall(r'(<a href="/campaigns/\d+" class="card">.*?</a>)', html, re.S):
+        relative_url = _extract_first(r'href="(/campaigns/\d+)"', block)
+        if not relative_url:
+            continue
+        absolute_url = urljoin("https://modan.kr", relative_url)
+        recruit_text = _extract_first(r"meta-progress\">신청\s*<strong>\d+</strong>/([0-9,]+)", block) or ""
+        region_text = _extract_first(r"<span>📍\s*([^<]+)</span>", block)
+        badge_label = _extract_first(r'<span class="badge rv-badge primary">([^<]+)</span>', block)
+        card_map[absolute_url] = {
+            "thumbnail_url": _normalize_modan_thumbnail_url(_extract_first(r'<img src="([^"]+)"', block)),
+            "campaign_type_label": _strip_tags(badge_label or ""),
+            "business_name": _strip_tags(_extract_first(r'<div class="biz-row">([^<]+)</div>', block) or ""),
+            "title": _strip_tags(_extract_first(r'<div class="title">([^<]+)</div>', block) or ""),
+            "benefit_text": _strip_tags(_extract_first(r'<div class="promo rv-promo">([^<]+)</div>', block) or ""),
+            "region_text": _strip_tags(region_text or ""),
+            "recruit_count": int(recruit_text.replace(",", "")) if recruit_text.replace(",", "").isdigit() else None,
+        }
+    return card_map
+
+
+def _extract_modan_current_items(
+    html: str,
+    category_name: str | None,
+    default_campaign_type: str | None,
+    source_id: str | None = None,
+) -> list[dict[str, Any]]:
+    card_map = _build_modan_card_map(html)
+    item_list_entries: list[dict[str, Any]] = []
+    for payload in _extract_json_ld_payloads(html):
+        candidates = payload if isinstance(payload, list) else [payload]
+        for candidate in candidates:
+            if not isinstance(candidate, dict) or candidate.get("@type") != "ItemList":
+                continue
+            entries = candidate.get("itemListElement") or []
+            if isinstance(entries, list):
+                item_list_entries.extend(entry for entry in entries if isinstance(entry, dict))
+    items: list[dict[str, Any]] = []
+    seen_urls: set[str] = set()
+    for entry in item_list_entries:
+        original_url = str(entry.get("url") or "").strip()
+        raw_title = str(entry.get("name") or "").strip()
+        if not original_url or not raw_title or original_url in seen_urls:
+            continue
+        seen_urls.add(original_url)
+        card = card_map.get(original_url, {})
+        title = _split_4blog_title_annotations(card.get("title") or raw_title)[1]
+        region_primary, region_secondary, _tokens = _parse_region_tokens_from_title(raw_title)
+        region_primary, region_secondary = _normalize_modan_regions(region_primary, region_secondary)
+        region_text = str(card.get("region_text") or "").strip()
+        if region_text and not region_primary:
+            region_primary = region_text
+        campaign_id = original_url.rstrip("/").split("/")[-1]
+        benefit_text = str(card.get("benefit_text") or "").strip() or None
+        items.append(
+            {
+                "source_id": source_id,
+                "campaign_id": campaign_id,
+                "title": title,
+                "original_url": original_url,
+                "platform_type": "mixed",
+                "campaign_type": _infer_modan_campaign_type(
+                    "campaigns",
+                    raw_title,
+                    benefit_text or "",
+                    None,
+                    default_campaign_type,
+                ),
+                "category_name": category_name,
+                "subcategory_name": None,
+                "region_primary_name": region_primary,
+                "region_secondary_name": region_secondary,
+                "benefit_text": benefit_text,
+                "recruit_count": card.get("recruit_count"),
+                "apply_deadline": None,
+                "published_at": None,
+                "thumbnail_url": card.get("thumbnail_url"),
+                "snippet": benefit_text,
+                "raw_status": "active",
+                "status": "active",
+                "requires_review": False,
+                "raw_payload": {
+                    "board_path": "campaigns",
+                    "business_name": card.get("business_name"),
+                    "campaign_type_label": card.get("campaign_type_label"),
+                },
+            }
+        )
+    return items
 
 
 class ModanListingHTMLParser(HTMLParser):
@@ -1568,6 +1714,14 @@ def parse_modan_listing(
     default_campaign_type: str | None,
     source_id: str | None = None,
 ) -> list[dict]:
+    current_items = _extract_modan_current_items(
+        html,
+        category_name=category_name,
+        default_campaign_type=default_campaign_type,
+        source_id=source_id,
+    )
+    if current_items:
+        return current_items
     parser = ModanListingHTMLParser(
         listing_url=listing_url,
         category_name=category_name,
@@ -1587,7 +1741,11 @@ def enrich_modan_detail(item: dict, detail_html: str) -> dict:
 
     detail_title = _extract_first(r'<h1 class="view_tit[^"]*"[^>]*>(.*?)<div class="ns-icon', detail_html, re.S)
     if not detail_title:
+        detail_title = _extract_first(r'<h1 class="detail-title[^"]*"[^>]*>(.*?)</h1>', detail_html, re.S)
+    if not detail_title:
         detail_title = _extract_first(r'<meta id=\'meta_og_title\' property=\'og:title\' content=\'([^\']+)\'', detail_html)
+    if not detail_title:
+        detail_title = _extract_first(r'<meta property="og:title" content="([^"]+)"', detail_html)
     raw_title = _strip_tags(detail_title) if detail_title else item.get("title", "")
     if raw_title:
         enriched["title"] = _split_4blog_title_annotations(raw_title)[1]
@@ -1603,16 +1761,29 @@ def enrich_modan_detail(item: dict, detail_html: str) -> dict:
         detail_html,
         re.S,
     )
+    if not summary_html:
+        summary_html = _extract_first(r'<div class="detail-desc[^"]*"[^>]*>(.*?)</div>', detail_html, re.S)
     summary_text = _strip_tags(summary_html) if summary_html else None
     template_text = _extract_modan_template_text(detail_html)
     meta_description = _extract_first(r"<meta name='description' content='([^']+)'", detail_html)
+    if not meta_description:
+        meta_description = _extract_first(r'<meta name="description" content="([^"]+)"', detail_html)
+    provision_text = _strip_tags(_extract_first(r'<div class="provision-value[^"]*"[^>]*>(.*?)</div>', detail_html, re.S) or "")
+    mission_text = _strip_tags(_extract_first(r'<div class="cd-sub-title[^"]*">미션 설명</div>\s*<div class="cd-content-box[^"]*">(.*?)</div>', detail_html, re.S) or "")
+    requirements_text = _strip_tags(_extract_first(r'<div class="cd-sub-title[^"]*">신청 조건</div>\s*<div class="cd-content-box[^"]*">(.*?)</div>', detail_html, re.S) or "")
+    address_text = _strip_tags(_extract_first(r'<div class="cd-notice-title[^"]*">주소</div>\s*<div class="cd-notice-desc[^"]*">(.*?)</div>', detail_html, re.S) or "")
     detail_text = " ".join(part for part in (template_text, meta_description) if part)
+    detail_text = " ".join(part for part in (detail_text, provision_text, mission_text, requirements_text, address_text) if part)
     benefit_text = _extract_modan_benefit_text(summary_text, template_text)
+    if not benefit_text:
+        benefit_text = provision_text or summary_text
     if benefit_text:
         enriched["benefit_text"] = benefit_text
         enriched["snippet"] = benefit_text
 
     exact_location = _extract_modan_labeled_value(detail_text, "주소") or _extract_modan_labeled_value(detail_text, "방문주소")
+    if not exact_location and address_text:
+        exact_location = address_text
     if exact_location:
         enriched["exact_location"] = exact_location
         if not enriched.get("region_primary_name") or not enriched.get("region_secondary_name"):
@@ -1636,6 +1807,43 @@ def enrich_modan_detail(item: dict, detail_html: str) -> dict:
     recruit_match = re.search(r"모집\s*인원\s*[:：]?\s*([0-9]+)\s*명|([0-9]+)\s*명", recruit_text or "")
     if recruit_match:
         enriched["recruit_count"] = int(recruit_match.group(1) or recruit_match.group(2))
+    if enriched.get("recruit_count") is None:
+        recruit_match = re.search(r"<span>\s*(\d+)\s*/\s*([0-9]+)명\s*</span>", detail_html)
+        if recruit_match:
+            enriched["recruit_count"] = int(recruit_match.group(2))
+
+    event_payload = None
+    for payload in _extract_json_ld_payloads(detail_html):
+        candidates = payload if isinstance(payload, list) else [payload]
+        for candidate in candidates:
+            if isinstance(candidate, dict) and candidate.get("@type") == "Event":
+                event_payload = candidate
+                break
+        if event_payload:
+            break
+    if isinstance(event_payload, dict):
+        image_url = _normalize_modan_thumbnail_url(event_payload.get("image"))
+        if image_url and not enriched.get("thumbnail_url"):
+            enriched["thumbnail_url"] = image_url
+        start_date = str(event_payload.get("startDate") or "").strip()
+        end_date = str(event_payload.get("endDate") or "").strip()
+        if start_date and not enriched.get("published_at"):
+            enriched["published_at"] = start_date[:10]
+        if end_date and not enriched.get("apply_deadline"):
+            enriched["apply_deadline"] = end_date[:10]
+        organizer = event_payload.get("organizer") or {}
+        organizer_address = organizer.get("address") if isinstance(organizer, dict) else None
+        if organizer_address and not enriched.get("exact_location"):
+            enriched["exact_location"] = organizer_address
+        offers = event_payload.get("offers") or {}
+        offer_name = offers.get("name") if isinstance(offers, dict) else None
+        offer_desc = offers.get("description") if isinstance(offers, dict) else None
+        if not enriched.get("benefit_text"):
+            enriched["benefit_text"] = " / ".join(part for part in (offer_name, offer_desc) if part)
+        if not enriched.get("snippet") and enriched.get("benefit_text"):
+            enriched["snippet"] = enriched["benefit_text"]
+        if not enriched.get("platform_type"):
+            enriched["platform_type"] = _extract_modan_platform_type(" ".join(part for part in (requirements_text, mission_text) if part)) or "mixed"
 
     board_path = str((enriched.get("raw_payload") or {}).get("board_path") or urlsplit(enriched["original_url"]).path.strip("/"))
     enriched["campaign_type"] = _infer_modan_campaign_type(
@@ -1902,15 +2110,22 @@ class FourBlogSourceAdapter(PlaceholderSourceAdapter):
                 break
             if not isinstance(batch, list) or not batch:
                 break
-            for item in batch:
-                transformed = transform_4blog_item(item, source_id=self.definition.source_id)
-                if transformed.get("original_url") and not transformed.get("region_primary_name"):
-                    try:
-                        detail_html = fetch_text_url(transformed["original_url"])
-                    except Exception:
-                        detail_html = None
-                    if detail_html:
-                        transformed = enrich_4blog_item_from_detail(transformed, detail_html)
+            transformed_batch = [transform_4blog_item(item, source_id=self.definition.source_id) for item in batch]
+            detail_targets = [
+                item for item in transformed_batch if item.get("original_url") and not item.get("region_primary_name")
+            ]
+
+            def _fetch_4blog_detail(target: dict[str, Any]) -> str | None:
+                try:
+                    return fetch_text_url(target["original_url"])
+                except Exception:
+                    return None
+
+            detail_results = _run_detail_fetches(detail_targets, _fetch_4blog_detail)
+            for transformed in transformed_batch:
+                detail_html = detail_results.get(transformed.get("original_url", ""))
+                if detail_html:
+                    transformed = enrich_4blog_item_from_detail(transformed, detail_html)
                 items.append(transformed)
             if len(batch) < limit:
                 break
@@ -1992,12 +2207,20 @@ class ReviewPlaceSourceAdapter(PlaceholderSourceAdapter):
                 if new_count == 0:
                     break
 
+        def _fetch_reviewplace_detail(target: dict[str, Any]) -> str | None:
+            try:
+                return fetch_text_url(
+                    target["original_url"],
+                    headers=REVIEWPLACE_BROWSER_HEADERS,
+                    timeout=REVIEWPLACE_FETCH_TIMEOUT,
+                )
+            except Exception:
+                return None
+
+        detail_results = _run_detail_fetches(items, _fetch_reviewplace_detail)
         enriched: list[dict] = []
         for item in items:
-            try:
-                detail_html = fetch_text_url(item["original_url"], headers=REVIEWPLACE_BROWSER_HEADERS, timeout=REVIEWPLACE_FETCH_TIMEOUT)
-            except Exception:
-                detail_html = None
+            detail_html = detail_results.get(item["original_url"])
             enriched.append(enrich_reviewplace_detail(item, detail_html) if detail_html else item)
         return enriched
 
@@ -2025,22 +2248,23 @@ class ModanSourceAdapter(PlaceholderSourceAdapter):
                 listing_url = _build_modan_listing_url(board_path, page)
                 listing_candidates = [listing_url]
                 if page == 1:
-                    listing_candidates.insert(0, f"https://www.modan.kr/{board_path.strip('/')}")
+                    base_path = board_path.strip("/")
+                    listing_candidates.insert(0, urljoin("https://modan.kr/", base_path))
                 listing_html = None
                 last_error: Exception | None = None
                 for candidate_url in dict.fromkeys(listing_candidates):
                     try:
                         try:
                             listing_html = fetch_session_text(
-                                "https://www.modan.kr/",
+                                "https://modan.kr/",
                                 candidate_url,
-                                headers={**MODAN_BROWSER_HEADERS, "Referer": "https://www.modan.kr/"},
+                                headers={**MODAN_BROWSER_HEADERS, "Referer": "https://modan.kr/"},
                                 timeout=MODAN_FETCH_TIMEOUT,
                             )
                         except Exception:
                             listing_html = fetch_text_url(
                                 candidate_url,
-                                headers={**MODAN_BROWSER_HEADERS, "Referer": "https://www.modan.kr/"},
+                                headers={**MODAN_BROWSER_HEADERS, "Referer": "https://modan.kr/"},
                                 timeout=MODAN_FETCH_TIMEOUT,
                             )
                         break
@@ -2085,20 +2309,27 @@ class ModanSourceAdapter(PlaceholderSourceAdapter):
         )
         detail_targets = prioritized if self.detail_limit is None else prioritized[: self.detail_limit]
         detail_urls = {item["original_url"] for item in detail_targets}
+        detail_targets_by_url = {item["original_url"]: item for item in detail_targets}
+
+        def _fetch_modan_detail(target: dict[str, Any]) -> str | None:
+            try:
+                return fetch_text_url(
+                    target["original_url"],
+                    headers={**MODAN_BROWSER_HEADERS, "Referer": target["original_url"]},
+                    timeout=MODAN_FETCH_TIMEOUT,
+                )
+            except Exception as exc:
+                fetch_errors.append(f"detail fetch failed: {target['original_url']} :: {_format_source_exception(exc)}")
+                return None
+
+        detail_results = _run_detail_fetches(detail_targets, _fetch_modan_detail)
 
         enriched: list[dict] = []
         for item in items:
             if item["original_url"] not in detail_urls:
                 enriched.append(item)
                 continue
-            try:
-                detail_html = fetch_text_url(
-                    item["original_url"],
-                    headers={**MODAN_BROWSER_HEADERS, "Referer": item["original_url"]},
-                    timeout=MODAN_FETCH_TIMEOUT,
-                )
-            except Exception:
-                detail_html = None
+            detail_html = detail_results.get(item["original_url"])
             enriched.append(enrich_modan_detail(item, detail_html) if detail_html else item)
         print(f"[modan] fetched listing_items={len(items)} detail_targets={len(detail_urls)} errors={len(fetch_errors)}")
         for error in fetch_errors[:20]:
@@ -2128,6 +2359,8 @@ class ChehumviewSourceAdapter(PlaceholderSourceAdapter):
                 rows = payload.get("data", []) if isinstance(payload, dict) else []
                 if not rows:
                     break
+                detail_targets: list[tuple[dict[str, Any], int]] = []
+                filtered_rows: list[dict[str, Any]] = []
                 for row in rows:
                     campaign_id = row.get("campaignId")
                     if (
@@ -2138,13 +2371,25 @@ class ChehumviewSourceAdapter(PlaceholderSourceAdapter):
                     ):
                         continue
                     seen_ids.add(campaign_id)
+                    filtered_rows.append(row)
+                    detail_targets.append((row, int(campaign_id)))
+
+                def _fetch_chehumview_detail(target: dict[str, Any]) -> list[dict[str, Any]] | list[Any]:
                     try:
-                        detail_rows = fetch_json_with_headers(
-                            self.detail_api.format(campaign_id=campaign_id),
+                        return fetch_json_with_headers(
+                            self.detail_api.format(campaign_id=target["campaignId"]),
                             headers=CHEHUMVIEW_BROWSER_HEADERS,
                         )
                     except Exception:
-                        detail_rows = []
+                        return []
+
+                detail_results = _run_detail_fetches(
+                    filtered_rows,
+                    _fetch_chehumview_detail,
+                    key_fn=lambda row: str(row["campaignId"]),
+                )
+                for row in filtered_rows:
+                    detail_rows = detail_results.get(str(row.get("campaignId")), [])
                     detail = detail_rows[0] if isinstance(detail_rows, list) and detail_rows else {}
                     items.append(transform_chehumview_campaign(row, source_id=self.definition.source_id, detail=detail))
                 if len(rows) < 14:
@@ -2220,23 +2465,27 @@ class RingbleSourceAdapter(PlaceholderSourceAdapter):
         detail_targets = prioritized_items if self.detail_limit is None else prioritized_items[: self.detail_limit]
         detail_urls = {item["original_url"] for item in detail_targets}
 
+        def _fetch_ringble_detail(target: dict[str, Any]) -> str | None:
+            try:
+                return fetch_text_url(
+                    target["original_url"],
+                    headers={
+                        **RINGBLE_BROWSER_HEADERS,
+                        "Referer": target["original_url"],
+                    },
+                    timeout=RINGBLE_FETCH_TIMEOUT,
+                )
+            except Exception as exc:
+                fetch_errors.append(f"detail fetch failed: {target['original_url']} :: {_format_source_exception(exc)}")
+                return None
+
+        detail_results = _run_detail_fetches(detail_targets, _fetch_ringble_detail)
         items: list[dict] = []
         for item in listing_items:
             if item["original_url"] not in detail_urls:
                 items.append(item)
                 continue
-            try:
-                detail_html = fetch_text_url(
-                    item["original_url"],
-                    headers={
-                        **RINGBLE_BROWSER_HEADERS,
-                        "Referer": item["original_url"],
-                    },
-                    timeout=RINGBLE_FETCH_TIMEOUT,
-                )
-            except Exception as exc:
-                fetch_errors.append(f"detail fetch failed: {item['original_url']} :: {_format_source_exception(exc)}")
-                detail_html = None
+            detail_html = detail_results.get(item["original_url"])
             items.append(enrich_ringble_detail(item, detail_html) if detail_html else item)
 
         print(
@@ -2426,23 +2675,27 @@ class NolowaSourceAdapter(PlaceholderSourceAdapter):
         detail_targets = prioritized if self.detail_limit is None else prioritized[: self.detail_limit]
         detail_urls = {item["original_url"] for item in detail_targets}
 
+        def _fetch_nolowa_detail(target: dict[str, Any]) -> str | None:
+            try:
+                return fetch_text_url(
+                    target["original_url"],
+                    headers={
+                        **NOLOWA_BROWSER_HEADERS,
+                        "Referer": target.get("raw_payload", {}).get("listing_url") or target["original_url"],
+                    },
+                    timeout=NOLOWA_FETCH_TIMEOUT,
+                )
+            except Exception as exc:
+                fetch_errors.append(f"detail fetch failed: {target['original_url']} :: {_format_source_exception(exc)}")
+                return None
+
+        detail_results = _run_detail_fetches(detail_targets, _fetch_nolowa_detail)
         enriched: list[dict] = []
         for item in items:
             if item["original_url"] not in detail_urls:
                 enriched.append(item)
                 continue
-            try:
-                detail_html = fetch_text_url(
-                    item["original_url"],
-                    headers={
-                        **NOLOWA_BROWSER_HEADERS,
-                        "Referer": item.get("raw_payload", {}).get("listing_url") or item["original_url"],
-                    },
-                    timeout=NOLOWA_FETCH_TIMEOUT,
-                )
-            except Exception as exc:
-                fetch_errors.append(f"detail fetch failed: {item['original_url']} :: {_format_source_exception(exc)}")
-                detail_html = None
+            detail_html = detail_results.get(item["original_url"])
             enriched.append(enrich_nolowa_detail(item, detail_html) if detail_html else item)
 
         print(
@@ -2521,14 +2774,10 @@ class SeoulOppaSourceAdapter(PlaceholderSourceAdapter):
             ),
         )
         detail_targets = prioritized_items if self.detail_limit is None else prioritized_items[: self.detail_limit]
-        detail_map = {item["original_url"]: index for index, item in enumerate(detail_targets)}
-        items = [dict(item) for item in listing_items]
-        for item in items:
-            if item["original_url"] not in detail_map:
-                continue
+        def _fetch_seouloppa_detail(target: dict[str, Any]) -> str | None:
             try:
-                detail_html = fetch_text_url(
-                    item["original_url"],
+                return fetch_text_url(
+                    target["original_url"],
                     timeout=SEOULOUPPA_FETCH_TIMEOUT,
                     headers={
                         **SEOULOUPPA_BROWSER_HEADERS,
@@ -2536,8 +2785,13 @@ class SeoulOppaSourceAdapter(PlaceholderSourceAdapter):
                     },
                 )
             except Exception as exc:
-                fetch_errors.append(f"detail fetch failed: {item['original_url']} :: {_format_source_exception(exc)}")
-                detail_html = None
+                fetch_errors.append(f"detail fetch failed: {target['original_url']} :: {_format_source_exception(exc)}")
+                return None
+
+        detail_results = _run_detail_fetches(detail_targets, _fetch_seouloppa_detail)
+        items = [dict(item) for item in listing_items]
+        for item in items:
+            detail_html = detail_results.get(item["original_url"])
             if detail_html:
                 item.update(enrich_seouloppa_detail(item, detail_html))
         print(
@@ -2601,15 +2855,16 @@ class GangnamMatzipSourceAdapter(PlaceholderSourceAdapter):
                     listing_items.append(item)
 
         detail_targets = listing_items if self.detail_limit is None else listing_items[: self.detail_limit]
-        detail_map = {item["original_url"]: index for index, item in enumerate(detail_targets)}
+        def _fetch_gangnam_detail(target: dict[str, Any]) -> str | None:
+            try:
+                return fetch_text_url(target["original_url"])
+            except Exception:
+                return None
+
+        detail_results = _run_detail_fetches(detail_targets, _fetch_gangnam_detail)
         items = [dict(item) for item in listing_items]
         for item in items:
-            if item["original_url"] not in detail_map:
-                continue
-            try:
-                detail_html = fetch_text_url(item["original_url"])
-            except Exception:
-                detail_html = None
+            detail_html = detail_results.get(item["original_url"])
             if detail_html:
                 item.update(enrich_gangnammatzip_detail(item, detail_html))
         return items
@@ -3706,11 +3961,22 @@ class DinnerQueenSourceAdapter(PlaceholderSourceAdapter):
                 break
         items: list[dict] = []
         selected_cards = cards if self.detail_limit is None else cards[: self.detail_limit]
+
+        def _fetch_dinnerqueen_detail(target: dict[str, Any]) -> str | None:
+            try:
+                return fetch_text_url(f"https://dinnerqueen.net/taste/{target['campaign_id']}")
+            except Exception:
+                return None
+
+        detail_results = _run_detail_fetches(
+            selected_cards,
+            _fetch_dinnerqueen_detail,
+            key_fn=lambda card: card["campaign_id"],
+        )
         for card in selected_cards:
             campaign_id = card["campaign_id"]
-            try:
-                detail_html = fetch_text_url(f"https://dinnerqueen.net/taste/{campaign_id}")
-            except Exception:
+            detail_html = detail_results.get(campaign_id)
+            if not detail_html:
                 continue
             item = transform_dinnerqueen_detail(detail_html, campaign_id, source_id=self.definition.source_id)
             item["title"] = card["list_title"] or item["title"]

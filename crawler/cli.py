@@ -10,6 +10,46 @@ from crawler.reporting import PUBLIC_SOURCE_SLUGS, build_source_quality_report
 from crawler.sources.seeded import SEEDED_SOURCES, list_seeded_sources
 
 
+def _serialize_stats(stats) -> dict[str, int]:
+    return {
+        "fetched": int(getattr(stats, "fetched", 0)),
+        "normalized": int(getattr(stats, "normalized", 0)),
+        "failed": int(getattr(stats, "failed", 0)),
+        "skipped": int(getattr(stats, "skipped", 0)),
+    }
+
+
+def build_output_payload(result: dict, verbose: bool = False) -> dict:
+    payload = {
+        "source": result.get("source"),
+        "mode": result.get("mode"),
+        "sources": result.get("sources"),
+        "dry_run": result.get("dry_run"),
+        "delete_before_refresh": result.get("delete_before_refresh"),
+        "report_mode": result.get("report_mode"),
+        "deleted_count": result.get("deleted_count"),
+        "totals": result.get("totals"),
+        "errors": result.get("errors", []),
+        "results": result.get("results"),
+    }
+    if "stats" in result and result.get("stats") is not None:
+        payload["stats"] = _serialize_stats(result["stats"])
+    if "results" in result and isinstance(result.get("results"), list):
+        payload["results"] = [
+            {
+                **{k: v for k, v in item.items() if k not in {"payload", "stats"}},
+                "stats": _serialize_stats(item["stats"]),
+                **({"payload": item.get("payload", [])} if verbose else {"payload_count": len(item.get("payload", []))}),
+            }
+            for item in result["results"]
+        ]
+    elif verbose:
+        payload["payload"] = result.get("payload", [])
+    else:
+        payload["payload_count"] = len(result.get("payload", []))
+    return {key: value for key, value in payload.items() if value is not None}
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Crawler MVP CLI")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -26,6 +66,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Delete existing campaigns for the same source before re-inserting refreshed rows",
     )
+    run_parser.add_argument("--verbose", action="store_true", help="Emit the full normalized payload")
 
     for command_name, help_text in (
         ("run-daily", "Run daily refresh for one or more sources"),
@@ -49,6 +90,7 @@ def build_parser() -> argparse.ArgumentParser:
             action="store_true",
             help="Delete existing campaigns for each source before re-inserting refreshed rows",
         )
+        scheduled_parser.add_argument("--verbose", action="store_true", help="Emit the full normalized payload")
 
     report_parser = sub.add_parser("run-report", help="Run a scheduled dry-run and emit a markdown quality report")
     report_parser.add_argument("--all-public", action="store_true", help="Run the current public parser set")
@@ -86,7 +128,7 @@ def main() -> int:
             dry_run=dry_run,
             delete_before_refresh=args.delete_before_refresh,
         )
-        print(json.dumps(result, ensure_ascii=False, indent=2, default=lambda x: x.__dict__))
+        print(json.dumps(build_output_payload(result, verbose=args.verbose), ensure_ascii=False, indent=2))
         return 0
 
     if args.command in {"run-daily", "run-scheduled"}:
@@ -105,7 +147,7 @@ def main() -> int:
             dry_run=dry_run,
             delete_before_refresh=args.delete_before_refresh,
         )
-        print(json.dumps(result, ensure_ascii=False, indent=2, default=lambda x: x.__dict__))
+        print(json.dumps(build_output_payload(result, verbose=args.verbose), ensure_ascii=False, indent=2))
         return 0
 
     if args.command == "run-report":

@@ -5,6 +5,7 @@ from datetime import date, datetime, timedelta, timezone
 import json
 import os
 import re
+import signal
 from typing import Any
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -22,6 +23,10 @@ class PipelineStats:
     normalized: int = 0
     failed: int = 0
     skipped: int = 0
+
+
+class CrawlerCancelled(KeyboardInterrupt):
+    pass
 
 
 GEOCODE_BUDGETS = {
@@ -64,6 +69,75 @@ def _source_notes(slug: str) -> str | None:
 
 def _kst_today() -> date:
     return datetime.now(timezone(timedelta(hours=9))).date()
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _install_cancellation_handlers() -> dict[signal.Signals, Any]:
+    previous: dict[signal.Signals, Any] = {}
+
+    def _handle_signal(signum, _frame):
+        raise CrawlerCancelled(f"crawler received signal {signum}")
+
+    for sig in (signal.SIGINT, getattr(signal, "SIGTERM", None)):
+        if sig is None:
+            continue
+        previous[sig] = signal.getsignal(sig)
+        signal.signal(sig, _handle_signal)
+    return previous
+
+
+def _restore_cancellation_handlers(previous: dict[signal.Signals, Any]) -> None:
+    for sig, handler in previous.items():
+        signal.signal(sig, handler)
+
+
+def _build_source_result(
+    definition: SourceDefinition,
+    effective_dry_run: bool,
+    delete_before_refresh: bool,
+    report_mode: bool,
+    deleted_count: int,
+    stats: PipelineStats,
+    payload: list[dict[str, Any]],
+    errors: list[str],
+) -> dict[str, Any]:
+    return {
+        "source": definition.slug,
+        "dry_run": effective_dry_run,
+        "delete_before_refresh": delete_before_refresh,
+        "report_mode": report_mode,
+        "deleted_count": deleted_count,
+        "stats": stats,
+        "payload": payload,
+        "errors": errors,
+    }
+
+
+def _finalize_crawl_job(
+    client: SupabasePostgrestClient | None,
+    job_row: dict[str, Any] | None,
+    stats: PipelineStats,
+    errors: list[str],
+    status: str,
+) -> None:
+    if not client or not job_row or not job_row.get("id"):
+        return
+    client.update_crawl_job(
+        job_row["id"],
+        {
+            "job_status": status,
+            "fetched_count": stats.fetched,
+            "inserted_count": stats.normalized,
+            "updated_count": 0,
+            "skipped_count": stats.skipped,
+            "failed_count": stats.failed,
+            "error_summary": "\n".join(errors[:5]) if errors else None,
+            "finished_at": _utc_now_iso(),
+        },
+    )
 
 
 def _is_expired(campaign: CampaignRecord, today: date | None = None) -> bool:
@@ -293,6 +367,13 @@ def run_source_pipeline(
     effective_dry_run = config.dry_run if dry_run is None else dry_run
     definition = SEEDED_SOURCES[source_slug]
     client = SupabasePostgrestClient(config) if config.supabase_url and config.supabase_service_role_key else None
+    stats = PipelineStats()
+    normalized: list[CampaignRecord] = []
+    errors: list[str] = []
+    deleted_count = 0
+    job_row: dict[str, Any] | None = None
+    today = _kst_today()
+
     if client and not effective_dry_run:
         source_row = client.get_source_by_slug(source_slug)
         if source_row is None:
@@ -308,32 +389,24 @@ def run_source_pipeline(
             name=definition.name,
             base_url=definition.base_url,
             platform_type=definition.platform_type,
-            crawl_method=definition.crawl_method,
-            source_id=source_row.get("id"),
-        )
-
-    adapter = get_adapter(source_slug, source_file, report_mode=report_mode)
-    rows = adapter.fetch()
-    stats = PipelineStats(fetched=len(rows))
-    normalized: list[CampaignRecord] = []
-    errors: list[str] = []
-    deleted_count = 0
-    job_row: dict[str, Any] | None = None
-    today = _kst_today()
-
-    for raw in rows:
-        try:
-            campaign = normalize_campaign(definition.slug, definition.source_id, raw)
-            if _is_expired(campaign, today=today):
-                stats.skipped += 1
-                continue
-            normalized.append(campaign)
-            stats.normalized += 1
-        except Exception as exc:
-            stats.failed += 1
-            errors.append(str(exc))
-
-    if not effective_dry_run and client:
+                crawl_method=definition.crawl_method,
+                source_id=source_row.get("id"),
+            )
+        source_policy = client.get_source_policy(definition.source_id)
+        if source_policy and source_policy.get("policy_status") == "blocked":
+            review_note = source_policy.get("review_note")
+            detail = f" ({review_note})" if review_note else ""
+            errors.append(f"source policy blocked for {source_slug}{detail}")
+            return _build_source_result(
+                definition,
+                effective_dry_run,
+                delete_before_refresh,
+                report_mode,
+                deleted_count,
+                stats,
+                [],
+                errors,
+            )
         created_job = client.create_crawl_job(
             definition.source_id,
             metadata={
@@ -344,65 +417,83 @@ def run_source_pipeline(
         )
         if created_job:
             job_row = created_job[0]
-        if definition.source_id:
-            expired_rows = client.delete_expired_campaigns_for_source(definition.source_id, today=today.isoformat()) or []
-            deleted_count += len(expired_rows)
-        should_delete_before_refresh = delete_before_refresh and definition.source_id and stats.fetched > 0 and stats.normalized > 0
-        if delete_before_refresh and not should_delete_before_refresh:
-            errors.append(
-                "delete_before_refresh skipped because refreshed payload was empty or fully unnormalized; "
-                "existing source rows were preserved"
-            )
-        if should_delete_before_refresh and definition.source_id:
-            deleted_rows = client.delete_campaigns_for_source(definition.source_id) or []
-            deleted_count += len(deleted_rows)
-        if normalized:
-            for batch in _iter_batches(normalized, config.upsert_batch_size):
-                payload_batch = [build_campaign_payload(item) for item in batch]
-                upserted_rows = client.upsert_campaigns(payload_batch) or []
-                snapshot_map_data = client.get_latest_snapshot_map_data([row.get("id") for row in upserted_rows])
-                row_map = {
-                    (row.get("source_id"), row.get("original_url")): row.get("id")
-                    for row in upserted_rows
-                }
-                cached_map_data = {}
-                for campaign in batch:
-                    campaign_id = row_map.get((campaign.source_id, campaign.original_url))
-                    if campaign_id and campaign_id in snapshot_map_data:
-                        cached_map_data[(campaign.source_id, campaign.original_url)] = snapshot_map_data[campaign_id]
-                enrich_campaign_coordinates(definition.slug, batch, cached_map_data)
-                geocoded_payload_batch = [build_campaign_payload(item) for item in batch if item.latitude is not None and item.longitude is not None]
-                if geocoded_payload_batch:
-                    client.upsert_campaigns(geocoded_payload_batch)
-                snapshot_batch = build_campaign_snapshot_payloads(upserted_rows, batch)
-                if snapshot_batch:
-                    client.insert_campaign_snapshots(snapshot_batch)
-        if job_row and job_row.get("id"):
-            client.update_crawl_job(
-                job_row["id"],
-                {
-                    "job_status": "success" if not errors else "partial",
-                    "fetched_count": stats.fetched,
-                    "inserted_count": stats.normalized,
-                    "updated_count": 0,
-                    "skipped_count": stats.skipped,
-                    "failed_count": stats.failed,
-                    "error_summary": "\n".join(errors[:5]) if errors else None,
-                    "finished_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-                },
-            )
-    payload = [build_campaign_payload(item) for item in normalized]
 
-    return {
-        "source": definition.slug,
-        "dry_run": effective_dry_run,
-        "delete_before_refresh": delete_before_refresh,
-        "report_mode": report_mode,
-        "deleted_count": deleted_count,
-        "stats": stats,
-        "payload": payload,
-        "errors": errors,
-    }
+    previous_handlers = _install_cancellation_handlers()
+    try:
+        adapter = get_adapter(source_slug, source_file, report_mode=report_mode)
+        rows = adapter.fetch()
+        stats.fetched = len(rows)
+
+        for raw in rows:
+            try:
+                campaign = normalize_campaign(definition.slug, definition.source_id, raw)
+                if _is_expired(campaign, today=today):
+                    stats.skipped += 1
+                    continue
+                normalized.append(campaign)
+                stats.normalized += 1
+            except Exception as exc:
+                stats.failed += 1
+                errors.append(str(exc))
+
+        if not effective_dry_run and client:
+            if definition.source_id:
+                expired_rows = client.delete_expired_campaigns_for_source(definition.source_id, today=today.isoformat()) or []
+                deleted_count += len(expired_rows)
+            should_delete_before_refresh = delete_before_refresh and definition.source_id and stats.fetched > 0 and stats.normalized > 0
+            if delete_before_refresh and not should_delete_before_refresh:
+                errors.append(
+                    "delete_before_refresh skipped because refreshed payload was empty or fully unnormalized; "
+                    "existing source rows were preserved"
+                )
+            if should_delete_before_refresh and definition.source_id:
+                deleted_rows = client.delete_campaigns_for_source(definition.source_id) or []
+                deleted_count += len(deleted_rows)
+            if normalized:
+                for batch in _iter_batches(normalized, config.upsert_batch_size):
+                    payload_batch = [build_campaign_payload(item) for item in batch]
+                    upserted_rows = client.upsert_campaigns(payload_batch) or []
+                    snapshot_map_data = client.get_latest_snapshot_map_data([row.get("id") for row in upserted_rows])
+                    row_map = {
+                        (row.get("source_id"), row.get("original_url")): row.get("id")
+                        for row in upserted_rows
+                    }
+                    cached_map_data = {}
+                    for campaign in batch:
+                        campaign_id = row_map.get((campaign.source_id, campaign.original_url))
+                        if campaign_id and campaign_id in snapshot_map_data:
+                            cached_map_data[(campaign.source_id, campaign.original_url)] = snapshot_map_data[campaign_id]
+                    enrich_campaign_coordinates(definition.slug, batch, cached_map_data)
+                    geocoded_payload_batch = [build_campaign_payload(item) for item in batch if item.latitude is not None and item.longitude is not None]
+                    if geocoded_payload_batch:
+                        client.upsert_campaigns(geocoded_payload_batch)
+                    snapshot_batch = build_campaign_snapshot_payloads(upserted_rows, batch)
+                    if snapshot_batch:
+                        client.insert_campaign_snapshots(snapshot_batch)
+            _finalize_crawl_job(client, job_row, stats, errors, "success" if not errors else "partial")
+        payload = [build_campaign_payload(item) for item in normalized]
+        return _build_source_result(
+            definition,
+            effective_dry_run,
+            delete_before_refresh,
+            report_mode,
+            deleted_count,
+            stats,
+            payload,
+            errors,
+        )
+    except KeyboardInterrupt as exc:
+        stats.failed = max(stats.failed, 1)
+        errors.append(str(exc) or "crawler interrupted")
+        _finalize_crawl_job(client, job_row, stats, errors, "cancelled")
+        raise
+    except Exception as exc:
+        stats.failed = max(stats.failed, 1)
+        errors.append(str(exc))
+        _finalize_crawl_job(client, job_row, stats, errors, "failed")
+        raise
+    finally:
+        _restore_cancellation_handlers(previous_handlers)
 
 
 def run_daily_refresh(

@@ -7,6 +7,7 @@ from unittest import mock
 from pathlib import Path
 import urllib.error
 
+from crawler.cli import build_output_payload
 from crawler.config import AppConfig
 from crawler.pipeline import (
     _geocode_exact_location,
@@ -263,6 +264,7 @@ class PipelineTests(unittest.TestCase):
     def test_run_source_pipeline_preserves_existing_rows_when_refresh_returns_zero(self):
         fake_client = mock.Mock()
         fake_client.get_source_by_slug.return_value = {"id": "source-1"}
+        fake_client.get_source_policy.return_value = {"policy_status": "allowed"}
         fake_client.create_crawl_job.return_value = [{"id": "job-1"}]
         fake_client.delete_expired_campaigns_for_source.return_value = []
         fake_client.delete_campaigns_for_source.return_value = [{"id": "old-row"}]
@@ -286,6 +288,106 @@ class PipelineTests(unittest.TestCase):
         fake_client.delete_campaigns_for_source.assert_not_called()
         self.assertEqual(result["deleted_count"], 0)
         self.assertTrue(any("delete_before_refresh skipped" in message for message in result["errors"]))
+
+    def test_run_source_pipeline_skips_blocked_source_policy_before_fetch(self):
+        fake_client = mock.Mock()
+        fake_client.get_source_by_slug.return_value = {"id": "source-1"}
+        fake_client.get_source_policy.return_value = {"policy_status": "blocked", "review_note": "robots disallow"}
+        fake_adapter = mock.Mock()
+
+        with mock.patch("crawler.pipeline.SupabasePostgrestClient", return_value=fake_client), mock.patch(
+            "crawler.pipeline.get_adapter", return_value=fake_adapter
+        ):
+            result = run_source_pipeline(
+                "modan",
+                AppConfig(
+                    supabase_url="https://example.supabase.co",
+                    supabase_service_role_key="service-key",
+                    dry_run=False,
+                ),
+                dry_run=False,
+            )
+
+        fake_adapter.fetch.assert_not_called()
+        fake_client.create_crawl_job.assert_not_called()
+        self.assertEqual(result["stats"].fetched, 0)
+        self.assertTrue(any("blocked" in message for message in result["errors"]))
+
+    def test_run_source_pipeline_marks_job_failed_when_fetch_raises(self):
+        fake_client = mock.Mock()
+        fake_client.get_source_by_slug.return_value = {"id": "source-1"}
+        fake_client.get_source_policy.return_value = {"policy_status": "allowed"}
+        fake_client.create_crawl_job.return_value = [{"id": "job-1"}]
+
+        fake_adapter = mock.Mock()
+        fake_adapter.fetch.side_effect = RuntimeError("upstream boom")
+
+        with mock.patch("crawler.pipeline.SupabasePostgrestClient", return_value=fake_client), mock.patch(
+            "crawler.pipeline.get_adapter", return_value=fake_adapter
+        ):
+            with self.assertRaisesRegex(RuntimeError, "upstream boom"):
+                run_source_pipeline(
+                    "modan",
+                    AppConfig(
+                        supabase_url="https://example.supabase.co",
+                        supabase_service_role_key="service-key",
+                        dry_run=False,
+                    ),
+                    dry_run=False,
+                )
+
+        self.assertEqual(fake_client.create_crawl_job.call_count, 1)
+        self.assertEqual(fake_client.update_crawl_job.call_count, 1)
+        update_fields = fake_client.update_crawl_job.call_args.args[1]
+        self.assertEqual(update_fields["job_status"], "failed")
+        self.assertEqual(update_fields["fetched_count"], 0)
+        self.assertIn("upstream boom", update_fields["error_summary"])
+
+    def test_run_source_pipeline_marks_job_cancelled_when_interrupted(self):
+        fake_client = mock.Mock()
+        fake_client.get_source_by_slug.return_value = {"id": "source-1"}
+        fake_client.get_source_policy.return_value = {"policy_status": "allowed"}
+        fake_client.create_crawl_job.return_value = [{"id": "job-1"}]
+
+        fake_adapter = mock.Mock()
+        fake_adapter.fetch.side_effect = KeyboardInterrupt()
+
+        with mock.patch("crawler.pipeline.SupabasePostgrestClient", return_value=fake_client), mock.patch(
+            "crawler.pipeline.get_adapter", return_value=fake_adapter
+        ):
+            with self.assertRaises(KeyboardInterrupt):
+                run_source_pipeline(
+                    "modan",
+                    AppConfig(
+                        supabase_url="https://example.supabase.co",
+                        supabase_service_role_key="service-key",
+                        dry_run=False,
+                    ),
+                    dry_run=False,
+                )
+
+        update_fields = fake_client.update_crawl_job.call_args.args[1]
+        self.assertEqual(update_fields["job_status"], "cancelled")
+        self.assertEqual(update_fields["failed_count"], 1)
+
+    def test_build_output_payload_omits_payload_without_verbose(self):
+        result = {
+            "source": "modan",
+            "dry_run": False,
+            "delete_before_refresh": True,
+            "report_mode": False,
+            "deleted_count": 2,
+            "stats": type("Stats", (), {"fetched": 5, "normalized": 4, "failed": 1, "skipped": 0})(),
+            "payload": [{"title": "A"}, {"title": "B"}],
+            "errors": ["warning"],
+        }
+
+        compact = build_output_payload(result, verbose=False)
+        verbose = build_output_payload(result, verbose=True)
+
+        self.assertNotIn("payload", compact)
+        self.assertEqual(compact["payload_count"], 2)
+        self.assertEqual(verbose["payload"][0]["title"], "A")
 
     def test_dinnerqueen_adapter_skips_failed_detail(self):
         response = {
@@ -614,6 +716,62 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(item["category_name"], "배송")
         self.assertEqual(item["benefit_text"], "오파오 휴대용 미니 세탁기 1대 제공")
         self.assertEqual(item["thumbnail_url"], "https://cdn.example.com/modan.jpg")
+
+    def test_parse_modan_listing_supports_current_campaign_cards(self):
+        html = """
+        <script type="application/ld+json">
+        {"@context":"https://schema.org","@type":"ItemList","itemListElement":[
+          {"@type":"ListItem","position":1,"url":"https://modan.kr/campaigns/2913","name":"[경기 수원시] 메모리교육 제품 체험단"},
+          {"@type":"ListItem","position":2,"url":"https://modan.kr/campaigns/2912","name":"[서울 강서구] 우담관 맛집 체험단"}
+        ]}
+        </script>
+        <div class="grid cols-4">
+          <a href="/campaigns/2913" class="card">
+            <div class="thumb rv-thumb">
+              <img src="/img-proxy?url=https%3A%2F%2Fmodan.kr%2Fuploads%2Fbiz%2F1786580394872_0p6tf4px92we.jpg&amp;w=400" alt="[경기 수원시] 메모리교육 제품 체험단">
+            </div>
+            <div class="body rv-body">
+              <div class="card-badge-row">
+                <span class="badge rv-badge primary">배송형</span>
+                <span class="deadline-badge">D-6</span>
+              </div>
+              <div class="biz-row">메모리교육</div>
+              <div class="title">[경기 수원시] 메모리교육 제품 체험단</div>
+              <div class="promo rv-promo">제품 무료 제공 (택배 발송)</div>
+              <div class="price">💰 <strong>52,000원</strong> 상당</div>
+              <div class="meta rv-meta">
+                <span class="meta-progress">신청 <strong>1</strong>/3</span>
+                <span>📍 경기</span>
+              </div>
+            </div>
+          </a>
+        </div>
+        """
+
+        items = parse_modan_listing(
+            html,
+            "https://modan.kr/campaigns?page=1",
+            category_name="전체",
+            default_campaign_type=None,
+        )
+
+        self.assertEqual(len(items), 2)
+        first = items[0]
+        self.assertEqual(first["campaign_id"], "2913")
+        self.assertEqual(first["original_url"], "https://modan.kr/campaigns/2913")
+        self.assertEqual(first["campaign_type"], "delivery")
+        self.assertEqual(first["region_primary_name"], "경기")
+        self.assertEqual(first["region_secondary_name"], "수원시")
+        self.assertEqual(first["benefit_text"], "제품 무료 제공 (택배 발송)")
+        self.assertEqual(first["recruit_count"], 3)
+        self.assertEqual(
+            first["thumbnail_url"],
+            "https://modan.kr/img-proxy?url=https%3A%2F%2Fmodan.kr%2Fuploads%2Fbiz%2F1786580394872_0p6tf4px92we.jpg&w=400",
+        )
+        second = items[1]
+        self.assertEqual(second["campaign_id"], "2912")
+        self.assertEqual(second["campaign_type"], "visit")
+        self.assertEqual(second["title"], "우담관 맛집 체험단")
 
     def test_enrich_modan_detail(self):
         item = {

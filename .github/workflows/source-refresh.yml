@@ -34,7 +34,7 @@ jobs:
   refresh:
     if: inputs.source != 'modan'
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ inputs.source == 'seouloppa' && 60 || 35 }}
+    timeout-minutes: ${{ inputs.source == 'seouloppa' && 70 || 45 }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -64,7 +64,7 @@ jobs:
   refresh-modan:
     if: inputs.source == 'modan'
     runs-on: macos-14
-    timeout-minutes: 45
+    timeout-minutes: 50
     steps:
       - name: Checkout
         uses: actions/checkout@v4
