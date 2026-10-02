@@ -27,3 +27,17 @@ test('province context separates duplicate districts and Gwangju', () => {
   assert.equal(regionConditions({ regionPrimary: '서울' }).length, 1);
   assert.equal(normalizeRegion(null, '중구').needsReview, true);
 });
+
+test('list and count query builder uses AND province/district and identical KST windows', async () => {
+  const { applyCampaignFilters } = await import('../lib/campaign-query.js');
+  const list = new URLSearchParams(), count = new URLSearchParams();
+  const query = { regionPrimary: '부산', regionSecondary: '강서구', deadline: 'today' };
+  const now = Date.parse('2026-10-01T01:00:00Z');
+  applyCampaignFilters(list, query, { now });
+  applyCampaignFilters(count, query, { now, forCount: true });
+  assert.match(list.get('and'), /region_primary_name.in.\(부산,부산시,부산광역시\),region_secondary_name.eq.강서구/);
+  assert.equal(list.get('apply_deadline'), 'lt.2026-10-01T15:00:00.000Z');
+  assert.match(list.get('and'), /apply_deadline.gte.2026-10-01T01:00:00.000Z/);
+  list.delete('limit'); list.delete('offset');
+  assert.equal(list.toString(), count.toString());
+});

@@ -1,3 +1,6 @@
+import { getEventReport } from '@/lib/ops-events';
+import { OpsEventReport } from '@/components/ops-event-report';
+import { sponsorStatus } from '@/lib/sponsor-policy';
 import { SiteShell } from '@/components/site-shell';
 import { VisitorWidget } from '@/components/visitor-widget';
 import { getCampaignCount, getVisitorCounts } from '@/lib/supabase';
@@ -6,9 +9,11 @@ import { Button, EmptyState } from '@/components/ui';
 
 export const dynamic = 'force-dynamic';
 
-export default async function OpsPage() {
+export default async function OpsPage({ searchParams }) {
+  const query = await searchParams;
   const [counts, campaignCount, authenticated] = await Promise.all([getVisitorCounts(), getCampaignCount(), isOpsAuthenticated()]);
   const snapshot = authenticated ? await getOpsSnapshot() : null;
+  const eventReport = authenticated ? await getEventReport(Number(query.days)) : null;
   const opsEnabled = Boolean(process.env.OPS_DASHBOARD_KEY);
 
   return (
@@ -34,13 +39,14 @@ export default async function OpsPage() {
         ) : (
           <>
             <div className="stats-strip ops-stats">
-              <div><strong>{snapshot.activeCampaigns.toLocaleString('ko-KR')}</strong><span>활성 캠페인</span></div>
-              <div><strong>{snapshot.visitorsToday.toLocaleString('ko-KR')}</strong><span>오늘 방문자</span></div>
-              <div><strong>{snapshot.visitorsTotal.toLocaleString('ko-KR')}</strong><span>전체 방문자</span></div>
-              <div><strong>{snapshot.userCount.toLocaleString('ko-KR')}</strong><span>회원 수</span></div>
-              <div><strong>{snapshot.savedCount.toLocaleString('ko-KR')}</strong><span>저장 수</span></div>
-              <div><strong>{snapshot.reminderCount.toLocaleString('ko-KR')}</strong><span>리마인드 수</span></div>
+              <div><strong>{snapshot.activeCampaigns.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}</strong><span>활성 캠페인</span></div>
+              <div><strong>{snapshot.visitorsToday.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}</strong><span>오늘 방문자</span></div>
+              <div><strong>{snapshot.visitorsTotal.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}</strong><span>전체 방문자</span></div>
+              <div><strong>{snapshot.userCount.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}</strong><span>회원 수</span></div>
+              <div><strong>{snapshot.savedCount.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}</strong><span>저장 수</span></div>
+              <div><strong>{snapshot.reminderCount.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}</strong><span>리마인드 수</span></div>
             </div>
+            <OpsEventReport report={eventReport} />
             <section className="detail-grid ops-grid">
               <article className="info-panel">
                 <h2>최근 크롤링 작업</h2>
@@ -48,7 +54,8 @@ export default async function OpsPage() {
                   {snapshot.recentJobs.map((job) => (
                     <div key={job.id} className="ops-row">
                       <strong>{job.source?.name || '미상 소스'} · {job.job_status}</strong>
-                      <span>{new Date(job.created_at).toLocaleString('ko-KR')}</span>
+                      <span>시작 {new Date(job.started_at || job.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })} (KST)</span>
+                      <span>완료 {job.finished_at ? new Date(job.finished_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) : '미기록'} (KST)</span>
                       <span>fetched {job.fetched_count} / inserted {job.inserted_count}</span>
                     </div>
                   ))}
@@ -62,6 +69,8 @@ export default async function OpsPage() {
                       <strong>{source.name}</strong>
                       <span>{source.slug}</span>
                       <span>active {source.activeCampaigns} / exact {source.exactLocationCount} / latlng {source.latLngCount}</span>
+                      <span>광역 지역 누락 {source.missingRegionCount} · 마감 누락 {source.missingDeadlineCount} · 24시간 이상 미확인 {source.staleCount}</span>
+                      <span>누락률: 지역 {source.activeCampaigns ? `${(source.missingRegionCount / source.activeCampaigns * 100).toFixed(1)}%` : '—'} · 마감 {source.activeCampaigns ? `${(source.missingDeadlineCount / source.activeCampaigns * 100).toFixed(1)}%` : '—'}</span>
                     </div>
                   ))}
                 </div>
@@ -73,7 +82,7 @@ export default async function OpsPage() {
                     <div key={slot.id} className="ops-row">
                       <strong>{slot.slot_key}</strong>
                       <span>{slot.title}</span>
-                      <span>{slot.is_active ? '활성' : '비활성'}</span>
+                      <span>{sponsorStatus(slot)}</span>
                     </div>
                   )) : <p>등록된 스폰서 슬롯이 없어요.</p>}
                 </div>

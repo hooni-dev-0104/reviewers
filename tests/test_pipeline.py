@@ -65,7 +65,7 @@ from crawler.sources.seeded import (
 class PipelineTests(unittest.TestCase):
     def setUp(self):
         fixed = date(2026, 3, 27)
-        for target in ("crawler.dates.kst_today", "crawler.sources.seeded.kst_today"):
+        for target in ("crawler.dates.kst_today", "crawler.sources.seeded.kst_today", "crawler.pipeline._kst_today"):
             patcher = mock.patch(target, return_value=fixed)
             patcher.start()
             self.addCleanup(patcher.stop)

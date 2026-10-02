@@ -17,3 +17,11 @@ class DateTests(unittest.TestCase):
     def test_storage_preserves_timestamp_and_ends_date_in_kst(self):
         self.assertEqual(deadline_for_storage('2026-10-01'), '2026-10-01T23:59:59.999+09:00')
         self.assertEqual(deadline_for_storage('2026-10-01T12:00:00Z'), '2026-10-01T12:00:00Z')
+    def test_inverted_range_is_not_persisted(self):
+        from crawler.normalization import normalize_campaign
+        from crawler.pipeline import build_campaign_payload
+        record = normalize_campaign('fixture', None, {'title': 'local test', 'original_url': 'https://example.com', 'published_at': '2026-04-01', 'apply_deadline': '2026-03-01'})
+        payload = build_campaign_payload(record)
+        self.assertIsNone(payload['apply_deadline'])
+        self.assertIsNone(payload['published_at'])
+        self.assertTrue(payload['requires_review'])

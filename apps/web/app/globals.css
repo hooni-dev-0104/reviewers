@@ -2738,3 +2738,45 @@ input.rk-input, select.rk-select {
     margin-right: auto;
   }
 }
+
+/* Free browsing: existing blue actions, warm reserved sponsor surfaces, 8px rhythm. */
+.browse-intro { margin: 8px 0 24px; max-width: 760px; }
+.browse-intro h1 { margin: 8px 0; font-size: clamp(24px, 4vw, 32px); letter-spacing: -.04em; line-height: 1.3; }
+.browse-intro p, .feed-status { color: var(--text-muted); line-height: 1.6; }
+.feed-status { text-align: center; padding: 16px; }
+.site-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; padding: 32px 16px 112px; color: var(--text-muted); }
+.site-footer a { display: inline-flex; align-items: center; min-height: 44px; color: var(--text-link); }
+:where(a, button, input, select):focus-visible { outline: 3px solid var(--c-primary); outline-offset: 4px; }
+:where(button, .rk-btn, .primary-action, .secondary-link) { min-height: 44px; }
+.skip-link { position: absolute; top: -80px; left: 16px; z-index: 100; background: white; padding: 16px; }
+.skip-link:focus { top: 8px; }
+.sponsor-slot { background: var(--c-sponsor-weak); border: 1px solid var(--c-sponsor-line); padding: 24px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; overflow-wrap: anywhere; }
+.sponsor-slot strong { font-size: 20px; }
+.sponsor-slot p { margin: 8px 0; line-height: 1.6; }
+.trust-page p { line-height: 1.8; }
+.trust-page .info-panel { margin: 24px 0; }
+@media (max-width: 480px) {
+  .rk-cc__head, .rk-cc__facts, .rk-cc__meta { flex-wrap: wrap; }
+  .rk-cc__body { min-width: 0; }
+  .decision-panel { padding-bottom: 24px; }
+  .site-footer { flex-direction: column; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; } }
+.rk-chip, .rk-btn--sm { min-height: 44px; }
+.rk-cc, .campaign-grid { min-width: 0; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+@media (max-width: 760px) {
+  .topbar nav.top-tabs { display: none !important; }
+  .brand-mark { white-space: nowrap; flex-shrink: 0; }
+  .campaign-grid { grid-template-columns: minmax(0, 1fr); width: 100%; }
+  .filter-shell { position: static; margin: 0 0 16px; padding: 0 0 16px; }
+  .filter-quick-row { flex-wrap: wrap; overflow: visible; margin: 0; padding: 0; gap: 8px; }
+  .rk-cc { width: 100%; min-width: 0; gap: 8px; padding: 16px; }
+  .rk-cc__thumb { width: 64px; height: 64px; }
+  .rk-cc__meta { display: flex; white-space: normal; }
+  .rk-cc__actions { display: flex; }
+  .rk-cc__facts { align-items: flex-start; }
+  .rk-deadline { flex-wrap: wrap; }
+  .rk-cc__benefit { white-space: normal; }
+  .browse-intro { margin-bottom: 24px; }
+}

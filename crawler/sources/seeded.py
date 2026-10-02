@@ -2049,7 +2049,7 @@ def transform_4blog_item(item: dict, source_id: str | None = None) -> dict:
         "snippet": snippet,
         "raw_status": raw_status,
         "status": raw_status,
-        "requires_review": False,
+        "requires_review": True,
         "raw_payload": {
             "keyword": item.get("KEYWORD"),
             "reviewer_benefit": item.get("REVIEWER_BENEFIT"),

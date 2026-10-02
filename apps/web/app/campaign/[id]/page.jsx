@@ -1,3 +1,7 @@
+import { campaignMetadata } from '@/lib/seo';
+import { safeExternalUrl } from '@/lib/sponsor-policy';
+import { TrackedLink } from '@/components/tracked-link';
+import { SavedCampaignButton } from '@/components/saved-campaign-button';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
@@ -19,10 +23,16 @@ import { VisitorWidget } from '@/components/visitor-widget';
 
 export const dynamic = 'force-dynamic';
 
+export async function generateMetadata({ params }) {
+  const { id } = await params;
+  return campaignMetadata(await getCampaignById(id));
+}
+
 export default async function CampaignDetailPage({ params }) {
   const { id } = await params;
-  const [campaign, counts, campaignCount] = await Promise.all([
-    getCampaignById(id),
+  const campaign = await getCampaignById(id);
+  if (!campaign) notFound();
+  const [counts, campaignCount] = await Promise.all([
     getVisitorCounts(),
     getCampaignCount()
   ]);
@@ -100,12 +110,15 @@ export default async function CampaignDetailPage({ params }) {
               <strong>{campaign.recruit_count ? `${campaign.recruit_count}명` : '미공개'}</strong>
             </div>
             <div className="detail-notice">
+              {campaign.last_seen_at ? <p>최종 수집: {new Date(campaign.last_seen_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })} (KST)</p> : <p>최종 확인 시각 미상</p>}
+              {campaign.status === 'expired' || deadlineState.label === '마감 지남' ? <p>모집이 종료된 정보예요. 최신 일정은 원문을 확인하세요.</p> : null}
               지역·예약·추가 비용은 원문에서 볼 수 있어요.
             </div>
             <div className="decision-actions">
-              <a href={campaign.original_url} target="_blank" rel="noreferrer" className="primary-action">
-                원문 보기
-              </a>
+              {safeExternalUrl(campaign.original_url) ? <TrackedLink enabled={process.env.AD_EVENTS_ENABLED === 'true'} event="campaign_outbound_click" entityId={campaign.id} slot="campaign-detail" href={safeExternalUrl(campaign.original_url)} target="_blank" rel="noopener noreferrer" className="primary-action">
+                원문에서 신청 조건 확인 ↗ <span className="sr-only">(외부 사이트, 새 탭)</span>
+              </TrackedLink> : <p>원문 주소 확인이 필요해요.</p>}
+              <SavedCampaignButton campaignId={campaign.id} />
               {supportsExactMap(campaign) && campaign.exact_location && kakaoMapUrl ? (
                 <div className="detail-map-links">
                   <a href={kakaoMapUrl} target="_blank" rel="noreferrer">

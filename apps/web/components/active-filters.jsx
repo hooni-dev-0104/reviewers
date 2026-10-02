@@ -55,7 +55,7 @@ export function ActiveFilters({ searchParams = {}, resultCount }) {
     sourceValues.length ? ['출처', sourceValues.map((value) => LABELS.source[value] || value).join(', ')] : null,
     searchParams.deadline && searchParams.deadline !== 'all' ? ['마감', LABELS.deadline[searchParams.deadline] || searchParams.deadline] : null,
     searchParams.sort && searchParams.sort !== 'deadline' ? ['정렬', LABELS.sort[searchParams.sort] || searchParams.sort] : null,
-    searchParams.region ? ['지역', searchParams.region] : null
+    searchParams.regionPrimary && searchParams.regionPrimary !== 'all' ? ['지역', [searchParams.regionPrimary, searchParams.regionSecondary].filter(Boolean).join(' · ')] : searchParams.region ? ['지역', searchParams.region] : null
   ].filter(Boolean);
 
   return (

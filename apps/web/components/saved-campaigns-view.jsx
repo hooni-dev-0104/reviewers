@@ -1,4 +1,5 @@
 'use client';
+import { SavedCampaignButton } from '@/components/saved-campaign-button';
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
@@ -18,6 +19,8 @@ export function SavedCampaignsView() {
   const { session, savedIds } = useAppClient();
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
     if (!session) {
@@ -26,16 +29,19 @@ export function SavedCampaignsView() {
       return;
     }
 
-    setLoading(true);
-    fetch('/api/saved')
-      .then((response) => response.json())
+    setLoading(true); setError(false);
+    const controller = new AbortController();
+    fetch('/api/saved', { signal: controller.signal })
+      .then((response) => { if (!response.ok) throw Error('load'); return response.json(); })
       .then((payload) => setCampaigns(Array.isArray(payload.items) ? payload.items : []))
-      .finally(() => setLoading(false));
-  }, [session, savedIds.join(',')]);
+      .catch(e => { if (e.name !== 'AbortError') setError(true); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [session, savedIds.join(','), retry]);
 
   const ordered = useMemo(() => {
     const byId = new Map(campaigns.map((campaign) => [campaign.id, campaign]));
-    return savedIds.map((id) => byId.get(id)).filter(Boolean);
+    return savedIds.map((id) => byId.get(id) || { id, unavailable: true });
   }, [campaigns, savedIds]);
 
   if (!session) {
@@ -48,6 +54,8 @@ export function SavedCampaignsView() {
       />
     );
   }
+
+  if (error) return <div role="alert"><p>저장 목록을 불러오지 못했어요.</p><button onClick={() => setRetry(retry + 1)}>다시 시도</button></div>;
 
   if (loading) {
     return (
@@ -73,6 +81,7 @@ export function SavedCampaignsView() {
   return (
     <section className="saved-list">
       {ordered.map((campaign) => {
+        if (campaign.unavailable) return <article className="saved-row" key={campaign.id}><p>삭제되었거나 공개되지 않는 캠페인이에요.</p><SavedCampaignButton campaignId={campaign.id} /></article>;
         const confidence = getConfidence(campaign);
         return (
           <article key={campaign.id} className="saved-row">
@@ -90,6 +99,7 @@ export function SavedCampaignsView() {
               </div>
             </div>
             <div className="saved-actions">
+              <SavedCampaignButton campaignId={campaign.id} />
               <ButtonLink href={`/campaign/${campaign.id}`} variant="quiet" size="sm">상세 보기</ButtonLink>
               <a href={campaign.original_url} target="_blank" rel="noreferrer">원문 이동</a>
             </div>

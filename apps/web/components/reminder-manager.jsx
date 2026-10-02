@@ -62,7 +62,7 @@ export function ReminderManager({ campaignId }) {
         <strong>마감 리마인드</strong>
         {value ? <Badge tone="trust" showIcon>{value}시간 전</Badge> : null}
       </div>
-      <span>{session ? '로그인한 계정에 맞춰 마감 알림 시점을 저장해요.' : '로그인하면 마감 리마인드를 저장할 수 있어요.'}</span>
+      <span>{session ? '다시 볼 시점을 저장해요. 이메일·푸시 알림은 발송하지 않아요.' : '로그인하면 마감 리마인드를 저장할 수 있어요.'}</span>
       <div className="reminder-options">
         {OPTIONS.map((hours) => (
           <Button

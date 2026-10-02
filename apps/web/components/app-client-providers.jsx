@@ -30,6 +30,8 @@ export function AppClientProviders({ children, initialSession = null }) {
       } else {
         setSavedIds([]);
       }
+    } catch {
+      // Keep the last known session during a transient connection failure.
     } finally {
       if (!background) {
         setLoading(false);

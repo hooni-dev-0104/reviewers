@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { sanitizeUuidList } from '@/lib/query-safety';
 
 import { getCurrentUser } from '@/lib/auth';
 import { deleteRows, selectRows, upsertRows } from '@/lib/server-data';
@@ -28,14 +29,9 @@ export async function POST(request) {
   }
 
   const body = await request.json();
-  const campaignId = String(body.campaignId || '');
+  const [campaignId] = sanitizeUuidList([body.campaignId], 1);
   if (!campaignId) {
     return NextResponse.json({ error: 'campaignId가 필요해요.' }, { status: 400 });
-  }
-
-  const campaign = await getCampaignById(campaignId);
-  if (!campaign) {
-    return NextResponse.json({ error: '존재하지 않거나 비활성화된 캠페인이에요.' }, { status: 404 });
   }
 
   const existing = await selectRows('user_saved_campaigns', {
@@ -48,6 +44,11 @@ export async function POST(request) {
   if (existing.length) {
     await deleteRows('user_saved_campaigns', { user_id: `eq.${user.id}`, campaign_id: `eq.${campaignId}` });
   } else {
+    const campaign = await getCampaignById(campaignId);
+    if (!campaign) {
+      return NextResponse.json({ error: '존재하지 않거나 비활성화된 캠페인이에요.' }, { status: 404 });
+    }
+
     await upsertRows('user_saved_campaigns', [{ user_id: user.id, campaign_id: campaignId }], 'user_id,campaign_id', 'resolution=merge-duplicates,return=minimal');
   }
 

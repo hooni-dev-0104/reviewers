@@ -18,7 +18,7 @@ export default async function RemindersPage() {
       <section className="trust-page saved-page">
         <span className="eyebrow">리마인드</span>
         <h1>다가오는 마감을 놓치지 않게 정리해두자.</h1>
-        <p>마감 전에 다시 볼 캠페인을 시간 단위로 정리해두고, 놓치지 않게 다시 확인할 수 있어요.</p>
+        <p>마감 전에 다시 볼 시간을 저장하는 목록입니다. 이메일·푸시 알림은 현재 발송하지 않아요.</p>
         {!user ? (
           <section className="empty-state">
             <p>리마인드를 보려면 로그인해 주세요.</p>
@@ -27,7 +27,7 @@ export default async function RemindersPage() {
         ) : !items.length ? (
           <section className="empty-state">
             <p>설정된 리마인드가 없어요.</p>
-            <span>상세 페이지에서 3시간, 24시간, 72시간 전 리마인드를 설정할 수 있어요.</span>
+            <span>알림 발송 기능은 준비 중입니다. 관심 캠페인은 저장 목록에서 다시 확인해 주세요.</span>
           </section>
         ) : (
           <section className="saved-list">

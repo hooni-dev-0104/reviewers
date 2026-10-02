@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { PRIMARY_REGIONS } from '@/lib/regions';
+import { useState, useRef } from 'react';
 
 import { Button, FilterChip, SearchField, Select } from '@/components/ui';
 
@@ -55,6 +56,9 @@ function platformIcon(value) {
 
 export function FilterBar({ sources, searchParams }) {
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const filterToggle = useRef(null);
+  const [primary, setPrimary] = useState(searchParams.regionPrimary || 'all');
+  const [secondary, setSecondary] = useState(searchParams.regionSecondary || '');
   const [platforms, setPlatforms] = useState(() => normalizeSelection(searchParams.platform).filter((value) => value !== 'all'));
   const [types, setTypes] = useState(() => normalizeSelection(searchParams.type).filter((value) => value !== 'all'));
   const [sourceValues, setSourceValues] = useState(() => normalizeSelection(searchParams.source).filter((value) => value !== 'all'));
@@ -66,12 +70,14 @@ export function FilterBar({ sources, searchParams }) {
   }
 
   return (
-    <form className="filter-shell rk-filter-shell">
+    <form className="filter-shell rk-filter-shell" onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); setShowAdvanced(false); filterToggle.current?.focus(); } }}>
       <input type="hidden" name="platform" value={platforms.join(',')} />
       <input type="hidden" name="type" value={types.join(',')} />
       <input type="hidden" name="source" value={sourceValues.join(',')} />
       <input type="hidden" name="deadline" value={deadline} />
       <input type="hidden" name="sort" value={sort} />
+      <input type="hidden" name="regionPrimary" value={primary} />
+      <input type="hidden" name="regionSecondary" value={secondary} />
 
       <div className="search-row search-row-primary">
         <SearchField
@@ -114,6 +120,8 @@ export function FilterBar({ sources, searchParams }) {
           variant="secondary"
           size="sm"
           className="filter-toggle"
+          ref={filterToggle}
+          aria-controls="advanced-filters"
           aria-expanded={showAdvanced}
           onClick={() => setShowAdvanced((value) => !value)}
         >
@@ -122,7 +130,7 @@ export function FilterBar({ sources, searchParams }) {
       </div>
 
       {showAdvanced ? (
-        <div className="filter-grid">
+        <div id="advanced-filters" className="filter-grid" onKeyDown={event => { if (event.key === 'Escape') { setShowAdvanced(false); filterToggle.current?.focus(); } }}>
           <MultiSelect
             label="플랫폼"
             options={PLATFORM_OPTIONS}
@@ -146,15 +154,10 @@ export function FilterBar({ sources, searchParams }) {
           />
           <SelectField name="deadline" label="마감" options={DEADLINE_OPTIONS} value={deadline} onChange={setDeadline} />
           <SelectField name="sort" label="정렬" options={SORT_OPTIONS} value={sort} onChange={setSort} />
-          <label className="rk-field" htmlFor="region">
-            <span className="rk-field__label">지역</span>
-            <input
-              id="region"
-              name="region"
-              className="rk-input"
-              defaultValue={searchParams.region || ''}
-              placeholder="예: 서울, 강남, 수원"
-            />
+          <SelectField name="province" label="광역 지역" options={[['all', '전체 지역'], ...Object.keys(PRIMARY_REGIONS).map(key => [key, key])]} value={primary} onChange={value => { setPrimary(value); setSecondary(''); }} />
+          <label className="rk-field" htmlFor="district">
+            <span className="rk-field__label">시·군·구 (정확한 이름)</span>
+            <input id="district" className="rk-input" disabled={primary === 'all'} value={secondary} onChange={event => setSecondary(event.target.value)} placeholder="예: 강서구, 광주시" />
           </label>
         </div>
       ) : null}

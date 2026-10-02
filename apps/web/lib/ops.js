@@ -22,6 +22,7 @@ export async function isOpsAuthenticated() {
 }
 
 export async function getOpsSnapshot() {
+  if (!await isOpsAuthenticated()) throw new Error('Unauthorized');
   const [
     activeCampaigns,
     visitorsToday,
@@ -41,25 +42,24 @@ export async function getOpsSnapshot() {
     countRows('user_saved_campaigns'),
     countRows('reminder_subscriptions', { is_enabled: 'eq.true' }),
     countRows('crawl_errors'),
-    selectRows('crawl_jobs', { select: 'id,job_status,fetched_count,inserted_count,failed_count,created_at,source_id', order: 'created_at.desc', limit: '12' }),
+    selectRows('crawl_jobs', { select: 'id,job_status,fetched_count,inserted_count,failed_count,created_at,started_at,finished_at,source_id', order: 'created_at.desc', limit: '12' }),
     selectRows('sources', { select: 'id,slug,name', is_active: 'eq.true', order: 'priority.asc' }),
-    selectRows('sponsor_slots', { select: 'id,slot_key,title,is_active,priority', order: 'priority.asc', limit: '10' })
+    selectRows('sponsor_slots', { select: 'id,slot_key,title,is_active,priority,starts_at,ends_at,cta_url', order: 'priority.asc', limit: '10' })
   ]);
 
   const sourceNameMap = new Map(sources.map((source) => [source.id, source]));
-  const sourceStats = await Promise.all(
-    sources.map(async (source) => ({
-      ...source,
-      activeCampaigns: await countRows('campaigns', { source_id: `eq.${source.id}`, status: 'eq.active' }),
-      exactLocationCount: await countRows('campaigns', { source_id: `eq.${source.id}`, status: 'eq.active', exact_location: 'not.is.null' }),
-      latLngCount: await countRows('campaigns', {
-        source_id: `eq.${source.id}`,
-        status: 'eq.active',
-        latitude: 'not.is.null',
-        longitude: 'not.is.null'
-      })
-    }))
-  );
+  const sourceStats = await Promise.all(sources.map(async (source) => {
+    const base = { source_id: `eq.${source.id}`, status: 'eq.active' };
+    const [activeCampaigns, missingRegionCount, missingDeadlineCount, staleCount, exactLocationCount, latLngCount] = await Promise.all([
+      countRows('campaigns', base),
+      countRows('campaigns', { ...base, or: '(region_primary_name.is.null,region_primary_name.eq.)' }),
+      countRows('campaigns', { ...base, apply_deadline: 'is.null' }),
+      countRows('campaigns', { ...base, last_seen_at: `lt.${new Date(Date.now() - 86400000).toISOString()}` }),
+      countRows('campaigns', { ...base, exact_location: 'not.is.null' }),
+      countRows('campaigns', { ...base, latitude: 'not.is.null', longitude: 'not.is.null' })
+    ]);
+    return { ...source, activeCampaigns, missingRegionCount, missingDeadlineCount, staleCount, exactLocationCount, latLngCount };
+  }));
 
   const enrichedJobs = recentJobs.map((job) => ({
     ...job,
