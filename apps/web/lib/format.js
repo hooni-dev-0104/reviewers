@@ -1,3 +1,5 @@
+import { deadlineState } from './dates.js';
+import { normalizeRegion } from './regions.js';
 const PLATFORM_LABELS = {
   blog: '블로그',
   instagram: '인스타',
@@ -48,13 +50,9 @@ export function formatCampaignType(value) {
 }
 
 export function formatRegion(record) {
-  if (record.region_primary_name && record.region_secondary_name) {
-    return `${record.region_primary_name} · ${record.region_secondary_name}`;
-  }
-  if (record.region_primary_name) {
-    return record.region_primary_name;
-  }
-  return '지역 미상';
+  const region = normalizeRegion(record.region_primary_name, record.region_secondary_name);
+  if (region.needsReview) return '지역 확인 필요';
+  return [region.primary, region.secondary].filter(Boolean).join(' · ');
 }
 
 export function formatSourceName(source) {
@@ -76,37 +74,14 @@ export function formatDeadline(value) {
   }
 
   return new Intl.DateTimeFormat('ko-KR', {
+    timeZone: 'Asia/Seoul',
     month: 'short',
     day: 'numeric',
     weekday: 'short'
   }).format(date);
 }
 
-export function getDeadlineState(value) {
-  if (!value) {
-    return { label: '일정 확인 필요', tone: 'muted' };
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return { label: '일정 확인 필요', tone: 'muted' };
-  }
-
-  const diffDays = Math.ceil((date.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-  if (diffDays < 0) {
-    return { label: '마감 지남', tone: 'muted' };
-  }
-  if (diffDays <= 1) {
-    return { label: '오늘·내일 마감', tone: 'danger' };
-  }
-  if (diffDays <= 3) {
-    return { label: '3일 이내 마감', tone: 'warn' };
-  }
-  if (diffDays <= 7) {
-    return { label: '이번 주 마감', tone: 'accent' };
-  }
-  return { label: '여유 있음', tone: 'ok' };
-}
+export const getDeadlineState = deadlineState;
 
 export function getConfidence(record) {
   if (record.requires_review) {

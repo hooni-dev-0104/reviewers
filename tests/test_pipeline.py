@@ -63,6 +63,13 @@ from crawler.sources.seeded import (
 
 
 class PipelineTests(unittest.TestCase):
+    def setUp(self):
+        fixed = date(2026, 3, 27)
+        for target in ("crawler.dates.kst_today", "crawler.sources.seeded.kst_today"):
+            patcher = mock.patch(target, return_value=fixed)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
     class _MockHTTPResponse:
         def __init__(self, payload):
             self.payload = payload
@@ -985,7 +992,7 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(item["recruit_count"], 2)
         self.assertEqual(item["benefit_text"], "강아지 방석 옐로레이스 뽀숑쿠션 양면사용... +21,900 원")
         self.assertEqual(item["thumbnail_url"], "https://www.ringble.co.kr/mallimg/2026/03/26/1774514321-1699_N_7_262x262_100_2_.jpg")
-        self.assertEqual(item["apply_deadline"], (date.today() + timedelta(days=2)).isoformat())
+        self.assertEqual(item["apply_deadline"], (date(2026, 3, 27) + timedelta(days=2)).isoformat())
 
     def test_enrich_ringble_detail_extracts_product_fields(self):
         item = {
@@ -1184,7 +1191,7 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(item["region_primary_name"], "서울")
         self.assertEqual(item["region_secondary_name"], "강남")
         self.assertEqual(item["recruit_count"], 5)
-        self.assertEqual(item["apply_deadline"], (date.today() + timedelta(days=1)).isoformat())
+        self.assertEqual(item["apply_deadline"], (date(2026, 3, 27) + timedelta(days=1)).isoformat())
 
     def test_parse_seouloppa_listing_live_markup_shape(self):
         html = """
@@ -1235,7 +1242,7 @@ class PipelineTests(unittest.TestCase):
         self.assertIsNone(item["region_secondary_name"])
         self.assertEqual(item["benefit_text"], "메인메뉴 3가지 중 업체추천메뉴 1개")
         self.assertEqual(item["recruit_count"], 5)
-        self.assertEqual(item["apply_deadline"], date.today().isoformat())
+        self.assertEqual(item["apply_deadline"], date(2026, 3, 27).isoformat())
 
     def test_enrich_seouloppa_detail(self):
         item = {
@@ -1290,7 +1297,7 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(item["region_primary_name"], "서울")
         self.assertEqual(item["region_secondary_name"], "강남")
         self.assertEqual(item["recruit_count"], 1)
-        self.assertEqual(item["apply_deadline"], (date.today() + timedelta(days=9)).isoformat())
+        self.assertEqual(item["apply_deadline"], (date(2026, 3, 27) + timedelta(days=9)).isoformat())
 
     def test_enrich_gangnammatzip_detail(self):
         item = {

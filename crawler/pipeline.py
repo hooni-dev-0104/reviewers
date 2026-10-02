@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from crawler.dates import deadline_for_storage
+
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 import json
@@ -169,7 +171,7 @@ def build_campaign_payload(campaign: CampaignRecord) -> dict[str, Any]:
         "longitude": campaign.longitude,
         "benefit_text": campaign.benefit_text,
         "recruit_count": campaign.recruit_count,
-        "apply_deadline": campaign.apply_deadline,
+        "apply_deadline": deadline_for_storage(campaign.apply_deadline),
         "published_at": campaign.published_at,
         "thumbnail_url": campaign.thumbnail_url,
         "snippet": campaign.snippet,
@@ -200,7 +202,7 @@ def build_campaign_snapshot_payloads(
                 "campaign_id": row["id"],
                 "title": campaign.title,
                 "benefit_text": campaign.benefit_text,
-                "apply_deadline": campaign.apply_deadline,
+                "apply_deadline": deadline_for_storage(campaign.apply_deadline),
                 "status": campaign.status,
                 "raw_payload": campaign.raw_payload,
                 "crawled_at": campaign.crawled_at,

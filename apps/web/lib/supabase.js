@@ -1,6 +1,8 @@
 import 'server-only';
 
 import { cache } from 'react';
+import { kstDay as getKstToday, deadlineWindowEnd } from './dates.js';
+import { regionConditions, regionHierarchy } from './regions.js';
 
 import { requireEnv } from '@/lib/env';
 import { requirePublicSupabaseKey } from '@/lib/env-safety';
@@ -32,70 +34,9 @@ const CAMPAIGN_SELECT = [
 
 const ACTIVE_SOURCE_SLUGS = ['reviewnote', 'reviewplace', 'revu', 'dinnerqueen', '4blog', 'seouloppa', 'ringble', 'gangnammatzip', 'chehumview', 'modan', 'nolowa'];
 
-const REGION_EQUIVALENTS = {
-  서울: ['서울', '서울시', '강남', '강남구', '강동', '강동구', '강북', '강북구', '강서', '강서구', '관악', '관악구', '광진', '광진구', '구로', '구로구', '금천', '금천구', '노원', '노원구', '도봉', '도봉구', '동대문', '동대문구', '동작', '동작구', '마포', '마포구', '서대문', '서대문구', '서초', '서초구', '성동', '성동구', '성북', '성북구', '송파', '송파구', '양천', '양천구', '영등포', '영등포구', '용산', '용산구', '은평', '은평구', '종로', '종로구', '중', '중구', '중랑', '중랑구'],
-  경기: ['경기', '경기도', '수원', '성남', '용인', '고양', '화성', '평택', '부천', '안산', '안양', '남양주', '파주', '김포', '의정부', '광주', '하남', '광명', '군포', '오산', '이천', '안성', '구리', '의왕', '포천', '양주', '동두천', '과천', '여주', '양평', '가평', '연천'],
-  인천: ['인천', '인천시', '계양', '계양구', '미추홀', '미추홀구', '남동', '남동구', '동구', '부평', '부평구', '서구', '연수', '연수구', '중구', '강화', '강화군', '옹진', '옹진군'],
-  부산: ['부산', '부산시', '강서구', '금정구', '기장', '기장군', '남구', '동구', '동래구', '부산진구', '북구', '사상구', '사하구', '서구', '수영구', '연제구', '영도구', '중구', '해운대', '해운대구'],
-  대구: ['대구', '대구시', '남구', '달서구', '달성군', '동구', '북구', '서구', '수성구', '중구'],
-  대전: ['대전', '대전시', '대덕구', '동구', '서구', '유성구', '중구'],
-  광주: ['광주', '광주시', '광산구', '남구', '동구', '북구', '서구'],
-  울산: ['울산', '울산시', '남구', '동구', '북구', '울주군', '중구'],
-  세종: ['세종', '세종시', '세종특별자치시'],
-  강원: ['강원', '강원도', '강원특별자치도', '춘천', '원주', '강릉', '동해', '태백', '속초', '삼척', '홍천', '횡성', '영월', '평창', '정선', '철원', '화천', '양구', '인제', '고성', '양양'],
-  충북: ['충북', '충청북도', '청주', '충주', '제천', '보은', '옥천', '영동', '증평', '진천', '괴산', '음성', '단양'],
-  충남: ['충남', '충청남도', '천안', '공주', '보령', '아산', '서산', '논산', '계룡', '당진', '금산', '부여', '서천', '청양', '홍성', '예산', '태안'],
-  전북: ['전북', '전라북도', '전북특별자치도', '전주', '군산', '익산', '정읍', '남원', '김제', '완주', '진안', '무주', '장수', '임실', '순창', '고창', '부안'],
-  전남: ['전남', '전라남도', '목포', '여수', '순천', '나주', '광양', '담양', '곡성', '구례', '고흥', '보성', '화순', '장흥', '강진', '해남', '영암', '무안', '함평', '영광', '장성', '완도', '진도', '신안'],
-  경북: ['경북', '경상북도', '포항', '경주', '김천', '안동', '구미', '영주', '영천', '상주', '문경', '경산', '군위', '의성', '청송', '영양', '영덕', '청도', '고령', '성주', '칠곡', '예천', '봉화', '울진', '울릉'],
-  경남: ['경남', '경상남도', '창원', '진주', '통영', '사천', '김해', '밀양', '거제', '양산', '의령', '함안', '창녕', '고성', '남해', '하동', '산청', '함양', '거창', '합천'],
-  제주: ['제주', '제주도', '제주특별자치도', '제주시', '서귀포', '서귀포시']
-};
-
 function baseUrl() {
   return `${process.env.NEXT_PUBLIC_SUPABASE_URL || requireEnv('SUPABASE_URL')}/rest/v1`;
 }
-
-function getKstToday() {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Seoul',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  }).format(new Date());
-}
-
-function canonicalRegion(value) {
-  const raw = String(value || '').trim();
-  if (!raw) {
-    return null;
-  }
-
-  for (const [canonical, aliases] of Object.entries(REGION_EQUIVALENTS)) {
-    if (aliases.includes(raw)) {
-      return canonical;
-    }
-  }
-
-  return null;
-}
-
-function isCanonicalAlias(value) {
-  const raw = String(value || '').trim();
-  const canonical = canonicalRegion(raw);
-  if (!canonical) {
-    return false;
-  }
-  return REGION_EQUIVALENTS[canonical].includes(raw) && raw !== canonical;
-}
-
-function buildRegionCondition(token) {
-  const safeToken = sanitizePostgrestText(token, 40);
-  return safeToken
-    ? `or(region_primary_name.ilike.*${safeToken}*,region_secondary_name.ilike.*${safeToken}*)`
-    : null;
-}
-
 
 function normalizeMultiValue(value) {
   if (Array.isArray(value)) {
@@ -150,7 +91,7 @@ function applyCampaignFilters(params, searchParams, { forCount = false } = {}) {
 
   params.set('select', CAMPAIGN_SELECT);
   params.set('status', 'eq.active');
-  andConditions.push(`or(apply_deadline.is.null,apply_deadline.gte.${getKstToday()})`);
+  andConditions.push(`or(apply_deadline.is.null,apply_deadline.gte.${new Date().toISOString()})`);
   if (!forCount) {
     params.set('limit', String(limit));
     params.set('offset', String(offset));
@@ -176,44 +117,15 @@ function applyCampaignFilters(params, searchParams, { forCount = false } = {}) {
   } else if (sourceValues.length > 1) {
     params.set('sources.slug', `in.(${sourceValues.join(',')})`);
   }
-  if (regionPrimary && regionPrimary !== 'all') {
-    if (regionSecondary && regionSecondary !== 'all') {
-      const regionCondition = buildRegionCondition(regionSecondary);
-      if (regionCondition) {
-        andConditions.push(regionCondition);
-      }
-    } else {
-      const tokens = REGION_EQUIVALENTS[regionPrimary] || [regionPrimary];
-      andConditions.push(`or(${tokens.flatMap((token) => [
-        `region_primary_name.ilike.*${token}*`,
-        `region_secondary_name.ilike.*${token}*`
-      ]).join(',')})`);
-    }
-  } else if (region && region !== 'all') {
-    const regionCondition = buildRegionCondition(region);
-    if (regionCondition) {
-      andConditions.push(regionCondition);
-    }
-  }
+  andConditions.push(...regionConditions({ regionPrimary, regionSecondary, region }));
   if (trust === 'stable') {
     params.set('requires_review', 'eq.false');
   }
   if (trust === 'review') {
     params.set('requires_review', 'eq.true');
   }
-  if (deadline === 'today') {
-    params.set('apply_deadline', `lte.${new Date().toISOString()}`);
-  }
-  if (deadline === '3days') {
-    const date = new Date();
-    date.setDate(date.getDate() + 3);
-    params.set('apply_deadline', `lte.${date.toISOString()}`);
-  }
-  if (deadline === '7days') {
-    const date = new Date();
-    date.setDate(date.getDate() + 7);
-    params.set('apply_deadline', `lte.${date.toISOString()}`);
-  }
+  const windowEnd = deadlineWindowEnd(deadline);
+  if (windowEnd) params.set('apply_deadline', `lt.${windowEnd}`);
 
   if (andConditions.length === 1) {
     params.set('or', andConditions[0].slice(2));
@@ -431,35 +343,10 @@ export const getRegionHierarchy = cache(async function getRegionHierarchy() {
     order: 'region_primary_name.asc,region_secondary_name.asc',
     limit: '5000'
   });
-  params.set('or', `(apply_deadline.is.null,apply_deadline.gte.${getKstToday()})`);
+  params.set('or', `(apply_deadline.is.null,apply_deadline.gte.${new Date().toISOString()})`);
   const response = await supabaseFetch(`/campaigns?${params.toString()}`);
   const rows = await response.json();
-  const hierarchy = {};
-
-  for (const row of rows) {
-    const rawPrimary = String(row.region_primary_name || '').trim();
-    const rawSecondary = String(row.region_secondary_name || '').trim();
-    const primary = canonicalRegion(rawPrimary) || canonicalRegion(rawSecondary);
-    if (!primary) {
-      continue;
-    }
-    hierarchy[primary] ||= new Set();
-    const normalizedSecondary =
-      rawSecondary && !canonicalRegion(rawSecondary)
-        ? rawSecondary
-        : rawPrimary && rawPrimary !== primary && !isCanonicalAlias(rawPrimary)
-          ? rawPrimary
-          : null;
-    if (normalizedSecondary) {
-      hierarchy[primary].add(normalizedSecondary);
-    }
-  }
-
-  return Object.fromEntries(
-    Object.entries(hierarchy)
-      .sort(([a], [b]) => a.localeCompare(b, 'ko'))
-      .map(([primary, values]) => [primary, [...values].sort((a, b) => a.localeCompare(b, 'ko'))])
-  );
+  return regionHierarchy(rows);
 });
 
 export const getSources = cache(async function getSources() {
@@ -474,7 +361,7 @@ export const getSources = cache(async function getSources() {
 });
 
 export async function getCampaignCount() {
-  const today = getKstToday();
+  const today = new Date().toISOString();
   const response = await supabaseFetch(`/campaigns?select=id&status=eq.active&or=(apply_deadline.is.null,apply_deadline.gte.${today})`, {
     method: 'HEAD',
     headers: { Prefer: 'count=exact' }

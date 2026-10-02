@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+from datetime import date
 
 from crawler.models import CampaignRecord
 
@@ -68,6 +69,14 @@ def normalize_campaign(source_slug: str, source_id: str | None, raw: dict[str, A
     original_url = (raw.get("original_url") or raw.get("url") or "").strip()
     if not title or not original_url:
         raise ValueError("raw campaign requires title and original_url")
+
+    # Reject inverted calendar ranges from every source before persistence.
+    published, deadline = raw.get("published_at"), raw.get("apply_deadline")
+    try:
+        if published and deadline and date.fromisoformat(str(published)[:10]) > date.fromisoformat(str(deadline)[:10]):
+            raw = {**raw, "published_at": None, "apply_deadline": None, "requires_review": True}
+    except ValueError:
+        raw = {**raw, "published_at": None, "apply_deadline": None, "requires_review": True}
 
     return CampaignRecord(
         source_slug=source_slug,

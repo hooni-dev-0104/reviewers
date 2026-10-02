@@ -11,6 +11,7 @@ import time
 import urllib.error
 from urllib.parse import parse_qs, quote, urlencode, unquote, urljoin, urlsplit
 
+from crawler.dates import kst_today, parse_day, parse_range
 from crawler.models import SourceDefinition
 from crawler.sources.base import (
     FileSourceAdapter,
@@ -470,17 +471,8 @@ def list_seeded_sources() -> list[SourceDefinition]:
     return [SEEDED_SOURCES[key] for key in sorted(SEEDED_SOURCES.keys())]
 
 
-def _normalize_4blog_date(mmdd: str | None) -> str | None:
-    if not mmdd or "." not in mmdd:
-        return None
-    month_str, day_str = mmdd.split(".", 1)
-    month = int(month_str)
-    day = int(day_str)
-    today = date.today()
-    year = today.year
-    if month < today.month - 6:
-        year += 1
-    return date(year, month, day).isoformat()
+def _normalize_4blog_date(mmdd: str | None, today: date | None = None) -> str | None:
+    return parse_day(mmdd, today)
 
 
 def _clean_4blog_location(raw: str | None) -> tuple[str | None, str | None]:
@@ -748,21 +740,8 @@ def _parse_iso_date(value: str | None) -> str | None:
             return None
 
 
-def _parse_reviewplace_mmdd_range(value: str | None) -> tuple[str | None, str | None]:
-    if not value:
-        return None, None
-    match = re.search(r"(\d{2})\.(\d{2})\s*[~\-]\s*(\d{2})\.(\d{2})", value)
-    if not match:
-        return None, None
-    sm, sd, em, ed = [int(part) for part in match.groups()]
-    today = date.today()
-    start_year = today.year
-    end_year = today.year
-    if sm < today.month - 6:
-        start_year += 1
-    if em < today.month - 6:
-        end_year += 1
-    return date(start_year, sm, sd).isoformat(), date(end_year, em, ed).isoformat()
+def _parse_reviewplace_mmdd_range(value: str | None, today: date | None = None) -> tuple[str | None, str | None]:
+    return parse_range(value, today)
 
 
 def _normalize_prefixed_image_url(base_url: str, value: str | None) -> str | None:
@@ -1076,7 +1055,7 @@ def parse_reviewplace_listing(html: str, listing_url: str, source_id: str | None
                 "region_secondary_name": secondary,
                 "benefit_text": benefit_text,
                 "recruit_count": int(recruit) if recruit else None,
-                "apply_deadline": (date.today() + timedelta(days=int(remaining_days))).isoformat() if remaining_days else None,
+                "apply_deadline": (kst_today() + timedelta(days=int(remaining_days))).isoformat() if remaining_days else None,
                 "published_at": None,
                 "thumbnail_url": thumbnail_url,
                 "snippet": _normalize_benefit_text(raw_desc) or benefit_text,
@@ -1122,6 +1101,7 @@ def enrich_reviewplace_detail(item: dict, detail_html: str) -> dict:
             enriched["region_secondary_name"] = address_parts[1]
 
     period_text = _extract_first(r"<span class=\"tlabel\">모집기간</span>\s*<span class=\"fm_num\">([^<]+)</span>", detail_html, re.S)
+    enriched["requires_review"] = True  # Source omits year; verify against original.
     published_at, apply_deadline = _parse_reviewplace_mmdd_range(period_text)
     if published_at:
         enriched["published_at"] = published_at
@@ -2970,7 +2950,7 @@ def _parse_yy_mm_dd_range(value: str | None) -> tuple[str | None, str | None]:
 def _estimate_deadline_from_d_label(value: str | None, today: date | None = None) -> str | None:
     if not value:
         return None
-    today = today or date.today()
+    today = today or kst_today()
     compact = value.strip().lower().replace(" ", "")
     if compact in {"d-day", "dday", "today", "오늘마감", "오늘-내일마감"}:
         return today.isoformat()
@@ -3188,21 +3168,8 @@ def _infer_nolowa_platform_type(icon_class: str | None, title_block: str | None,
     return "blog"
 
 
-def _parse_nolowa_mmdd_range(value: str | None) -> tuple[str | None, str | None]:
-    if not value:
-        return None, None
-    match = re.search(r"(\d{2})\.(\d{2})\s*[~\-]\s*(\d{2})\.(\d{2})", value)
-    if not match:
-        return None, None
-    sm, sd, em, ed = [int(part) for part in match.groups()]
-    today = date.today()
-    start_year = today.year
-    end_year = today.year
-    if sm < today.month - 6:
-        start_year += 1
-    if em < today.month - 6:
-        end_year += 1
-    return date(start_year, sm, sd).isoformat(), date(end_year, em, ed).isoformat()
+def _parse_nolowa_mmdd_range(value: str | None, today: date | None = None) -> tuple[str | None, str | None]:
+    return parse_range(value, today)
 
 
 def _extract_nolowa_category_tokens(detail_html: str) -> list[str]:
@@ -3328,6 +3295,7 @@ def enrich_nolowa_detail(item: dict, detail_html: str) -> dict:
     enriched['platform_type'] = _infer_nolowa_platform_type(platform_class, platform_text, detail_html)
 
     apply_range = _extract_first(r'리뷰어 신청</em>\s*([^<]+)', detail_html)
+    enriched["requires_review"] = True  # Source omits year; verify against original.
     published_at, apply_deadline = _parse_nolowa_mmdd_range(apply_range)
     if published_at:
         enriched['published_at'] = published_at
@@ -3719,7 +3687,7 @@ def enrich_gangnammatzip_detail(item: dict, detail_html: str) -> dict:
         enriched['snippet'] = _strip_tags(benefit)
     period = _extract_first(r'신청기간</dt>.*?<dd>\s*([^<]+)', detail_html, re.S)
     if period:
-        current_year = date.today().year
+        current_year = kst_today().year
         try:
             left, right = [part.strip() for part in re.split(r'[~–]', period, maxsplit=1)]
             lm, ld = [int(part) for part in left.split('.') if part]
